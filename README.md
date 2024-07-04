@@ -13,6 +13,6 @@ The `collect.html` is a simple webpage that allows users to upload examples of c
 
 ## Preprocessing and Tokenization
 
-Our raw dataset consists of a large JSON file consisting of examples. Each example contains ASCII characters, stroke information, and some metadata like who the author was. Let's visualize one of these examples: this particular one was traced from a screenshot taken of the [Zaner-Bloser cursive practice workbook](static/Zaner-Bloser.pdf).
+Our raw dataset consists of a large JSON file consisting of examples. Each example contains ASCII characters, stroke information, and some metadata like who the author was. Let's visualize one of these examples: this particular one was traced from a screenshot taken of the [Zaner-Bloser cursive practice workbook](static/Zaner-Bloser.pdf). You can see that our custom tokenizer (which uses four integers rather than the typical one) preserves the stroke data at a high enough fidelity that we are able to reconstruct the original sentence
 
-![example](static/example.png)
+![tokenizer](static/encode_decode.png)
