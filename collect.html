@@ -129,7 +129,11 @@
                         ctx.beginPath();
                         ctx.moveTo(stroke[0][0], stroke[0][1]);
                         stroke.forEach(point => {
-                            ctx.lineTo(point[0], point[1]);
+                            if (point[2] === 1) {
+                                ctx.lineTo(point[0], point[1]);
+                            } else {
+                                ctx.moveTo(point[0], point[1]);
+                            }
                         });
                         ctx.stroke();
                     }
@@ -139,7 +143,11 @@
                     ctx.beginPath();
                     ctx.moveTo(currentStroke[0][0], currentStroke[0][1]);
                     currentStroke.forEach(point => {
-                        ctx.lineTo(point[0], point[1]);
+                        if (point[2] === 1) {
+                            ctx.lineTo(point[0], point[1]);
+                        } else {
+                            ctx.moveTo(point[0], point[1]);
+                        }
                     });
                     ctx.stroke();
                 }
@@ -154,7 +162,7 @@
                 const rect = canvas.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
-                setCurrentStroke([[x, y]]);
+                setCurrentStroke([[x, y, 1]]);
                 lastPointRef.current = [x, y];
                 lastSampledPointRef.current = [x, y];
                 setIsDrawing(true);
@@ -180,7 +188,7 @@
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 
                 if (distance >= SAMPLING_INTERVAL) {
-                    setCurrentStroke(prev => [...prev, [x, y]]);
+                    setCurrentStroke(prev => [...prev, [x, y, 1]]);
                     lastSampledPointRef.current = [x, y];
                 }
                 
@@ -189,7 +197,7 @@
 
             const endDrawing = () => {
                 if (currentStroke.length > 0) {
-                    setStrokes(prev => [...prev, currentStroke]);
+                    setStrokes(prev => [...prev, [...currentStroke, [currentStroke[currentStroke.length - 1][0], currentStroke[currentStroke.length - 1][1], 0]]]);
                     setCurrentStroke([]);
                 }
                 setIsDrawing(false);
@@ -217,7 +225,7 @@
                 const normalizedPoints = allPoints.map(point => [
                     parseFloat((point[0] / canvas.width).toFixed(4)),
                     parseFloat((point[1] / canvas.height).toFixed(4)),
-                    1
+                    point[2]
                 ]);
                 
                 return {
