@@ -1,4 +1,6 @@
-# Generating Cursive Handwriting
+# Generating Cursive with a Transformer
+
+Sam Greydanus
 
 ## Making a dataset
 
