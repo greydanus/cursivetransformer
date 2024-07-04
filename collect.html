@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handwriting Stroke Capture</title>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        button { cursor: pointer; }
+        input[type="range"] { width: 100%; }
+        canvas { border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const SAMPLING_INTERVAL = 2;
+
+        const Button = ({ onClick, children }) => (
+            <button
+                onClick={onClick}
+                style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#2D3748',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    marginRight: '8px'
+                }}
+            >
+                {children}
+            </button>
+        );
+
+        const Input = ({ type, accept, onChange, value, placeholder, style }) => (
+            <input
+                type={type}
+                accept={accept}
+                onChange={onChange}
+                value={value}
+                placeholder={placeholder}
+                style={{ ...style, padding: '4px', marginBottom: '8px' }}
+            />
+        );
+
+        const Textarea = ({ value, readOnly, style, placeholder }) => (
+            <textarea
+                value={value}
+                readOnly={readOnly}
+                style={{ ...style, padding: '4px', width: '100%', height: '200px' }}
+                placeholder={placeholder}
+            />
+        );
+
+        const Label = ({ htmlFor, children }) => (
+            <label htmlFor={htmlFor} style={{ display: 'block', marginBottom: '4px' }}>
+                {children}
+            </label>
+        );
+
+        const Slider = ({ id, min, max, step, value, onChange }) => (
+            <input
+                id={id}
+                type="range"
+                min={min}
+                max={max}
+                step={step}
+                value={value}
+                onChange={onChange}
+                style={{ width: '100%' }}
+            />
+        );
+
+        const ErrorMessage = ({ message }) => (
+            <div style={{ backgroundColor: '#FEE2E2', border: '1px solid #F87171', color: '#B91C1C', padding: '8px', borderRadius: '4px', marginBottom: '16px' }}>
+                <span>{message}</span>
+            </div>
+        );
+
+        const HandwritingStrokeCapture = () => {
+            const [strokes, setStrokes] = React.useState([]);
+            const [currentStroke, setCurrentStroke] = React.useState([]);
+            const [backgroundImage, setBackgroundImage] = React.useState(null);
+            const [imagePosition, setImagePosition] = React.useState({ x: 0, y: 0 });
+            const [imageScale, setImageScale] = React.useState(1);
+            const [isDrawing, setIsDrawing] = React.useState(false);
+            const [exportedData, setExportedData] = React.useState('');
+            const [author, setAuthor] = React.useState('');
+            const [asciiSequence, setAsciiSequence] = React.useState('');
+            const [errorMessage, setErrorMessage] = React.useState('');
+            const [dataset, setDataset] = React.useState([]);
+            const canvasRef = React.useRef(null);
+            const lastPointRef = React.useRef(null);
+            const lastSampledPointRef = React.useRef(null);
+
+            const drawStrokes = React.useCallback(() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (backgroundImage) {
+                    ctx.save();
+                    ctx.translate(imagePosition.x, imagePosition.y);
+                    ctx.scale(imageScale, imageScale);
+                    ctx.drawImage(backgroundImage, 0, 0);
+                    ctx.restore();
+                }
+
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(0, canvas.height / 3);
+                ctx.lineTo(canvas.width, canvas.height / 3);
+                ctx.moveTo(0, 2 * canvas.height / 3);
+                ctx.lineTo(canvas.width, 2 * canvas.height / 3);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.strokeStyle = '#2F4F4F';
+                ctx.lineWidth = 2;
+                strokes.forEach(stroke => {
+                    if (stroke.length > 0) {
+                        ctx.beginPath();
+                        ctx.moveTo(stroke[0][0], stroke[0][1]);
+                        stroke.forEach(point => {
+                            ctx.lineTo(point[0], point[1]);
+                        });
+                        ctx.stroke();
+                    }
+                });
+
+                if (currentStroke.length > 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(currentStroke[0][0], currentStroke[0][1]);
+                    currentStroke.forEach(point => {
+                        ctx.lineTo(point[0], point[1]);
+                    });
+                    ctx.stroke();
+                }
+            }, [strokes, currentStroke, backgroundImage, imagePosition, imageScale]);
+
+            React.useEffect(() => {
+                drawStrokes();
+            }, [drawStrokes]);
+
+            const startDrawing = (e) => {
+                const canvas = canvasRef.current;
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                setCurrentStroke([[x, y]]);
+                lastPointRef.current = [x, y];
+                lastSampledPointRef.current = [x, y];
+                setIsDrawing(true);
+            };
+
+            const draw = (e) => {
+                if (!isDrawing) return;
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                ctx.strokeStyle = '#2F4F4F';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(lastPointRef.current[0], lastPointRef.current[1]);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                
+                const dx = x - lastSampledPointRef.current[0];
+                const dy = y - lastSampledPointRef.current[1];
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance >= SAMPLING_INTERVAL) {
+                    setCurrentStroke(prev => [...prev, [x, y]]);
+                    lastSampledPointRef.current = [x, y];
+                }
+                
+                lastPointRef.current = [x, y];
+            };
+
+            const endDrawing = () => {
+                if (currentStroke.length > 0) {
+                    setStrokes(prev => [...prev, currentStroke]);
+                    setCurrentStroke([]);
+                }
+                setIsDrawing(false);
+                lastPointRef.current = null;
+                lastSampledPointRef.current = null;
+            };
+
+            const generateEntry = () => {
+                if (!author.trim()) {
+                    setErrorMessage("Please enter an author name.");
+                    return null;
+                }
+                if (!asciiSequence.trim()) {
+                    setErrorMessage("Please enter an ASCII sequence.");
+                    return null;
+                }
+                if (strokes.length === 0) {
+                    setErrorMessage("Please draw at least one stroke before adding to dataset.");
+                    return null;
+                }
+
+                let allPoints = strokes.flat();
+                const canvas = canvasRef.current;
+                const aspectRatio = canvas.width / canvas.height;
+                const normalizedPoints = allPoints.map(point => [
+                    parseFloat((point[0] / canvas.width).toFixed(4)),
+                    parseFloat((point[1] / canvas.height).toFixed(4)),
+                    1
+                ]);
+                
+                return {
+                    metadata: {author: author.trim(), asciiSequence: asciiSequence.trim(), pointCount: allPoints.length, strokeCount: strokes.length, aspectRatio},
+                    points: normalizedPoints
+                };
+            };
+
+            const addToDataset = () => {
+                const entry = generateEntry();
+                if (entry) {
+                    setDataset(prev => [...prev, entry]);
+                    setStrokes([]);
+                    setAsciiSequence('');
+                    setErrorMessage('');
+                    drawStrokes();
+                }
+            };
+
+            const exportDataset = () => {
+                if (dataset.length === 0) {
+                    setErrorMessage("The dataset is empty. Add some entries before exporting.");
+                    return;
+                }
+                const jsonString = JSON.stringify(dataset);
+                setExportedData(jsonString);
+            };
+
+            const handleImageUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            setBackgroundImage(img);
+                            setImagePosition({ x: 0, y: 0 });
+                            setImageScale(1);
+                        };
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const handleImageMove = (direction) => {
+                const step = 10;
+                setImagePosition(prev => {
+                    switch (direction) {
+                        case 'up': return { ...prev, y: prev.y - step };
+                        case 'down': return { ...prev, y: prev.y + step };
+                        case 'left': return { ...prev, x: prev.x - step };
+                        case 'right': return { ...prev, x: prev.x + step };
+                        default: return prev;
+                    }
+                });
+            };
+
+            const clearAll = () => {
+                setStrokes([]);
+                setCurrentStroke([]);
+                setExportedData('');
+                setErrorMessage('');
+                drawStrokes();
+            };
+
+            const undo = () => {
+                setStrokes(prev => prev.slice(0, -1));
+            };
+
+            return (
+                <div className="container">
+                    <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>Handwriting Stroke Capture</h2>
+                    <p style={{ fontSize: '14px', color: '#4B5563', marginBottom: '16px' }}>
+                        Instructions: Upload an image, trace the writing, enter author and ASCII sequence, then add to dataset. Export when finished.
+                    </p>
+                    {errorMessage && <ErrorMessage message={errorMessage} />}
+                    <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        style={{ marginBottom: '16px' }}
+                    />
+                    <canvas
+                        ref={canvasRef}
+                        width={1200}
+                        height={200}
+                        onMouseDown={startDrawing}
+                        onMouseMove={draw}
+                        onMouseUp={endDrawing}
+                        onMouseOut={endDrawing}
+                        style={{ border: '1px solid #CBD5E0', cursor: 'crosshair', marginBottom: '16px', maxWidth: '100%' }}
+                    />
+                    <div style={{ marginBottom: '16px' }}>
+                        <p style={{ fontSize: '14px', color: '#4B5563', marginBottom: '8px' }}>Image Positioning Controls:</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '8px' }}>
+                            <Button onClick={() => handleImageMove('up')}>↑</Button>
+                            <Button onClick={() => handleImageMove('down')}>↓</Button>
+                            <Button onClick={() => handleImageMove('left')}>←</Button>
+                            <Button onClick={() => handleImageMove('right')}>→</Button>
+                        </div>
+                        <div>
+                            <Label htmlFor="scale-slider">Image Scale</Label>
+                            <Slider
+                                id="scale-slider"
+                                min={0.1}
+                                max={2}
+                                step={0.1}
+                                value={imageScale}
+                                onChange={(e) => setImageScale(parseFloat(e.target.value))}
+                            />
+                        </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                        <div>
+                            <Label htmlFor="author-input">Author</Label>
+                            <Input
+                                id="author-input"
+                                value={author}
+                                onChange={(e) => setAuthor(e.target.value)}
+                                placeholder="Enter author name"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="ascii-input">ASCII Sequence</Label>
+                            <Input
+                                id="ascii-input"
+                                value={asciiSequence}
+                                onChange={(e) => setAsciiSequence(e.target.value)}
+                                placeholder="Enter ASCII sequence"
+                            />
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <Button onClick={clearAll}>Clear All</Button>
+                        <Button onClick={undo}>Undo</Button>
+                        <Button onClick={addToDataset}>Add to Dataset</Button>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <Button onClick={exportDataset}>Export Dataset</Button>
+                        <span style={{ fontSize: '14px', color: '#4B5563' }}>
+                            Dataset size: {dataset.length} entries
+                        </span>
+                    </div>
+                    {exportedData && (
+                        <Textarea
+                            value={exportedData}
+                            readOnly
+                            placeholder="Exported dataset will appear here"
+                        />
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.render(<HandwritingStrokeCapture />, document.getElementById('root'));
+    </script>
+</body>
+</html
