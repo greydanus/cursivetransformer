@@ -1,6 +1,6 @@
 # Cursive Transformer
 
-Sam Greydanus
+_**Work in progress - July 2024 - I'm trying out core dev work in public**_
 
 ## Making a dataset
 
