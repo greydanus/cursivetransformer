@@ -8,7 +8,7 @@ Let's construct a dataset of cursive pen strokes for training a handwriting mode
 
 The `collect.html` is a simple webpage that allows users to upload examples of cursive handwriting, position those images in the tracing region, trace them with a pen, annotate the author and ASCII characters, and export the result as a JSON file. This interface was build with the help of Claude Sonnet 3.5.
 
-* _Made it to page 36 of the [Zaner-Bloser cursive practice workbook](static/Zaner-Bloser.pdf)
+* _Made it to page 49 of the [Zaner-Bloser cursive practice workbook](static/Zaner-Bloser.pdf)
 
 ![collect](static/collect.png)
 
@@ -24,3 +24,9 @@ Our raw dataset consists of a large JSON file consisting of examples. Each examp
 The model definition is Karpathy's [`makemore`](https://github.com/karpathy/makemore/blob/master/makemore.py) Transformer architecture plus cross-attention for including ASCII data. The training infrastructure is also based upon the [`makemore`](https://github.com/karpathy/makemore/blob/master/makemore.py) repo. However, we've added Weights and Biases logging (screenshot below). This logging also uploads samples for qualitative evaluation.
 
 ![tokenizer](static/wandb.png)
+
+## Samples
+
+This section is a work in progress, but I'll be placing the best **TEST** samples here. As of now, the best results I've achieved does show some ability for the model to use ASCII context to draw characters. This is surprising, given that the particular dataset I trained on had just 180 examples.
+
+![test-sample](static/test-sample.png)
