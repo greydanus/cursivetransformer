@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Handwriting Stroke Capture</title>
+    <title>Handwriting Stroke Capture with Automatic Word Prompts</title>
     <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
@@ -36,7 +36,7 @@
             </button>
         );
 
-        const Input = ({ type, accept, onChange, value, placeholder, style }) => (
+        const Input = ({ type, accept, onChange, value, placeholder, style, min, max, id }) => (
             <input
                 type={type}
                 accept={accept}
@@ -44,6 +44,9 @@
                 value={value}
                 placeholder={placeholder}
                 style={{ ...style, padding: '4px', marginBottom: '8px' }}
+                min={min}
+                max={max}
+                id={id}
             />
         );
 
@@ -93,6 +96,9 @@
             const [asciiSequence, setAsciiSequence] = React.useState('');
             const [errorMessage, setErrorMessage] = React.useState('');
             const [dataset, setDataset] = React.useState([]);
+            const [wordBank, setWordBank] = React.useState([]);
+            const [currentPrompt, setCurrentPrompt] = React.useState('');
+            const [wordCount, setWordCount] = React.useState(1);
             const canvasRef = React.useRef(null);
             const lastPointRef = React.useRef(null);
             const lastSampledPointRef = React.useRef(null);
@@ -242,6 +248,7 @@
                     setAsciiSequence('');
                     setErrorMessage('');
                     drawStrokes();
+                    generatePrompt(); // Generate a new prompt after adding to dataset
                 }
             };
 
@@ -290,11 +297,60 @@
                 setExportedData('');
                 setErrorMessage('');
                 drawStrokes();
+                generatePrompt(); // Generate a new prompt after clearing
             };
 
             const undo = () => {
                 setStrokes(prev => prev.slice(0, -1));
             };
+
+            const loadWordBank = () => {
+                // For now, we'll use a small set of words. In a real application, you'd want to load this from an API or a larger file.
+                const words = [
+    "abandon", "ability", "able", "about", "above", "abstract", "abundance", "academy", "accept", "access", "accident", "accomplish", "account", "accurate", "achieve",
+    "backpack", "badge", "balance", "balloon", "banana", "band", "bank", "bar", "base", "basket", "battle", "beach", "bean", "beautiful", "because",
+    "cable", "cake", "calculate", "calendar", "call", "calm", "camera", "camp", "can", "cancel", "candy", "capable", "capital", "captain", "car",
+    "dad", "daily", "damage", "dance", "danger", "dare", "dark", "data", "date", "daughter", "day", "deal", "dear", "debate", "debt",
+    "each", "eager", "eagle", "ear", "early", "earn", "earth", "easily", "east", "easy", "eat", "echo", "economy", "edge", "educate",
+    "face", "fact", "fade", "fail", "fair", "faith", "fall", "false", "family", "famous", "fan", "fancy", "fantastic", "far", "farm",
+    "gain", "galaxy", "game", "gap", "garage", "garden", "garlic", "gas", "gather", "gaze", "gear", "gene", "general", "generous", "genius",
+    "habit", "hair", "half", "hall", "hammer", "hand", "happy", "harbor", "hard", "harmony", "harvest", "hat", "hate", "have", "hawk",
+    "ice", "idea", "ideal", "inky", "ignore", "ill", "illegal", "imagine", "imitate", "immediate", "impact", "implement", "important", "improve", "impulse",
+    "jacket", "jail", "jam", "jar", "jaw", "jazz", "jeans", "jelly", "jewel", "job", "join", "joke", "journal", "journey", "joy",
+    "keep", "kettle", "key", "kick", "kid", "kill", "kind", "king", "kiss", "kitchen", "kite", "knee", "knife", "knock", "know",
+    "label", "labor", "ladder", "lady", "lake", "lamp", "land", "language", "large", "last", "late", "laugh", "launch", "law", "lazy",
+    "machine", "mad", "magic", "magnet", "mail", "main", "major", "make", "mammal", "man", "manage", "mango", "manner", "many", "map",
+    "nail", "name", "narrow", "nation", "nature", "near", "neat", "necessary", "neck", "need", "negative", "negotiate", "neighbor", "neither", "nest",
+    "oak", "obey", "object", "observe", "obtain", "obvious", "occur", "ocean", "odd", "off", "offer", "office", "often", "oil", "okay",
+    "pace", "pack", "page", "pain", "paint", "pair", "palace", "palm", "pan", "panel", "panic", "paper", "parade", "parent", "park",
+    "quality", "quantity", "quarter", "queen", "question", "quick", "quiet", "quit", "quiz", "quote",
+    "rabbit", "race", "rack", "radar", "radio", "rail", "rain", "raise", "rally", "ranch", "random", "range", "rank", "rapid", "rare",
+    "sad", "safe", "sail", "salad", "salary", "sale", "salt", "same", "sample", "sand", "satellite", "satisfy", "sauce", "save", "say",
+    "table", "tackle", "tag", "tail", "take", "tale", "talk", "tall", "tank", "tap", "target", "task", "taste", "tax", "teach",
+    "ugly", "ultimate", "umbrella", "uncle", "under", "understand", "undo", "unexpected", "unfair", "unhappy", "uniform", "unique", "unit", "universe", "unless",
+    "vacant", "vacation", "vaccine", "vacuum", "vague", "valid", "valley", "valuable", "value", "van", "vanish", "variety", "various", "vast", "vegetable",
+    "wagon", "wait", "wake", "walk", "wall", "walnut", "want", "war", "warm", "warn", "wash", "waste", "watch", "water", "wave",
+    "xylophone",
+    "yard", "year", "yell", "yellow", "yes", "yesterday", "yet", "yield", "yoga", "you", "young", "youth",
+    "zebra", "zero", "zone", "zoo"
+];
+                // const words = ['apple', 'banana', 'cherry', 'date', 'elderberry', 'fig', 'grape', 'honeydew', 'kiwi', 'lemon', 'mango', 'nectarine', 'orange', 'papaya', 'quince', 'raspberry', 'strawberry', 'tangerine', 'ugli fruit', 'watermelon'];
+                setWordBank(words);
+            };
+
+            const generatePrompt = React.useCallback(() => {
+                if (wordBank.length === 0) return;
+                const prompt = Array(wordCount).fill().map(() => wordBank[Math.floor(Math.random() * wordBank.length)]).join(' ');
+                setCurrentPrompt(prompt);
+            }, [wordBank, wordCount]);
+
+            React.useEffect(() => {
+                loadWordBank();
+            }, []);
+
+            React.useEffect(() => {
+                generatePrompt();
+            }, [generatePrompt]);
 
             return (
                 <div className="container">
@@ -309,6 +365,29 @@
                         onChange={handleImageUpload}
                         style={{ marginBottom: '16px' }}
                     />
+                    <div style={{ marginBottom: '16px' }}>
+                        <Label htmlFor="word-count">Number of Words in Prompt</Label>
+                        <Input
+                            id="word-count"
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={wordCount}
+                            onChange={(e) => {
+                                const newWordCount = parseInt(e.target.value);
+                                setWordCount(newWordCount);
+                                // Generate a new prompt when word count changes
+                                setTimeout(() => generatePrompt(), 0);
+                            }}
+                        />
+                    </div>
+                    {currentPrompt && (
+                        <div style={{ 
+                            marginBottom: '16px'
+                        }}>
+                            {currentPrompt}
+                        </div>
+                    )}
                     <canvas
                         ref={canvasRef}
                         width={1200}
@@ -384,4 +463,4 @@
         ReactDOM.render(<HandwritingStrokeCapture />, document.getElementById('root'));
     </script>
 </body>
-</html
+</html>
