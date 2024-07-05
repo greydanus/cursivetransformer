@@ -21,6 +21,6 @@ Our raw dataset consists of a large JSON file consisting of examples. Each examp
 
 ## Training and Logging
 
-The model definition is Karpathy's `makemore` Transformer architecture plus cross-attention for including ASCII data. The training infrastructure is also based upon the `makemore` repo. However, we've added Weights and Biases logging (screenshot below). This logging also uploads samples for qualitative evaluation.
+The model definition is Karpathy's [`makemore`](https://github.com/karpathy/makemore/blob/master/makemore.py) Transformer architecture plus cross-attention for including ASCII data. The training infrastructure is also based upon the [`makemore`](https://github.com/karpathy/makemore/blob/master/makemore.py) repo. However, we've added Weights and Biases logging (screenshot below). This logging also uploads samples for qualitative evaluation.
 
 ![tokenizer](static/wandb.png)
