@@ -10,6 +10,7 @@
 *.pkl
 __pycache__
 *.epub
+*.json
 
 /examples*
 
