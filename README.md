@@ -8,6 +8,8 @@ Let's construct a dataset of cursive pen strokes for training a handwriting mode
 
 The `collect.html` is a simple webpage that allows users to upload examples of cursive handwriting, position those images in the tracing region, trace them with a pen, annotate the author and ASCII characters, and export the result as a JSON file. This interface was build with the help of Claude Sonnet 3.5.
 
+* _Made it to page 36 of the [Zaner-Bloser cursive practice workbook](static/Zaner-Bloser.pdf)
+
 ![collect](static/collect.png)
 
 
