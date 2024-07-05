@@ -1,4 +1,4 @@
-# Generating Cursive with a Transformer
+# Cursive Transformer
 
 Sam Greydanus
 
