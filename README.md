@@ -23,6 +23,8 @@ The model definition is Karpathy's [`makemore`](https://github.com/karpathy/make
 
 ![tokenizer](static/wandb.png)
 
+One of the challenges of debugging this kind of model is that you need to look at the samples pretty frequently in order to determine what the model is learning and what failure modes are occurring. I've really enjoyed using W&B for this because visualizing samples (as images) while training in the same notebook is not trivial. You need to run two separate threads, and on top of that it's just not what notebooks are designed for. By comparison, W&B makes this easy and extremely fast. I've noticed that images of sample handwriting are ready to view on W&B within a second or two of when they are generated on my A100 Colab GPU. That's pretty impressive! W&B also makes it easy to run ablation studies, as loss stats from different runs (but the same project) are by defauly aggregated in the same plot. This has been of great practical use when doing mini-experiments to determine how to set data augmentation parameters and other modeling parameters. I run four models on four different A100s (one ablatiion setting on each) and compare their stats on W&B in real time.
+
 
 ## Samples
 
