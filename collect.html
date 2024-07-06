@@ -305,6 +305,9 @@
                 setBackgroundImage(null); // Clear the uploaded image
                 setImagePosition({ x: 0, y: 0 }); // Reset image position
                 setImageScale(1); // Reset image scale
+                if (samplingMode === 'random') {
+                    generatePrompt();
+                }
                 drawStrokes();
             };
 
@@ -580,6 +583,8 @@
                                 const success = addToDataset();
                                 if (success && samplingMode === 'ordered') {
                                     setDisplayIndex((currentIndex + 1) % wordBank.length);
+                                    generatePrompt();
+                                } else if (success && samplingMode === 'random') {
                                     generatePrompt();
                                 }
                             }}>Add to Dataset</Button>
