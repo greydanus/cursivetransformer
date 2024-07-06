@@ -253,8 +253,9 @@
                     setAsciiSequence('');
                     setErrorMessage('');
                     drawStrokes();
-                    generatePrompt(); // Generate a new prompt after adding to dataset
+                    return true; // Entry successfully added
                 }
+                return false; // Entry not added due to error
             };
 
             const exportDataset = () => {
@@ -300,13 +301,11 @@
             const clearAll = () => {
                 setStrokes([]);
                 setCurrentStroke([]);
-                setExportedData('');
                 setErrorMessage('');
                 setBackgroundImage(null); // Clear the uploaded image
                 setImagePosition({ x: 0, y: 0 }); // Reset image position
                 setImageScale(1); // Reset image scale
                 drawStrokes();
-                generatePrompt(); // Generate a new prompt after clearing
             };
 
             const undo = () => {
@@ -509,7 +508,7 @@
                         <div style={{ marginBottom: '16px' }}>
                             
                             <Label htmlFor="start-index" style={{ marginRight: '8px' }}>
-                            {`Word Bank Index (current: ${displayIndex+1}/${wordBank.length})`}
+                            {`Word Bank Index (current: ${displayIndex}/${wordBank.length})`}
                             </Label>
                             <Input
                                 id="start-index"
@@ -572,14 +571,14 @@
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '16px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Button onClick={clearAll}>Clear All</Button>
+                            <Button onClick={() => { clearAll(); }}>Clear All</Button>
                             <Button onClick={undo}>Undo</Button>
                             {samplingMode === 'ordered' && (
                                 <Button onClick={generatePrompt}>Next Word</Button>
                             )}
                             <Button onClick={() => {
-                                addToDataset();
-                                if (samplingMode === 'ordered') {
+                                const success = addToDataset();
+                                if (success && samplingMode === 'ordered') {
                                     setDisplayIndex((currentIndex + 1) % wordBank.length);
                                     generatePrompt();
                                 }
