@@ -509,16 +509,16 @@
                         <div style={{ marginBottom: '16px' }}>
                             
                             <Label htmlFor="start-index" style={{ marginRight: '8px' }}>
-                            {`Word Bank Index (current: ${displayIndex}/${wordBank.length})`}
+                            {`Word Bank Index (current: ${displayIndex+1}/${wordBank.length})`}
                             </Label>
                             <Input
                                 id="start-index"
                                 type="number"
-                                min="0"
-                                max={wordBank.length - 1}
-                                value={startIndex}
+                                min="1"
+                                max={wordBank.length}
+                                value={startIndex+1}
                                 onChange={(e) => {
-                                    const newIndex = parseInt(e.target.value);
+                                    const newIndex = Math.max(0, Math.min(parseInt(e.target.value) - 1, wordBank.length - 1));
                                     setStartIndex(newIndex);
                                     setCurrentIndex(newIndex);
                                     setDisplayIndex(newIndex);
@@ -568,28 +568,33 @@
                             />
                         </div>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        <Button onClick={clearAll}>Clear All</Button>
-                        <Button onClick={undo}>Undo</Button>
-                        <Button onClick={() => {
-                            addToDataset();
-                            if (samplingMode === 'ordered') {
-                                setDisplayIndex((currentIndex + 1) % wordBank.length);
-                                generatePrompt();
-                            }
-                        }}>Add to Dataset</Button>
+                    
 
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Button onClick={clearAll}>Clear All</Button>
+                            <Button onClick={undo}>Undo</Button>
+                            {samplingMode === 'ordered' && (
+                                <Button onClick={generatePrompt}>Next Word</Button>
+                            )}
+                            <Button onClick={() => {
+                                addToDataset();
+                                if (samplingMode === 'ordered') {
+                                    setDisplayIndex((currentIndex + 1) % wordBank.length);
+                                    generatePrompt();
+                                }
+                            }}>Add to Dataset</Button>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Button onClick={exportDataset}>Export Dataset</Button>
+                            <span style={{ fontSize: '14px', color: '#4B5563' }}>
+                                Dataset size: {dataset.length} entries
+                            </span>
+                        </div>
                     </div>
-                    {samplingMode === 'ordered' && (
-                        <Button onClick={generatePrompt}>Next Word</Button>
-                        )}
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        <Button onClick={exportDataset}>Export Dataset</Button>
-                        <span style={{ fontSize: '14px', color: '#4B5563' }}>
-                            Dataset size: {dataset.length} entries
-                        </span>
-                    </div>
+
+
                     {exportedData && (
                         <Textarea
                             value={exportedData}
