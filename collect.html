@@ -271,6 +271,7 @@
                             setBackgroundImage(img);
                             setImagePosition({ x: 0, y: 0 });
                             setImageScale(1);
+                            setAsciiSequence(''); // Clear ASCII box when an image is uploaded
                         };
                         img.src = event.target.result;
                     };
@@ -296,6 +297,9 @@
                 setCurrentStroke([]);
                 setExportedData('');
                 setErrorMessage('');
+                setBackgroundImage(null); // Clear the uploaded image
+                setImagePosition({ x: 0, y: 0 }); // Reset image position
+                setImageScale(1); // Reset image scale
                 drawStrokes();
                 generatePrompt(); // Generate a new prompt after clearing
             };
@@ -342,6 +346,7 @@
                 if (wordBank.length === 0) return;
                 const prompt = Array(wordCount).fill().map(() => wordBank[Math.floor(Math.random() * wordBank.length)]).join(' ');
                 setCurrentPrompt(prompt);
+                setAsciiSequence(prompt); // Populate ASCII box with the prompt
             }, [wordBank, wordCount]);
 
             React.useEffect(() => {
