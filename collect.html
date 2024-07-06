@@ -99,6 +99,11 @@
             const [wordBank, setWordBank] = React.useState([]);
             const [currentPrompt, setCurrentPrompt] = React.useState('');
             const [wordCount, setWordCount] = React.useState(1);
+            const [samplingMode, setSamplingMode] = React.useState('random');
+            const [startIndex, setStartIndex] = React.useState(0);
+            const [currentIndex, setCurrentIndex] = React.useState(0);
+            const [displayIndex, setDisplayIndex] = React.useState(0);
+
             const canvasRef = React.useRef(null);
             const lastPointRef = React.useRef(null);
             const lastSampledPointRef = React.useRef(null);
@@ -394,20 +399,46 @@
                 setWordBank(words);
             };
 
-            const generatePrompt = React.useCallback(() => {
+            const generatePrompt = () => {
                 if (wordBank.length === 0) return;
-                const prompt = Array(wordCount).fill().map(() => wordBank[Math.floor(Math.random() * wordBank.length)]).join(' ');
-                setCurrentPrompt(prompt);
+
+                    let prompt;
+                    if (samplingMode === 'random') {
+                        prompt = Array(wordCount).fill().map(() => wordBank[Math.floor(Math.random() * wordBank.length)]).join(' ');
+                        setCurrentPrompt(prompt);
+                    } else {
+                        prompt = Array(wordCount).fill().map(() => {
+                            const word = wordBank[currentIndex];
+                            
+                            setCurrentIndex((prevIndex) => {
+                                const newIndex = (prevIndex + 1) % wordBank.length;
+                                setDisplayIndex(newIndex);
+                                return newIndex;
+                            });
+
+                            return word;
+                        }).join(' ');
+                        setCurrentPrompt(prompt);
+                    }
+                    if (samplingMode === 'random') {
+                        setCurrentPrompt(prompt);
+                    }
                 setAsciiSequence(prompt); // Populate ASCII box with the prompt
-            }, [wordBank, wordCount]);
+            };
 
             React.useEffect(() => {
                 loadWordBank();
             }, []);
 
             React.useEffect(() => {
-                generatePrompt();
-            }, [generatePrompt]);
+                if (samplingMode === 'random') {
+                    generatePrompt();
+                } else if (wordBank.length > 0) {
+                // For ordered mode, generate prompt once when wordBank is loaded
+                    generatePrompt();
+                }
+            }, [samplingMode, wordCount, wordBank]);
+
 
             return (
                 <div className="container">
@@ -433,7 +464,8 @@
                             onChange={(e) => {
                                 const newWordCount = parseInt(e.target.value);
                                 setWordCount(newWordCount);
-                                // Generate a new prompt when word count changes
+                                 // Generate a new prompt only for random mode
+                                 // or if it's the initial load for ordered mode
                                 setTimeout(() => generatePrompt(), 0);
                             }}
                         />
@@ -455,6 +487,47 @@
                         onMouseOut={endDrawing}
                         style={{ border: '1px solid #CBD5E0', cursor: 'crosshair', marginBottom: '16px', maxWidth: '100%' }}
                     />
+
+                    <div style={{ marginBottom: '16px' }}>
+                        <Label htmlFor="sampling-mode">Sampling Mode</Label>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <Input
+                                id="sampling-mode"
+                                type="checkbox"
+                                checked={samplingMode === 'ordered'}
+                                onChange={(e) => {
+                                    setSamplingMode(e.target.checked ? 'ordered' : 'random');
+                                    setCurrentIndex(startIndex);
+                                }}
+
+                                style={{ marginRight: '8px' }}
+                            />
+                            <span>Ordered</span>
+                        </div>
+                    </div>
+                    {samplingMode === 'ordered' && (
+                        <div style={{ marginBottom: '16px' }}>
+                            
+                            <Label htmlFor="start-index" style={{ marginRight: '8px' }}>
+                            {`Word Bank Index (current: ${displayIndex}/${wordBank.length})`}
+                            </Label>
+                            <Input
+                                id="start-index"
+                                type="number"
+                                min="0"
+                                max={wordBank.length - 1}
+                                value={startIndex}
+                                onChange={(e) => {
+                                    const newIndex = parseInt(e.target.value);
+                                    setStartIndex(newIndex);
+                                    setCurrentIndex(newIndex);
+                                    setDisplayIndex(newIndex);
+                                }}
+
+                            />
+                        </div>
+                    )}
+
                     <div style={{ marginBottom: '16px' }}>
                         <p style={{ fontSize: '14px', color: '#4B5563', marginBottom: '8px' }}>Image Positioning Controls:</p>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '8px' }}>
@@ -498,8 +571,19 @@
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <Button onClick={clearAll}>Clear All</Button>
                         <Button onClick={undo}>Undo</Button>
-                        <Button onClick={addToDataset}>Add to Dataset</Button>
+                        <Button onClick={() => {
+                            addToDataset();
+                            if (samplingMode === 'ordered') {
+                                setDisplayIndex((currentIndex + 1) % wordBank.length);
+                                generatePrompt();
+                            }
+                        }}>Add to Dataset</Button>
+
                     </div>
+                    {samplingMode === 'ordered' && (
+                        <Button onClick={generatePrompt}>Next Word</Button>
+                        )}
+
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <Button onClick={exportDataset}>Export Dataset</Button>
                         <span style={{ fontSize: '14px', color: '#4B5563' }}>
