@@ -46,3 +46,5 @@ I decided to draw out one word at a time and then computationally stitch them to
 
 ![sample_v4](static/sample_v4.png)
 
+![sample_v5](static/sample_v5.png)
+
