@@ -46,7 +46,10 @@ I decided to draw out one word at a time and then computationally stitch them to
 
 ![sample_v4](static/sample_v4.png)
 
-Train on 10x larger (combinatorially generated) dataset
+_Train on 10x larger (combinatorially generated) dataset_
+
 ![sample_v5](static/sample_v5.png)
 
 ![sample_v6](static/sample_v6.png)
+
+![sample_v7](static/sample_v7.png)
