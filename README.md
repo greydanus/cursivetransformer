@@ -62,3 +62,8 @@ _Training on a 10x larger (combinatorially generated) dataset further improves p
 
 **Upgrading the tokenizer.** The previous tokenizer was a bit irrational. We were representing stroke offsets with 4-tuples of the form (`unit_dx`, `unit_dy`, `magnitude`, and `is_pen_down`). Now, what we failed to see at the time is that the first two values can be rolled into one `theta` parameter and we are then working in polar coordinates. This reduces the context window needed to represent a given example by a third. We made this fix, adjusted the augmentations to operate on polar coordinates, and increased the context window from 1.1k to 1.3k so as to reliably capture all three words in the combinatorially generated stroke dataset. Had some trouble getting on a Colab A100, but eventually were able to launch a new training run.
 
+Quite surprisingly, this led to significantly worse samples, to the point where we are likely going to have to revert to the old tokenizer
+
+![sample_v8](static/sample_v8.png)
+
+![sample_v9](static/sample_v9.png)
