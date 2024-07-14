@@ -70,3 +70,11 @@ Quite surprisingly, this led to significantly worse samples, to the point where 
 ![sample_v8](static/sample_v8.png)
 
 ![sample_v9](static/sample_v9.png)
+
+### Samples July 14
+
+**Bigbank dataset.** After reverting to the (`unit_dx`, `unit_dy`, `magnitude`, and `is_pen_down`) coordinates system, we increased the raw dataset size to 1197 words (46 words per letter of the alphabet). Retraining using more or less the same code as used on July 6 gives good results: no major mis-spellings in the samples below.
+
+![sample_v10](static/sample_v10.png)
+
+![sample_v11](static/sample_v11.png)
