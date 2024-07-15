@@ -78,3 +78,9 @@ Quite surprisingly, this led to significantly worse samples, to the point where 
 ![sample_v10](static/sample_v10.png)
 
 ![sample_v11](static/sample_v11.png)
+
+**Cross attention ablation.** For fun I did a quick ablation where I zeroed out the vectors representing the ASCII inputs before they are passed to the cross attention layer. As one might expect, we get nice cursive letters that do not spell much of anything.
+
+![sample_v12](static/sample_v12.png)
+
+![sample_v13](static/sample_v13.png)
