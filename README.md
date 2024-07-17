@@ -84,3 +84,11 @@ Quite surprisingly, this led to significantly worse samples, to the point where 
 ![sample_v12](static/sample_v12.png)
 
 ![sample_v13](static/sample_v13.png)
+
+### Samples July 17
+
+**Polar coordinates.** I made a second attempt at changing the tokenizer so as to use polar coordinates. This time I was successful: I now represent every stroke offset with two tokens rather than three, leading to much smaller window sizes. I ran the latest runs on a model that was 33% smaller and faster overall. NOTE: it's substantially better to represent these stroke offsets as (`theta`, `radius_and_is_pen_down`) instead of (`radius_and_is_pen_down`, `theta`). Intuitively, you want to "point and then shoot" the pen in its next direction, rather than "shoot and then point."
+
+![sample_v14](static/sample_v14.png)
+
+![sample_v15](static/sample_v15.png)
