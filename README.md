@@ -92,3 +92,13 @@ Quite surprisingly, this led to significantly worse samples, to the point where 
 ![sample_v14](static/sample_v14.png)
 
 ![sample_v15](static/sample_v15.png)
+
+### Progress July 19
+
+**Print handwriting dataset.** In the interest of training a model capable of learning multiple styles, we began constructing a second dataset, this one consisting entirely of print training examples. Several training examples are shown below.
+
+![print_example_1.png](static/print_example_1.png)
+
+![print_example_2.png](static/print_example_2.png)
+
+![print_example_3.png](static/print_example_3.png)
