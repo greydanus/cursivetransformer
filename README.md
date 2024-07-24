@@ -102,3 +102,9 @@ Quite surprisingly, this led to significantly worse samples, to the point where 
 ![print_example_2.png](static/print_example_2.png)
 
 ![print_example_3.png](static/print_example_3.png)
+
+### Progress July 23
+
+**Print handwriting dataset.** Print dataset is finished and preliminary model training runs look good. Model misspelled "satellite" but aside from that has rather good penmanship
+
+![sample_v16](static/sample_v16.png)
