@@ -108,3 +108,7 @@ Quite surprisingly, this led to significantly worse samples, to the point where 
 **Print handwriting dataset.** Print dataset is finished and preliminary model training runs look good. Model misspelled "satellite" in this test example but aside from that has rather good penmanship:
 
 ![sample_v16](static/sample_v16.png)
+
+This sample is taken from early training. It's not the model's best, but it looks cool:
+
+![sample_v17](static/sample_v17.png)
