@@ -115,7 +115,7 @@ This sample is taken from early training. It's not the model's best, but it look
 
 ### Progress July 24
 
-**Better model.** I increased the dataset size to 500k examples including both print and cursive examples. Then I trained for 50k steps instead of 20k. I experimented with a learning rate schedule, though it appeared best to keep the learning rate high in this regime. Context window is larger too, with a size of 1500 tokens. Test set samples:
+**Better model.** I increased the dataset size to 500k examples including both print and cursive examples. Then I trained for 50k steps on an A100 (instead of 30k on an L4, which was still taking much too long). I experimented with a learning rate schedule but it appeared best to keep the learning rate high (3e-3) in this regime. Context window is larger too with a size of 1500 tokens. Test set samples:
 
 ![sample_v18](static/sample_v18.png)
 
