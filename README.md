@@ -109,6 +109,14 @@ Quite surprisingly, this led to significantly worse samples, to the point where 
 
 ![sample_v16](static/sample_v16.png)
 
-This sample is taken from early training. It's not the model's best, but it looks cool:
+This sample is taken from early training. It's not the model's best, but it looks interesting:
 
 ![sample_v17](static/sample_v17.png)
+
+### Progress July 24
+
+**Better model.** I increased the dataset size to 500k examples including both print and cursive examples. Then I trained for 50k steps instead of 20k. I experimented with a learning rate schedule, though it appeared best to keep the learning rate high in this regime. Context window is larger too, with a size of 1500 tokens. Test set samples:
+
+![sample_v18](static/sample_v18.png)
+
+![sample_v19](static/sample_v19.png)
