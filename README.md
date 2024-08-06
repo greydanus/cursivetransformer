@@ -126,3 +126,9 @@ This sample is taken from early training. It's not the model's best, but it look
 **Compare cartesian and polar tokenizers.** For some time we have been unsure of which is better: using a cartesian or polar representation of pen offsets. After some time away from this project, we solved a pernicious bug in the cartesian tokenizer and was able to do a side-by-side comparison. At the time of writing, both runs were in progress and the sample quality of the model using the polar tokenizer seemed a bit better. This is good news because the polar representation also uses three tokens per stroke rather than four, thus it permits a 33% longer context window. We will let the models train to completion before making a final call.
 
 ![wandb_compare_cartpolar](static/wandb_compare_cartpolar)
+
+Getting some weird artifacts in the final trained polar model. Besides that the polar model looks much better. Here are two samples.
+
+![sample_v20](static/sample_v20.png)
+
+![sample_v21](static/sample_v21.png)
