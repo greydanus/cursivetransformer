@@ -132,3 +132,7 @@ Getting some weird artifacts in the final trained polar model. Besides that the 
 ![sample_v20](static/sample_v20.png)
 
 ![sample_v21](static/sample_v21.png)
+
+### Progress August 8-9
+
+Spent some time looking for other (larger) datasets to train and debug on. IAM was not sending emails to my account so I was unable to access its online stroke dataset, which is the most commonly used one. [Here is a more recent dataset](https://github.com/brownvc/decoupled-style-descriptors?tab=readme-ov-file#brush-dataset) that looks promising.
