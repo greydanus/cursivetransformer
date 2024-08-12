@@ -136,3 +136,7 @@ Getting some weird artifacts in the final trained polar model. Besides that the 
 ### Progress August 8-9
 
 Spent some time looking for other (larger) datasets to train and debug on. IAM was not sending emails to my account so I was unable to access its online stroke dataset, which is the most commonly used one. [Here is a more recent dataset](https://github.com/brownvc/decoupled-style-descriptors?tab=readme-ov-file#brush-dataset) that looks promising.
+
+### Progress August 11
+
+Changed data formatting to use zipped pickle files, following the BRUSH format. Wrote some code for loading BRUSH data into the format needed for training.
