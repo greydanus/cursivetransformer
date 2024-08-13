@@ -147,6 +147,6 @@ Changed data formatting to use zipped pickle files, following the BRUSH format. 
 
 Started testing out the effect of adding more dataset samples. Went from 1.2k to 1.7k. The effect was pronounced (see below) and led to better samples. Samples are still not perfect, but getting better.
 
-![wandb_1.7k_examples](static/wandb_1.7k_examples)
+![wandb_1.7k_examples](static/wandb_1.7k_examples.png)
 
-![sample_v22](static/sample_v22)
+![sample_v22](static/sample_v22.png)
