@@ -142,3 +142,11 @@ Spent some time looking for other (larger) datasets to train and debug on. IAM w
 Changed data formatting to use zipped pickle files, following the BRUSH format. Wrote some code for loading BRUSH data into the format needed for training. Performed training on the full BRUSH dataset (27,000 samples) using an A100 GPU with a 900 token context window. Results look ok.
 
 ![first_brush_results](static/first_brush_results.png)
+
+### Progress August 13
+
+Started testing out the effect of adding more dataset samples. Went from 1.2k to 1.7k. The effect was pronounced (see below) and led to better samples. Samples are still not perfect, but getting better.
+
+![wandb_1.7k_examples](static/wandb_1.7k_examples)
+
+![sample_v22](static/sample_v22)
