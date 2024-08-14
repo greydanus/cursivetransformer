@@ -9,7 +9,6 @@ services:
     environment:
       - GITHUB_USERNAME=${GITHUB_USERNAME:?please specify your GITHUB username}
       - GITHUB_EMAIL=${GITHUB_EMAIL:?please specify your GITHUB email}
-      - GITHUB_API_TOKEN=${GITHUB_ACCESS_TOKEN:?please specify your GITHUB token}
       - HF_TOKEN=${HF_TOKEN:?prove your HuggingFace token}
       - WANDB_API_KEY=${WANDB_API_KEY:?provide Weights and Biases API key}
       - CURSIVE_TRANSFORMER_ACCELERATE_CONF=${CURSIVE_TRANSFORMER_ACCELERATE_CONF:-configs/accelerate.yaml}
