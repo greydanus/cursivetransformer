@@ -1,4 +1,8 @@
-# Sam Greydanus
+# Sam Greydanus, Zach Wimpee
+
+models/
+logs/
+data/
 
 .DS_Store
 *.egg-info
