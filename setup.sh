@@ -1,4 +1,1 @@
-#!/bin/bash
-
-# Install the package locally in editable mode
-pip install -e .
+docker compose --all-gpus -f .devcontainer/docker-compose.yml -f docker-compose.yml up -d
