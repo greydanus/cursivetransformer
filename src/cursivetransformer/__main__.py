@@ -28,14 +28,18 @@ def main():
     print(f"Dataset determined that: {vocab_size=}, {block_size=}")
 
     # init model
-    config = ModelConfig(vocab_size=vocab_size,
-                        block_size=block_size,
-                        context_block_size=context_block_size,
-                        context_vocab_size=context_vocab_size,
-                        n_layer=args.n_layer, n_head=args.n_head,
-                        n_embd=args.n_embd, n_embd2=args.n_embd2,
-                        ablate_cross_attention=args.ablate_cross_attention,
-                        n_ctx_head=args.n_head,)
+    config = ModelConfig(
+        vocab_size=vocab_size,
+        block_size=block_size,
+        context_block_size=context_block_size,
+        context_vocab_size=context_vocab_size,
+        n_layer=args.n_layer,
+        n_head=args.n_head,
+        n_embd=args.n_embd, 
+        n_embd2=args.n_embd2,
+        ablate_cross_attention=args.ablate_cross_attention,
+        n_ctx_head=args.n_head
+    )
     model = Transformer(config)
     model.to(args.device)
     print(f"Model #params: {sum(p.numel() for p in model.parameters())}")
@@ -48,9 +52,22 @@ def main():
         sys.exit()
 
     # init optimizer and batch loader
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, betas=(0.9, 0.99), eps=1e-8)
-    scheduler = StepLR(optimizer, step_size=10000, gamma=args.lr_decay)
-    batch_loader = InfiniteDataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True, num_workers=args.num_workers)
+    optimizer = torch.optim.AdamW(
+        model.parameters(), 
+        lr=args.learning_rate, 
+        weight_decay=args.weight_decay, 
+        betas=(0.9, 0.99), 
+        eps=1e-8
+    )
+    scheduler = StepLR(
+        optimizer, step_size=10000, gamma=args.lr_decay
+    )
+    batch_loader = InfiniteDataLoader(
+        train_dataset, 
+        batch_size=args.batch_size, 
+        pin_memory=True, 
+        num_workers=args.num_workers
+    )
 
     wandb.init(
         project=args.wandb_project,
@@ -69,6 +86,7 @@ def main():
         "ablate_cross_attention": args.ablate_cross_attention,
     })
 
+    # training loop
     best_loss = None
     step = 0
     while True:
