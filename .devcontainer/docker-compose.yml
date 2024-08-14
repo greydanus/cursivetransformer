@@ -1,0 +1,3 @@
+services:
+  llm_lab:
+    command: sleep infinity
