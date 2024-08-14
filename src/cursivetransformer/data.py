@@ -1,3 +1,8 @@
+import numpy as np
+import torch
+import copy
+from torch.utils.data import Dataset, DataLoader
+from .utils import load_and_parse_data, generate_word_combos, strokes_to_offsets, downsample, remove_random_points, horizontal_shear
 
 class StrokeDataset(Dataset):
     def __init__(self, strokes, texts, chars, max_seq_length=1100, max_text_length=50, name='', augment=False):
