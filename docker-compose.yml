@@ -16,8 +16,6 @@ services:
     volumes:
       - ./:/workspace
       -  ${CURSIVE_TRANSFORMER_DATA_PATH:?please specify path to data}:/data
-      -  ${CURSIVE_TRANSFORMER_MODEL_PATH:?please specify path to model}:/models
-      -  ${CURSIVE_TRANSFORMER_LOGS_PATH:?please specify path to logs}:/logs
     command: [
       "bash", "launch_training.sh"
     ]
