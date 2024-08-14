@@ -2,7 +2,6 @@ import os, sys, time
 import os
 import torch
 import wandb
-from accelerate import Accelerator
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import StepLR
 
@@ -11,10 +10,7 @@ from .model import Transformer
 from .data import create_datasets, InfiniteDataLoader
 from .utils import evaluate, save_samples
 
-wandb.init(project="cursivetransformer", entity="zwimpee", name="issue-13-scale-up-training")
-
 def main():
-    accelerator = Accelerator()
     args = AppConfig()
 
     # system inits
@@ -56,7 +52,6 @@ def main():
     scheduler = StepLR(optimizer, step_size=10000, gamma=args.lr_decay)
     batch_loader = InfiniteDataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True, num_workers=args.num_workers)
 
-    # %%
     wandb.init(
         project=args.wandb_project,
         entity=args.wandb_entity,
@@ -128,7 +123,6 @@ def main():
         if args.max_steps >= 0 and step >= args.max_steps:
             break
 
-    # %%
     wandb.finish()
 
 if __name__ == "__main__":
