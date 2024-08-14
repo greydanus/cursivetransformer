@@ -150,3 +150,12 @@ Started testing out the effect of adding more dataset samples. Went from 1.2k to
 ![wandb_1.7k_examples](static/wandb_1.7k_examples.png)
 
 ![sample_v22](static/sample_v22.png)
+
+Since, in the runs for this day, we had downsampled the point density by 63% (pretty aggressive) we had enough room to fit six words in a context window of just 1250 tokens. We trained this model for a full 50k steps and it started to behave fairly well. While it's spelling was not perfect, it was getting there. With perhaps twice the number of training examples and more than 50k gradient steps, we suspect that we'll be able to obtain a model that is able to spell properly.
+
+
+![sample_v23](static/sample_v23.png)
+
+![sample_v24](static/sample_v24.png)
+
+![sample_v25](static/sample_v25.png)
