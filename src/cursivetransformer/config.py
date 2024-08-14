@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from .utils import get_time_string
 
 @dataclass
 class AppConfig:
@@ -29,9 +30,9 @@ class AppConfig:
     weight_decay: float = 1e-4
 
     # wandb parameters
-    wandb_project: str = RUN_TAG
-    wandb_entity: str = 'zwimpee'
-    wandb_run_name: str = f"{get_time_string()}_{RUN_TAG}"
+    wandb_project: str = "cursivetransformer"
+    wandb_entity: str = "zwimpee"
+    wandb_run_name: str = f"{get_time_string()}_cursivetransformer"
 
 
 @dataclass
