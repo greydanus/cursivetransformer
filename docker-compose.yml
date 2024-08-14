@@ -1,0 +1,30 @@
+# version: "3.8"
+services:
+  cursivetransformer:
+    # restart: unless-stopped
+    network_mode: bridge
+    build:
+      context: .
+      target: dev
+    environment:
+      - GITHUB_USERNAME=${GITHUB_USERNAME:?please specify your GITHUB username}
+      - GITHUB_EMAIL=${GITHUB_EMAIL:?please specify your GITHUB email}
+      - GITHUB_API_TOKEN=${GITHUB_ACCESS_TOKEN:?please specify your GITHUB token}
+      - HF_TOKEN=${HF_TOKEN:?prove your HuggingFace token}
+      - WANDB_API_KEY=${WANDB_API_KEY:?provide Weights and Biases API key}
+      - CURSIVE_TRANSFORMER_ACCELERATE_CONF=${CURSIVE_TRANSFORMER_ACCELERATE_CONF:-configs/accelerate.yaml}
+      - CURSIVE_TRANSFORMER_TRAIN_CONF=${CURSIVE_TRANSFORMER_TRAIN_CONF:-configs/meditron_los_binary.json}
+    volumes:
+      - ./:/workspace
+      -  ${CURSIVE_TRANSFORMER_DATA_PATH:?please specify path to data}:/data
+      -  ${CURSIVE_TRANSFORMER_MODEL_PATH:?please specify path to model}:/models
+      -  ${CURSIVE_TRANSFORMER_LOGS_PATH:?please specify path to logs}:/logs
+    command: [
+      "bash", "launch_training.sh"
+    ]
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            capabilities: [gpu]
