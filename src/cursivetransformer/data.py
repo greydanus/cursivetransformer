@@ -1,3 +1,4 @@
+import accelerate
 import copy
 
 import numpy as np
@@ -186,10 +187,11 @@ class StrokeDataset(Dataset):
         return x, c, y
 
 
-def create_datasets(augment=True, max_seq_length=1100, num_words=3):
+# TODO: Update this to work with our accelerate setup.
+def create_datasets(raw_data_path, augment=True, max_seq_length=1100, num_words=3):
     np.random.seed(0)
     torch.manual_seed(0)
-    data = load_and_parse_data()
+    data = load_and_parse_data(raw_data_path)
 
     # partition the input data into a training and the test set
     test_set_size = min(
@@ -245,24 +247,40 @@ def create_datasets(augment=True, max_seq_length=1100, num_words=3):
 
 
 class InfiniteDataLoader:
-    """
-    this is really hacky and I'm not proud of it, but there doesn't seem to be
-    a better way in PyTorch to just create an infinite dataloader
-    """
-
-    def __init__(self, dataset, **kwargs):
-        train_sampler = torch.utils.data.RandomSampler(
-            dataset, replacement=True, num_samples=int(1e10)
+    def __init__(self, dataset, batch_size, num_workers=0):
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        
+        self.dataloader = DataLoader(
+            dataset,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            shuffle=True,
+            pin_memory=True,
         )
-        self.train_loader = DataLoader(dataset, sampler=train_sampler, **kwargs)
-        self.data_iter = iter(self.train_loader)
+        self.data_iter = iter(self.dataloader)
 
     def next(self):
         try:
             batch = next(self.data_iter)
-        except (
-            StopIteration
-        ):  # this will technically only happen after 1e10 samples... (i.e. basically never)
-            self.data_iter = iter(self.train_loader)
+        except StopIteration:
+            self.data_iter = iter(self.dataloader)
             batch = next(self.data_iter)
         return batch
+
+    def __len__(self):
+        return len(self.dataloader)
+    
+@functools.lru_cache(maxsize=5)
+def load_and_parse_data(raw_data_path, min_ascii_length=3):
+    # uploaded = files.upload()
+    with open(raw_data_path, "r") as f:
+        data = json.load(f)
+    for i in range(len(data)):
+        strokes = np.array(data[i]["points"])
+        strokes[:, 0:1] *= data[i]["metadata"]["aspectRatio"]
+        strokes[:, 0] -= strokes[0, 0]
+        data[i]["points"] = strokes
+    data = [d for d in data if len(d["metadata"]["asciiSequence"]) >= min_ascii_length]
+    return data
