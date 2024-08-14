@@ -1,3 +1,15 @@
+import json
+import numpy as np
+from google.colab import files
+import matplotlib.pyplot as plt
+import functools
+import torch
+import wandb
+
+from math import comb
+from datetime import datetime
+from torch.nn import functional as F
+from torch.utils.data import DataLoader
 
 def plot_strokes(stroke, title, fig=None, ax=None):
     """Plot a single stroke"""
@@ -141,16 +153,11 @@ def downsample(arr, fraction):
     indices = np.linspace(0, len(arr) - 1, new_length, dtype=int)
     return arr[indices]
 
-
-
-
-
 def get_time_string(fmt='%m%d_%H%M'):
     return datetime.now().strftime(fmt)
 
-
 @torch.inference_mode()
-def evaluate(model, dataset, batch_size=50, max_batches=None):
+def evaluate(model, dataset, batch_size=50, max_batches=None, args=None):
     model.eval()
     loader = DataLoader(dataset, shuffle=True, batch_size=batch_size, num_workers=0)
     losses = []
