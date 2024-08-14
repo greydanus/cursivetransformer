@@ -1,3 +1,5 @@
+import logging 
+import argparse
 import json
 import numpy as np
 from google.colab import files
@@ -10,6 +12,17 @@ from math import comb
 from datetime import datetime
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
+
+# Set up logging
+def setup_logger():
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s', datefmt='%m-%d %H:%M')
+    logger = logging.getLogger(__name__)
+    return logger
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Cursive Transformer')
+    parser.add_argument('--config', type=str, default='./configs/config.json', help='path to config file')
+    return parser.parse_args()
 
 def plot_strokes(stroke, title, fig=None, ax=None):
     """Plot a single stroke"""

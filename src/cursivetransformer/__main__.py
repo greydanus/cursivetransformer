@@ -8,19 +8,24 @@ from torch.optim.lr_scheduler import StepLR
 from .config import AppConfig, ModelConfig
 from .model import Transformer
 from .data import create_datasets, InfiniteDataLoader
-from .utils import evaluate, save_samples
+from .utils import evaluate, save_samples, setup_logger, parse_args
 
-def main():
-    args = AppConfig()
+logger = setup_logger()
 
-    # system inits
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
-    os.makedirs(args.work_dir, exist_ok=True)
-    writer = SummaryWriter(log_dir=args.work_dir)
+
+def main(config: AppConfig):
+
+    torch.manual_seed(config.seed)
+    torch.cuda.manual_seed_all(config.seed)
+    os.makedirs(config.work_dir, exist_ok=True)
+    writer = SummaryWriter(log_dir=config.work_dir)
 
     # init datasets
-    train_dataset, test_dataset = create_datasets(augment=args.augment, max_seq_length=args.max_seq_length, num_words=6)
+    train_dataset, test_dataset = create_datasets(
+        augment=config.augment, 
+        max_seq_length=config.max_seq_length, 
+        num_words=config.num_words
+    )
     vocab_size = train_dataset.get_vocab_size()
     block_size = train_dataset.get_stroke_seq_length()
     context_block_size = train_dataset.get_text_seq_length()
@@ -28,40 +33,55 @@ def main():
     print(f"Dataset determined that: {vocab_size=}, {block_size=}")
 
     # init model
-    config = ModelConfig(
+    model_config = ModelConfig(
         vocab_size=vocab_size,
         block_size=block_size,
         context_block_size=context_block_size,
         context_vocab_size=context_vocab_size,
-        n_layer=args.n_layer,
-        n_head=args.n_head,
-        n_embd=args.n_embd, 
-        n_embd2=args.n_embd2,
-        ablate_cross_attention=args.ablate_cross_attention,
-        n_ctx_head=args.n_head
+        n_layer=config.n_layer,
+        n_head=config.n_head,
+        n_embd=config.n_embd, 
+        n_embd2=config.n_embd2,
+        ablate_cross_attention=config.ablate_cross_attention,
+        n_ctx_head=config.n_head
     )
-    model = Transformer(config)
-    model.to(args.device)
+    model = Transformer(model_config)
+    model.to(config.device)
     print(f"Model #params: {sum(p.numel() for p in model.parameters())}")
-    if args.resume or args.sample_only: # note: if we sample-only then we also assume we are resuming
+    if config.resume or config.sample_only: # note: if we sample-only then we also assume we are resuming
         print("resuming from existing model in the workdir")
-        model.load_state_dict(torch.load(os.path.join(args.work_dir, 'model.pt')))
-    if args.sample_only:
+        model.load_state_dict(torch.load(os.path.join(config.work_dir, 'model.pt')))
+    if config.sample_only:
         # save_samples(num=50)
         print('This functionality is temporarily commented out')
         sys.exit()
 
     # init optimizer and batch loader
-    optimizer = torch.optim.AdamW(
-        model.parameters(), 
-        lr=args.learning_rate, 
-        weight_decay=args.weight_decay, 
-        betas=(0.9, 0.99), 
-        eps=1e-8
-    )
-    scheduler = StepLR(
-        optimizer, step_size=10000, gamma=args.lr_decay
-    )
+    if config.optimizer == 'adamw':
+        optimizer = torch.optim.AdamW(
+            model.parameters(), 
+            lr=config.learning_rate, 
+            weight_decay=args.weight_decay, 
+            betas=(0.9, 0.99), 
+            eps=1e-8
+        )
+    elif config.optimizer == 'adam':
+        optimizer = torch.optim.Adam(
+            model.parameters(), 
+            lr=config.learning_rate, 
+            weight_decay=args.weight_decay, 
+            betas=(0.9, 0.99), 
+            eps=1e-8
+        )
+    else:
+        raise ValueError(f"Unknown optimizer {config.optimizer}")
+    
+    
+    scheduler = None 
+    if config.lr_scheduler == 'steplr':
+        scheduler = StepLR(optimizer, step_size=config.lr_step_size, gamma=config.lr_decay)
+    
+    
     batch_loader = InfiniteDataLoader(
         train_dataset, 
         batch_size=args.batch_size, 
@@ -102,8 +122,11 @@ def main():
         logits, loss = model(X, C, Y)
 
         # calculate the gradient, update the weights
-        model.zero_grad(set_to_none=True) ; loss.backward()
-        optimizer.step() ; scheduler.step()
+        model.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+        if scheduler:
+            scheduler.step()
         wandb.log({"train_loss_step": loss.item(), "step": step})
 
         # wait for all CUDA work on the GPU to finish then calculate iteration time taken
@@ -144,4 +167,6 @@ def main():
     wandb.finish()
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    config = AppConfig(**vars(args))
+    main(config)
