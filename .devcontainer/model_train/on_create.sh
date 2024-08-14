@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # configure git
-git config --global --add safe.directory /opt/artisight/llm_lab
-git config --global user.email \"${GITLAB_EMAIL}\" && git config --global user.name \"${GITLAB_USERNAME}\"
+git config --global --add safe.directory /workspace
+git config --global user.email \"${GITHUB_EMAIL}\" && git config --global user.name \"${GITHUB_USERNAME}\"
 
 # configure pre-commit hooks
 pip install --upgrade pip pre-commit
 pre-commit autoupdate && pre-commit run --all
 
-# install llm_lab module
+# install cursivetransformer module
 pip install -e '.[model]'
 
 # setup accelerate
