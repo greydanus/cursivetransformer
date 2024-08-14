@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import wandb
-from google.colab import files
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
@@ -22,7 +21,6 @@ def setup_logger():
     logger = logging.getLogger(__name__)
     return logger
 
-
 def parse_args():
     parser = argparse.ArgumentParser(description="Cursive Transformer")
     parser.add_argument(
@@ -32,7 +30,6 @@ def parse_args():
         help="path to config file",
     )
     return parser.parse_args()
-
 
 def plot_strokes(stroke, title, fig=None, ax=None):
     """Plot a single stroke"""
@@ -62,21 +59,6 @@ def plot_strokes(stroke, title, fig=None, ax=None):
     if fig is None:
         plt.show()
     return fig, ax
-
-
-@functools.lru_cache(maxsize=5)
-def load_and_parse_data(min_ascii_length=3):
-    uploaded = files.upload()
-    file_content = next(iter(uploaded.values()))
-    data = json.loads(file_content.decode("utf-8"))
-    for i in range(len(data)):
-        strokes = np.array(data[i]["points"])
-        strokes[:, 0:1] *= data[i]["metadata"]["aspectRatio"]
-        strokes[:, 0] -= strokes[0, 0]
-        data[i]["points"] = strokes
-    data = [d for d in data if len(d["metadata"]["asciiSequence"]) >= min_ascii_length]
-    return data
-
 
 def combine_handwriting_examples(examples, space_width=0.17):
     assert (
