@@ -639,7 +639,6 @@ class AppConfig:
     resume: bool = False
     sample_only: bool = False
     num_workers: int = 1 # 4
-    num_epochs: int = 20
     max_steps: int = 150000
     log_interval: int = 1000
     eval_interval: int = 1000
@@ -906,42 +905,39 @@ def main():
     # Training loop
     global_step = 0
     best_loss = float('inf')
+    
+    model.train()
+    for batch in train_dataloader:
+        with accelerator.accumulate(model):
+            X, C, Y = batch
+            logits, loss = model(X, C, Y)
+            accelerator.backward(loss)
+            optimizer.step()
+            lr_scheduler.step()
+            optimizer.zero_grad()
 
-    for epoch in range(config.num_epochs):
-        model.train()
-        for batch in train_dataloader:
-            with accelerator.accumulate(model):
-                X, C, Y = batch
-                logits, loss = model(X, C, Y)
-                accelerator.backward(loss)
-                optimizer.step()
-                lr_scheduler.step()
-                optimizer.zero_grad()
+        if global_step % config.log_interval == 0:
+            accelerator.log({"train_loss": loss.item(), "lr": lr_scheduler.get_last_lr()[0]}, step=global_step)
+            logger.info(f"Step {global_step}: loss {loss.item():.4f}, lr {lr_scheduler.get_last_lr()[0]:.6f}")
 
-            if global_step % config.log_interval == 0:
-                accelerator.log({"train_loss": loss.item(), "lr": lr_scheduler.get_last_lr()[0]}, step=global_step)
-                logger.info(f"Step {global_step}: loss {loss.item():.4f}, lr {lr_scheduler.get_last_lr()[0]:.6f}")
+        if global_step % config.eval_interval == 0:
+            eval_loss = evaluate(model, test_dataloader, accelerator)
+            accelerator.log({"eval_loss": eval_loss}, step=global_step)
+            logger.info(f"Step {global_step}: eval_loss {eval_loss:.4f}")
 
-            if global_step % config.eval_interval == 0:
-                eval_loss = evaluate(model, test_dataloader, accelerator)
-                accelerator.log({"eval_loss": eval_loss}, step=global_step)
-                logger.info(f"Step {global_step}: eval_loss {eval_loss:.4f}")
+            if eval_loss < best_loss:
+                best_loss = eval_loss
+                accelerator.wait_for_everyone()
+                unwrapped_model = accelerator.unwrap_model(model)
+                accelerator.save(unwrapped_model.state_dict(), os.path.join(config.work_dir, "best_model.pt"))
 
-                if eval_loss < best_loss:
-                    best_loss = eval_loss
-                    accelerator.wait_for_everyone()
-                    unwrapped_model = accelerator.unwrap_model(model)
-                    accelerator.save(unwrapped_model.state_dict(), os.path.join(config.work_dir, "best_model.pt"))
+        if global_step % config.sample_interval == 0:
+            generate_and_log_samples(model, test_dataset, accelerator, config, global_step)
 
-            if global_step % config.sample_interval == 0:
-                generate_and_log_samples(model, test_dataset, accelerator, config, global_step)
-
-            global_step += 1
-            if global_step >= config.max_steps:
-                break
-
+        global_step += 1
         if global_step >= config.max_steps:
             break
+
 
     accelerator.end_training()
 
