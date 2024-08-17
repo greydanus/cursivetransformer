@@ -1,6 +1,7 @@
 {
     "work_dir": "out",
-    "data_dir": "data",
+    "accelerate_config_path": "configs/H100_accelerate.json",
+    "data_dir": "data/synthbank_v2",
     "data_file": "data.json",
     "resume": false,
     "sample_only": false,

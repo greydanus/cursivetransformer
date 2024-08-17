@@ -1,5 +1,8 @@
 {
     "work_dir": "out",
+    "accelerate_config_path": "configs/H100_accelerate.json",
+    "data_dir": "data/synthbank_v2",
+    "data_file": "data.json",
     "resume": false,
     "sample_only": false,
     "num_workers": 1,
@@ -20,5 +23,5 @@
     "weight_decay": 1e-4,
     "wandb_project": "synthbank_experiments",
     "wandb_entity": "cursivetransformer",
-    "wandb_run_name": "myRunName"
+    "wandb_run_name": "synthbank_experiment_debug"
 }

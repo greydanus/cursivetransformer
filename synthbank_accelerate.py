@@ -13,15 +13,13 @@ Zach Wimpee | 2024
 # ! pip -q install wandb
 # ! wandb login
 
-import argparse
 import numpy as np
 from scipy.ndimage import rotate
 from datetime import datetime
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from google.colab import files
-import os, sys, time, math, argparse, io, copy, json, pdb
-import pickle, glob, json, zipfile
+import os, math, argparse, copy, json
 from dataclasses import dataclass
 from typing import List
 from math import comb
@@ -46,10 +44,7 @@ DEVICE = str(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
 print('Using:', DEVICE)
 RUN_TAG = "synthbank_experiments"
 
-def get_args():
-    parser = argparse.ArgumentParser(description="Distributed training for Cursive Transformer")
-    parser.add_argument("--config_file", type=str, default=None, help="Path to the YAML or JSON config file")
-    return parser.parse_args()
+
 
 ## Preprocessing and Tokenization
 
@@ -133,10 +128,10 @@ def generate_word_combos(raw_json, desired_num_combos=10000, num_words=3):
     print(f'Generating {desired_num_combos} random (and thus possibly overlapping) combos...')
     combo_json = []
     for i in range(desired_num_combos):
-    ixs = np.random.choice(len(raw_json), size=num_words, replace=False)
-    words_to_merge = [raw_json[i] for i in ixs]
-    combo_json.append( combine_handwriting_examples(words_to_merge) )
-    return combo_json
+        ixs = np.random.choice(len(raw_json), size=num_words, replace=False)
+        words_to_merge = [raw_json[i] for i in ixs]
+        combo_json.append( combine_handwriting_examples(words_to_merge) )
+        return combo_json
 
 def load_and_combine_examples(desired_num_combos=10000, num_words=3):
     data = load_and_parse_data()
@@ -816,6 +811,11 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do
     print('-'*80)
 
 ## Train the model
+
+def get_args():
+    parser = argparse.ArgumentParser(description="Training a Cursive Transformer")
+    parser.add_argument("--config_file", type=str, default="configs/default.json", help="Path to the JSON config file")
+    return parser.parse_args()
 
 # NEW!
 def main():
