@@ -348,9 +348,12 @@ class StrokeDataset(Dataset):
 
         return x, c, y
 
-def create_datasets(augment=True, max_seq_length=1100, num_words=3):
+def create_datasets(augment=True, max_seq_length=1100, num_words=3, path=None):
     np.random.seed(0) ; torch.manual_seed(0)
-    data = load_and_parse_data()
+    if path is not None:
+        data = load_and_parse_data(mode='local', local_path=path)
+    else:
+        data = load_and_parse_data()
 
     # partition the input data into a training and the test set
     test_set_size = min(1000, int(len(data) * 0.05)) # 10% of the training set, or up to 1000 examples
@@ -854,7 +857,11 @@ def main():
     set_seed(config.seed)
 
     # Create datasets and data loaders
-    train_dataset, test_dataset = create_datasets(augment=config.augment, max_seq_length=config.max_seq_length, num_words=6)
+    if config.data_dir and config.data_file:
+        full_path = os.path.join(config.data_dir, config.data_file)
+    else:
+        full_path = None
+    train_dataset, test_dataset = create_datasets(augment=config.augment, max_seq_length=config.max_seq_length, num_words=6, path=full_path)
     train_dataloader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True, num_workers=config.num_workers)
     test_dataloader = DataLoader(test_dataset, batch_size=config.batch_size, shuffle=False, num_workers=config.num_workers)
 
