@@ -1,3 +1,0 @@
-services:
-  cursivetransformer:
-    command: sleep infinity
