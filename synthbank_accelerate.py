@@ -843,11 +843,11 @@ def get_args():
 def main():
     args = get_args()
     
-    # Initialize working directory
-    os.makedirs(config.work_dir, exist_ok=True)
-    
     # Set up config
     config = load_config(args.config_file)
+    
+    # Initialize working directory
+    os.makedirs(config.work_dir, exist_ok=True)
 
     # Initialize Accelerator
     accelerator = Accelerator(log_with="wandb")
