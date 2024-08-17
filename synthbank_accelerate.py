@@ -624,10 +624,17 @@ def get_time_string(fmt='%m%d_%H%M'):
 class AppConfig:
     # system/input/output
     work_dir: str = 'out'
+    accelerate_config_path: str = 'configs/accelerate.yaml'
+    data_dir: str = 'data/synthbank_v2'
+    data_file: str = 'data.json'
     resume: bool = False
     sample_only: bool = False
     num_workers: int = 1 # 4
+    num_epochs: int = 20
     max_steps: int = 150000
+    log_interval: int = 1000
+    eval_interval: int = 1000
+    sample_interval: int = 1000
     lr_decay: float = 1.
     device: str = 'cuda'
     seed: int = 42069
@@ -653,6 +660,12 @@ class AppConfig:
     wandb_project: str = RUN_TAG
     wandb_entity: str = 'zwimpee'  # Set this to your wandb username or team name
     wandb_run_name: str = f"{get_time_string()}_{RUN_TAG}_accelerate"
+
+
+def load_config(path) -> AppConfig:
+    with open(path, 'r') as f:
+        args = json.load(f)
+    return AppConfig(**args)
 
 # args = AppConfig()
 
@@ -820,16 +833,16 @@ def get_args():
 # NEW!
 def main():
     args = get_args()
+    
+    # Set up config
+    config = load_config(args.config_file)
 
     # Initialize Accelerator
     accelerator = Accelerator(log_with="wandb")
     logger = get_logger(__name__)
 
-    # Set up config
-    config = AppConfig()
-    if args.config_file:
+    if config.accelerate_config_path:
         accelerator.load_config(args.config_file)
-        config.__dict__.update(accelerator.state.config)
 
     # Set seed for reproducibility
     set_seed(config.seed)
