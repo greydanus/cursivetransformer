@@ -18,7 +18,7 @@ from scipy.ndimage import rotate
 from datetime import datetime
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-from google.colab import files
+# from google.colab import files
 import os, math, argparse, copy, json
 from dataclasses import dataclass
 from typing import List
@@ -76,15 +76,21 @@ def plot_strokes(stroke, title, fig=None, ax=None):
     return fig, ax
 
 @functools.lru_cache(maxsize=5)
-def load_and_parse_data(min_ascii_length=3):
-    uploaded = files.upload()
-    file_content = next(iter(uploaded.values()))
-    data = json.loads(file_content.decode('utf-8'))
+def load_and_parse_data(min_ascii_length=3, mode='colab', local_path=None):
+    if mode not in ['local', 'colab']:
+        raise ValueError(f"Invalid mode: {mode}")
+    elif mode == 'colab':
+        uploaded = files.upload()
+        file_content = next(iter(uploaded.values()))
+        data = json.loads(file_content.decode('utf-8'))
+    elif mode == 'local':
+        with open(local_path, 'r') as f:
+            data = json.load(f)
     for i in range(len(data)):
-      strokes = np.array(data[i]['points'])
-      strokes[:,0:1] *= data[i]['metadata']['aspectRatio']
-      strokes[:, 0] -= strokes[0, 0]
-      data[i]['points'] = strokes
+        strokes = np.array(data[i]['points'])
+        strokes[:,0:1] *= data[i]['metadata']['aspectRatio']
+        strokes[:, 0] -= strokes[0, 0]
+        data[i]['points'] = strokes
     data = [d for d in data if len(d['metadata']['asciiSequence']) >= min_ascii_length]
     return data
 
