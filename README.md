@@ -159,3 +159,15 @@ Since, in the runs for this day, we had downsampled the point density by 63% (pr
 ![sample_v24](static/sample_v24.png)
 
 ![sample_v25](static/sample_v25.png)
+
+
+### Progress August 14
+
+When in doubt, train for longer. Here are some cursive transformer samples from a little past 100k steps. The model crosses t's and dots its i's.
+
+This involved downsampling stroke data as aggressively as possible, running an A100 for several hours and using a smaller context.
+
+
+![sample_v26](static/sample_v26.png)
+
+![sample_v27](static/sample_v27.png)
