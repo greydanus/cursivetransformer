@@ -16,6 +16,7 @@ __pycache__
 /data/*.json
 /data/*.zip
 /data/*.txt
+!data/synthbank.json
 
 /examples*
 
