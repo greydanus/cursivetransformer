@@ -19,6 +19,36 @@ from torch.utils.data.dataloader import DataLoader
 from torch.optim.lr_scheduler import StepLR
 
 
+########## CODE FOR PLOTTING SAMPLES ##########
+
+def plot_strokes(stroke, title, fig=None, ax=None):
+    """Plot a single stroke"""
+    if fig is None or ax is None:
+        fig, ax = plt.subplots(figsize=(12, 2), dpi=150)
+
+    # Separate strokes based on pen lifts
+    strokes = []
+    current_stroke = []
+    for point in stroke:
+        if point[2] == 1:  # Pen is down
+            current_stroke.append(point)
+        else:  # Pen is up
+            if current_stroke:
+                strokes.append(current_stroke)
+                current_stroke = []
+    if current_stroke:
+        strokes.append(current_stroke)
+
+    # Plot each stroke
+    for stroke in strokes:
+        x, y = zip(*[(p[0], 1 - p[1]) for p in stroke])  # Invert y-axis
+        ax.plot(x, y, 'b-', linewidth=1.3)
+
+    ax.set_aspect('equal') ; ax.set_title(title)
+    if fig is None: plt.show()
+    return fig, ax
+
+
 ########## LOADING DATA AND COMBINING WORDS ##########
 
 @functools.lru_cache(maxsize=5)
