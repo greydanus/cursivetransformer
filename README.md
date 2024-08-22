@@ -175,3 +175,7 @@ When in doubt, train for longer. Here are some cursive transformer samples from 
 Increased dataset size from 1.9k to 2.3k. Started a 200k step run with stepwise lr decay of 0.33 every 50k steps. Figure below shows that decaying learning rate at 50k steps has a beneficial effect.
 
 ![wandb_lr_decay](static/wandb_lr_decay.png)
+
+![sample_v28](static/sample_v28.png)
+
+![sample_v29](static/sample_v29.png)
