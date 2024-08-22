@@ -172,4 +172,6 @@ When in doubt, train for longer. Here are some cursive transformer samples from 
 
 ### Progress August 21
 
-Increased dataset size from 1.9k to 2.3k. Started a 200k step run with stepwise lr decay of 0.33 every 50k steps. Unlikely that the model will train to 200k because we plan to leave it running overnight and sometimes Colab times out. Samples look as good as any previous results, perhaps slightly better.
+Increased dataset size from 1.9k to 2.3k. Started a 200k step run with stepwise lr decay of 0.33 every 50k steps. Figure below shows that decaying learning rate at 50k steps has a beneficial effect.
+
+![wandb_lr_decay](static/wandb_lr_decay.png)
