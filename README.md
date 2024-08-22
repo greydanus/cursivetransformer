@@ -2,6 +2,13 @@
 
 _Note (July 5, 2024): this repo is under active development and thus subject to rapid breaking changes._
 
+## Quickstart
+
+* `git clone https://github.com/greydanus/cursivetransformer.git`
+* `cd cursivetransformer`
+* `pip install -r requirements.txt`
+* `python train.py`
+
 ## Making a dataset
 
 Let's construct a dataset of cursive pen strokes for training a handwriting model. We don't have an e-pen or any special hardware. Also, someday we want to allow people to clone their own handwriting in a demo. Thus we will use a strictly trackpad/mouse-based interface. This interface is defined in the self-contained `collect.html` which is a simple webpage that allows users to enter handwriting samples. It can prompt them with words from a word bank if desired. When they are finished entering samples, they can export the result to a JSON file. We experimented with a couple different approaches to dataset generation (tracing from pictures of cursive, writing multiple words at once, writing single words and then later stitching them together...) so this interface supports them all.
