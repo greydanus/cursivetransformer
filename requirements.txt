@@ -1,5 +1,5 @@
-torch>=2.4.0
-wandb>=0.17.7
-numpy>=2.1.0
-scipy>=1.14.1
-matplotlib>=3.9.2
+torch
+wandb
+numpy
+scipy
+matplotlib
