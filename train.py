@@ -211,7 +211,6 @@ class StrokeDataset(Dataset):
 
     def augment_stroke(self, stroke):
 
-        stroke = remove_random_points(stroke, remove_percentage=0.01) # Drop some points
         stroke = horizontal_shear(stroke, shear_range=(-0.3, 0.15)) # Horizontal shear
 
         stroke[:, 0:1] *= np.random.uniform(0.95, 1.05)
