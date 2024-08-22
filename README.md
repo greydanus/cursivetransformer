@@ -163,11 +163,13 @@ Since, in the runs for this day, we had downsampled the point density by 63% (pr
 
 ### Progress August 14
 
-When in doubt, train for longer. Here are some cursive transformer samples from a little past 100k steps. The model crosses t's and dots its i's.
-
-This involved downsampling stroke data as aggressively as possible, running an A100 for several hours and using a smaller context.
+When in doubt, train for longer. Here are some cursive transformer samples from a little past 100k steps. The model crosses t's and dots its i's. This involved downsampling stroke data as aggressively as possible, running an A100 for several hours and using a smaller context.
 
 
 ![sample_v26](static/sample_v26.png)
 
 ![sample_v27](static/sample_v27.png)
+
+### Progress August 21
+
+Increased dataset size from 1.9k to 2.3k. Started a 200k step run with stepwise lr decay of 0.33 every 50k steps. Unlikely that the model will train to 200k because we plan to leave it running overnight and sometimes Colab times out. Samples look as good as any previous results, perhaps slightly better.
