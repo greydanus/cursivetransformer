@@ -13,6 +13,7 @@ Step by step
 * `pip install -r requirements.txt`
 * `python train.py --wandb_entity {your-wandb-username} --wandb_project {wandb-project-name} --wandb_api_key {your-wandb-api-key}`
 
+
 ## Making a dataset
 
 Let's construct a dataset of cursive pen strokes for training a handwriting model. We don't have an e-pen or any special hardware. Also, someday we want to allow people to clone their own handwriting in a demo. Thus we will use a strictly trackpad/mouse-based interface. This interface is defined in the self-contained `collect.html` which is a simple webpage that allows users to enter handwriting samples. It can prompt them with words from a word bank if desired. When they are finished entering samples, they can export the result to a JSON file. We experimented with a couple different approaches to dataset generation (tracing from pictures of cursive, writing multiple words at once, writing single words and then later stitching them together...) so this interface supports them all.
@@ -190,3 +191,11 @@ Increased dataset size from 1.9k to 2.3k. Started a 200k step run with stepwise 
 ![sample_v28](static/sample_v28.png)
 
 ![sample_v29](static/sample_v29.png)
+
+
+### Progress August 22
+
+Moved all core code into a hacky 800-line script. Also moved the full dataset into a 2.5 MB zip file which I added to the git repo. Now the repo can be cloned and a training run started in one line of bash, so long as you have a Weights and Biases username/api key. This makes starting longer runs outside of the Colab environment much easier. Next step is to launch a longer run on a good GPU, potentially via Paperspace. Here's the one-liner:
+
+`git clone https://github.com/greydanus/cursivetransformer.git && cd cursivetransformer && pip install -r requirements.txt && python train.py --wandb_entity {your-wandb-username} --wandb_project {wandb-project-name} --wandb_api_key {your-wandb-api-key}`
+
