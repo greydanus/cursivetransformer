@@ -1,6 +1,6 @@
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
-import os, sys, time, math, io, copy, json, pickle, glob, functools, zipfile, argparse
+import os, sys, time, math, io, copy, json, pickle, glob, functools, zipfile, argparse, getpass
 import numpy as np
 from scipy.ndimage import rotate
 from datetime import datetime
@@ -725,12 +725,15 @@ if __name__ == '__main__':
                      max_seq_length=cli_args.max_seq_length,
                      seed=cli_args.seed)
 
+    if "WANDB_API_KEY" not in os.environ:
+        api_key = getpass.getpass("Enter your W&B API key: ")
+        os.environ["WANDB_API_KEY"] = cli_args.wandb_api_key
+
     wandb.init(
         project=args.wandb_project,
         entity=args.wandb_entity,
         name=args.wandb_run_name,
-        config=args,
-        api_key=cli_args.wandb_api_key
+        config=args
     )
 
     # system inits
