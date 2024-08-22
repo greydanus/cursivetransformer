@@ -685,6 +685,13 @@ if __name__ == '__main__':
 
     args = AppConfig()
 
+    wandb.init(
+        project=args.wandb_project,
+        entity=args.wandb_entity,
+        name=args.wandb_run_name,
+        config=args
+    )
+
     # system inits
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
@@ -723,14 +730,6 @@ if __name__ == '__main__':
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, betas=(0.9, 0.99), eps=1e-8)
     scheduler = StepLR(optimizer, step_size=50000, gamma=args.lr_decay)
     batch_loader = InfiniteDataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True, num_workers=args.num_workers)
-
-
-    wandb.init(
-        project=args.wandb_project,
-        entity=args.wandb_entity,
-        name=args.wandb_run_name,
-        config=args
-    )
 
     wandb.config.update({
         "n_layer": config.n_layer,
