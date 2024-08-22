@@ -710,6 +710,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate a word bank')
     parser.add_argument('--wandb_entity', type=str, default='sam-greydanus', help='Set this to your wandb username or team name')
     parser.add_argument('--wandb_project', type=str, default='synthbank_experiments', help='W&B project name')
+    parser.add_argument('--wandb_api_key', type=str, default=None, help='Weights & Biases API Key')
     parser.add_argument('--max_seq_length', type=int, default=900, help='Context window size')
     parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility')
     cli_args = parser.parse_args()
@@ -728,7 +729,8 @@ if __name__ == '__main__':
         project=args.wandb_project,
         entity=args.wandb_entity,
         name=args.wandb_run_name,
-        config=args
+        config=args,
+        api_key=cli_args.wandb_api_key
     )
 
     # system inits
