@@ -7,7 +7,7 @@ _Note (July 5, 2024): this repo is under active development and thus subject to 
 * `git clone https://github.com/greydanus/cursivetransformer.git`
 * `cd cursivetransformer`
 * `pip install -r requirements.txt`
-* `python train.py`
+* `python train.py --wandb_entity {your-wandb-username} --wandb_project {wandb-project-name}`
 
 ## Making a dataset
 
