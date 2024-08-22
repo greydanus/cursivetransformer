@@ -1,6 +1,6 @@
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
-import os, sys, time, math, io, copy, json, pickle, glob, functools, zipfile
+import os, sys, time, math, io, copy, json, pickle, glob, functools, zipfile, argparse
 import numpy as np
 from scipy.ndimage import rotate
 from datetime import datetime
@@ -706,13 +706,23 @@ class AppConfig:
 
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description='Generate a word bank')
+    parser.add_argument('--wandb_entity', type=str, default='sam-greydanus', help='Set this to your wandb username or team name')
+    parser.add_argument('--wandb_project', type=str, default='synthbank_experiments', help='W&B project name')
+    parser.add_argument('--max_seq_length', type=int, default=900, help='Context window size')
+    parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility')
+    cli_args = parser.parse_args()
     
     # Try attaching to GPU
     DEVICE = str(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
     print('Using:', DEVICE)
 
 
-    args = AppConfig()
+    args = AppConfig(wandb_entity=cli_args.wandb_entity,
+                     wandb_project=cli_args.wandb_project,
+                     max_seq_length=cli_args.max_seq_length,
+                     seed=cli_args.seed)
 
     wandb.init(
         project=args.wandb_project,
