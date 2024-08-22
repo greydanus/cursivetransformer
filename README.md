@@ -4,6 +4,10 @@ _Note (July 5, 2024): this repo is under active development and thus subject to 
 
 ## Quickstart
 
+One-liner (you'll need to fill in your W&B info)
+* `git clone https://github.com/greydanus/cursivetransformer.git && cd cursivetransformer && pip install -r requirements.txt && python train.py --wandb_entity {your-wandb-username} --wandb_project {wandb-project-name}`
+
+Step by step
 * `git clone https://github.com/greydanus/cursivetransformer.git`
 * `cd cursivetransformer`
 * `pip install -r requirements.txt`
