@@ -1,6 +1,6 @@
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
-import os, sys, time, math, argparse, io, copy, json, pickle, glob, functools
+import os, sys, time, math, io, copy, json, pickle, glob, functools, zipfile
 import numpy as np
 from scipy.ndimage import rotate
 from datetime import datetime
@@ -15,7 +15,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import StepLR
 
 
@@ -23,14 +23,17 @@ from torch.optim.lr_scheduler import StepLR
 
 @functools.lru_cache(maxsize=5)
 def load_and_parse_data():
-    file_path = './data/synthbank.json'
-    with open(file_path, 'r') as file:
-        data = json.load(file)
+    file_path = './data/synthbank.json.zip'
+    with zipfile.ZipFile(file_path, 'r') as zip_ref:
+        json_filename = zip_ref.namelist()[0]
+        with zip_ref.open(json_filename) as file:
+            data = json.load(file)
     for item in data:
         strokes = np.array(item['points'])
         strokes[:, 0] *= item['metadata']['aspectRatio']
         strokes[:, 0] -= strokes[0, 0]
         item['points'] = strokes
+    print(f'Succeeded in loading the synthbank dataset; contains {len(data)} items.')
     return data
     
 def combine_handwriting_examples(examples, space_width=0.17):
@@ -78,17 +81,6 @@ def generate_word_combos(raw_json, desired_num_combos=10000, num_words=3):
     combo_json.append( combine_handwriting_examples(words_to_merge) )
   return combo_json
 
-@functools.lru_cache(maxsize=5)
-def load_and_parse_data():
-    uploaded = files.upload()
-    file_content = next(iter(uploaded.values())).decode('utf-8')
-    data = json.loads(file_content)
-    for item in data:
-        strokes = np.array(item['points'])
-        strokes[:, 0] *= item['metadata']['aspectRatio']
-        strokes[:, 0] -= strokes[0, 0]
-        item['points'] = strokes
-    return data
     
 def combine_handwriting_examples(examples, space_width=0.17):
     assert len(set(ex['metadata']['author'] for ex in examples)) == 1, "All examples must have the same author"
@@ -697,7 +689,7 @@ if __name__ == '__main__':
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
     os.makedirs(args.work_dir, exist_ok=True)
-    writer = SummaryWriter(log_dir=args.work_dir)
+    # writer = SummaryWriter(log_dir=args.work_dir)
 
     # init datasets
     train_dataset, test_dataset = create_datasets(augment=args.augment, max_seq_length=args.max_seq_length, num_words=args.num_words)
