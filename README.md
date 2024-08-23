@@ -215,6 +215,10 @@ I'm particularly interested in the second of these two samples. I know that it i
 
 ![test_loss_32_64](static/test_loss_32_64.png)
 
+Here is a sample from the model trained with a 128k batch size:
+
+![sample_v32](static/sample_v32.png)
+
 Zach also managed to generate a rather freaky-looking sample, which we are including here for your edification:
 
 ![sample_freaky](static/sample_freaky.png)
