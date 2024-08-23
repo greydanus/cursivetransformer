@@ -15,11 +15,11 @@
     "ablate_cross_attention": false,
     "augment": true,
     "max_seq_length": 1250,
-    "batch_size": 64,
+    "batch_size": 128,
     "learning_rate": 1e-2,
     "weight_decay": 1e-4,
     "wandb_project": "cursivetransformer",
     "wandb_entity": "zwimpee",
-    "wandb_run_name": "one_liner_debug",
+    "wandb_run_name": "batch_size_128",
     "wandb_api_key": "e56bbe426145e5983e72a933299daca195ebb6a7"
 }
