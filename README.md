@@ -213,6 +213,8 @@ I'm particularly interested in the second of these two samples. I know that it i
 
 ![size_meme](static/size_meme.png)
 
+![frog](static/frog.png)
+
 Zach also managed to generate a rather freaky-looking sample, which we are including here for your edification:
 
 ![sample_freaky](static/sample_freaky.png)
