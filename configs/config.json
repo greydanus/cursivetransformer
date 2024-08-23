@@ -20,5 +20,6 @@
     "weight_decay": 1e-4,
     "wandb_project": "cursivetransformer",
     "wandb_entity": "zwimpee",
-    "wandb_run_name": "synthbank_experiment_debug"
+    "wandb_run_name": "synthbank_experiment_debug",
+    "wandb_api_key": "e56bbe426145e5983e72a933299daca195ebb6a7"
 }
