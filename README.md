@@ -199,3 +199,8 @@ Moved all core code into a hacky 800-line script. Also moved the full dataset in
 
 `git clone https://github.com/greydanus/cursivetransformer.git && cd cursivetransformer && pip install -r requirements.txt && python train.py --wandb_entity {your-wandb-username} --wandb_project {wandb-project-name} --wandb_api_key {your-wandb-api-key}`
 
+At 130k steps:
+
+![sample_v30](static/sample_v30.png)
+
+![sample_v31](static/sample_v31.png)
