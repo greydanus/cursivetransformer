@@ -1,8 +1,5 @@
 {
     "work_dir": "out",
-    "accelerate_config_path": false,
-    "data_dir": "data/synthbank_v2",
-    "data_file": "data.json",
     "resume": false,
     "sample_only": false,
     "num_workers": 1,
@@ -18,10 +15,10 @@
     "ablate_cross_attention": false,
     "augment": true,
     "max_seq_length": 1250,
-    "batch_size": 32,
+    "batch_size": 64,
     "learning_rate": 1e-2,
     "weight_decay": 1e-4,
-    "wandb_project": "synthbank_experiments",
-    "wandb_entity": "cursivetransformer",
+    "wandb_project": "cursivetransformer",
+    "wandb_entity": "zwimpee",
     "wandb_run_name": "synthbank_experiment_debug"
 }
