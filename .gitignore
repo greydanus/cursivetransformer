@@ -13,7 +13,7 @@ data/
 *.pkl
 __pycache__
 *.epub
-*.json
+#*.json
 *.zip
 /data/BRUSH*
 /data/BIGBANK*
