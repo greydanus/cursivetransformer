@@ -20,6 +20,6 @@
     "weight_decay": 1e-4,
     "wandb_project": "cursivetransformer",
     "wandb_entity": "zwimpee",
-    "wandb_run_name": "batch_size_128",
+    "wandb_run_name": "gradient-nb-test-80G-A100-batch_size_128",
     "wandb_api_key": "e56bbe426145e5983e72a933299daca195ebb6a7"
 }
