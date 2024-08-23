@@ -205,7 +205,7 @@ At 130k steps:
 
 ![sample_v31](static/sample_v31.png)
 
-**[(Batch) Size Matters](https://wandb.ai/zwimpee/cursivetransformer/reports/Size-Matters--Vmlldzo5MTIyMjY0)** Zach did a run where he compared batch size 32 to 64 and it looks like using a batch size of 64 has some strong benefits.
+**[(Batch) Size Matters](https://wandb.ai/zwimpee/cursivetransformer/reports/Size-Matters--Vmlldzo5MTIyMjY0)**. Zach did a run where he compared batch size 32 to 64 and it looks like using a batch size of 64 has some strong benefits.
 
 ![test_loss_32_64](static/test_loss_32_64.png)
 
