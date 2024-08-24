@@ -222,3 +222,7 @@ Here is a sample from the model trained with a 128k batch size:
 Zach also managed to generate a rather freaky-looking sample, which we are including here for your edification:
 
 ![sample_freaky](static/sample_freaky.png)
+
+### Progress August 23
+
+Added almost 250 new samples to the dataset for a total of 2750 words (from which, of course, we are generating 250k 4-word training examples). Did a quick quality control run on the enlarged dataset; everything looked good.
