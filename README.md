@@ -13,6 +13,15 @@ Step by step
 * `pip install -r requirements.txt`
 * `python train.py --wandb_entity {your-wandb-username} --wandb_project {wandb-project-name} --wandb_api_key {your-wandb-api-key}`
 
+Paperspace dependencies (or use `paperspace.sh`)
+* `sudo apt update && sudo apt upgrade -y`
+* `sudo apt install linux-headers-$(uname -r) build-essential -y`
+* `sudo add-apt-repository ppa:graphics-drivers/ppa -y && sudo apt update`
+* `sudo apt install nvidia-driver-560 -y`
+* `sudo reboot`
+* `nvidia-smi`
+* In a `screen` tab:
+	* `git clone https://github.com/greydanus/cursivetransformer.git && cd cursivetransformer && pip install -r requirements.txt && python3 train.py --wandb_entity {your-wandb-username} --wandb_project {wandb-project-name} --wandb_api_key {your-wandb-api-key}`
 
 ## Making a dataset
 
