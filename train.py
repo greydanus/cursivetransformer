@@ -676,8 +676,8 @@ class AppConfig:
     resume: bool = False
     sample_only: bool = False
     num_workers: int = 1 # 4
-    max_steps: int = 200000
-    lr_decay: float = 1/3.
+    max_steps: int = 300000
+    lr_decay: float = .5
     device: str = 'cuda'
     seed: int = 3407
 
