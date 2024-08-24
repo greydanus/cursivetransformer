@@ -226,3 +226,9 @@ Zach also managed to generate a rather freaky-looking sample, which we are inclu
 ### Progress August 23
 
 Added almost 250 new samples to the dataset for a total of 2750 words (from which, of course, we are generating 250k 4-word training examples). Did a quick quality control run on the enlarged dataset; everything looked good.
+
+### Progress August 24
+
+Zach trained for 80k steps on 2750 word dataset. Slight qualitative improvement. Slight test loss improvement.
+
+![sample_v33](static/sample_v33.png)
