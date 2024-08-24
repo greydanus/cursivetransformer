@@ -21,7 +21,8 @@ Paperspace dependencies (or use `paperspace.sh`)
 * `sudo reboot`
 * `nvidia-smi`
 * In a `screen` tab:
-	* `git clone https://github.com/greydanus/cursivetransformer.git && cd cursivetransformer && pip install -r requirements.txt && python3 train.py --wandb_entity {your-wandb-username} --wandb_project {wandb-project-name} --wandb_api_key {your-wandb-api-key}`
+	* `git clone https://github.com/greydanus/cursivetransformer.git && cd cursivetransformer && pip install -r requirements.txt && export WANDB_API_KEY={your-wandb-api-key} && python3 train.py --wandb_entity {your-wandb-username} --wandb_project {wandb-project-name}`
+
 
 ## Making a dataset
 
