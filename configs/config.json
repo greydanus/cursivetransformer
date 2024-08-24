@@ -20,6 +20,6 @@
     "weight_decay": 1e-4,
     "wandb_project": "cursivetransformer",
     "wandb_entity": "zwimpee",
-    "wandb_run_name": "80G_A100-batch_size_256-n_head_8-dataset_2.75k",
+    "wandb_run_name": "quantized_tokenizer_test",
     "wandb_api_key": "e56bbe426145e5983e72a933299daca195ebb6a7"
 }
