@@ -242,3 +242,9 @@ Added almost 250 new samples to the dataset for a total of 2750 words (from whic
 Zach trained for 80k steps on 2750 word dataset. Slight qualitative improvement. Slight test loss improvement.
 
 ![sample_v33](static/sample_v33.png)
+
+Samples at gradient step 220k (of 400k) of a day-long Paperspace A100 run:
+
+![sample_v34](static/sample_v34.png)
+
+![sample_v35](static/sample_v35.png)
