@@ -11,7 +11,7 @@
     "n_layer": 4,
     "n_embd": 64,
     "n_embd2": 64,
-    "n_head": 16,
+    "n_head": 4,
     "ablate_cross_attention": false,
     "augment": true,
     "max_seq_length": 1028,
