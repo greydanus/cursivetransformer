@@ -188,6 +188,12 @@ if __name__ == '__main__':
         batch = batch_loader.next()
         batch = [t.to(args.device) for t in batch]
         X, C, Y = batch
+        
+        # Add this sanity check
+        if X.max() >= vocab_size or Y.max() >= vocab_size:
+            print(f"Warning: Token indices out of range. X max: {X.max()}, Y max: {Y.max()}, Vocab size: {vocab_size}")
+            X = torch.clamp(X, 0, vocab_size - 1)
+            Y = torch.clamp(Y, 0, vocab_size - 1)
 
         # feed into the model
         logits, loss = model(X, C, Y)
