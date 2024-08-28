@@ -251,3 +251,15 @@ Samples at gradient step 220k (of 400k) of a day-long Paperspace A100 run:
 ![sample_v34](static/sample_v34.png)
 
 ![sample_v35](static/sample_v35.png)
+
+### Progress August 28
+
+We seem to have hit a plateau performance; the model excels at cursive except when it must, at the end of a word, go back and dot an i at the beginning or cross a t. We tried a variety of things to fix this issue. Looking at previous works, no model has managed to do this properly. For the purposes of this project, we resolved to make the task slightly easier: we are going to dot our i's and j's and cross our t's and x's _immediately after drawing those characters_ rather than at the end of the word.
+
+This, of course, requires redrawing all the words in our dataset which contain one or more of these four characters. As an intermediary step in this direction (and a means of testing our overall hypothesis) we filtered out all these examples and were left with 1102 words which we're referring to as the `easybank.json.zip` dataset. While we redraw the remaining 1898 words - which will take a week or two - we decided to try training on this easy dataset to see if it would indeed be easier and lead to the level of performance we've been hoping our model would attain. We were not disappointed. After just 30k steps and no tweaking of hyperparameters, our model was producing consistently high-quality samples.
+
+![sample_v36](static/sample_v36.png)
+
+![sample_v37](static/sample_v37.png)
+
+![sample_v38](static/sample_v38.png)
