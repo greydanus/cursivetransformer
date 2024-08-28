@@ -701,7 +701,7 @@ class AppConfig:
     weight_decay: float = 1e-4
 
     # wandb parameters
-    wandb_project: str = "easybank_experiments"
+    wandb_project: str = "synthbank_experiments"
     wandb_entity: str = 'sam-greydanus'  # Set this to your wandb username or team name
     wandb_run_name: str = f"{get_time_string()}_cursive_transformer"
 
