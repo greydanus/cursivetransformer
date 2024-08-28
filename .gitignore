@@ -17,6 +17,7 @@ __pycache__
 /data/*.zip
 /data/*.txt
 !data/synthbank.json.zip
+!data/easybank.json.zip
 
 /examples*
 /deprecated*
