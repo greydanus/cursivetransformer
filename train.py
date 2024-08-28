@@ -53,7 +53,7 @@ def plot_strokes(stroke, title, fig=None, ax=None):
 
 @functools.lru_cache(maxsize=5)
 def load_and_parse_data():
-    file_path = './data/synthbank.json.zip'
+    file_path = './data/easybank.json.zip'
     with zipfile.ZipFile(file_path, 'r') as zip_ref:
         json_filename = zip_ref.namelist()[0]
         with zip_ref.open(json_filename) as file:
@@ -63,7 +63,7 @@ def load_and_parse_data():
         strokes[:, 0] *= item['metadata']['aspectRatio']
         strokes[:, 0] -= strokes[0, 0]
         item['points'] = strokes
-    print(f'Succeeded in loading the synthbank dataset; contains {len(data)} items.')
+    print(f'Succeeded in loading the easybank dataset; contains {len(data)} items.')
     return data
     
 def combine_handwriting_examples(examples, space_width=0.17):
@@ -676,8 +676,9 @@ class AppConfig:
     resume: bool = False
     sample_only: bool = False
     num_workers: int = 1 # 4
-    max_steps: int = 400000
-    lr_decay: float = .5
+    max_steps: int = 30000
+    lr_decay: float = .333
+    step_lr_every: int = 20000
     device: str = 'cuda'
     seed: int = 3407
 
@@ -700,7 +701,7 @@ class AppConfig:
     weight_decay: float = 1e-4
 
     # wandb parameters
-    wandb_project: str = "synthbank_experiments"
+    wandb_project: str = "easybank_experiments"
     wandb_entity: str = 'sam-greydanus'  # Set this to your wandb username or team name
     wandb_run_name: str = f"{get_time_string()}_cursive_transformer"
 
@@ -773,7 +774,7 @@ if __name__ == '__main__':
 
     # init optimizer and batch loader
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, betas=(0.9, 0.99), eps=1e-8)
-    scheduler = StepLR(optimizer, step_size=50000, gamma=args.lr_decay)
+    scheduler = StepLR(optimizer, step_size=args.step_lr_every, gamma=args.lr_decay)
     batch_loader = InfiniteDataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True, num_workers=args.num_workers)
 
     wandb.config.update({

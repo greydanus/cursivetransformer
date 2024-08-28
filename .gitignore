@@ -19,6 +19,7 @@ __pycache__
 !data/synthbank.json.zip
 
 /examples*
+/deprecated*
 
 
 __pycache__/
