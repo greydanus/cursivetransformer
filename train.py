@@ -53,7 +53,7 @@ def plot_strokes(stroke, title, fig=None, ax=None):
 
 @functools.lru_cache(maxsize=5)
 def load_and_parse_data():
-    file_path = './data/easybank.json.zip'
+    file_path = './data/synthbank_v2.json.zip'
     with zipfile.ZipFile(file_path, 'r') as zip_ref:
         json_filename = zip_ref.namelist()[0]
         with zip_ref.open(json_filename) as file:
@@ -63,7 +63,7 @@ def load_and_parse_data():
         strokes[:, 0] *= item['metadata']['aspectRatio']
         strokes[:, 0] -= strokes[0, 0]
         item['points'] = strokes
-    print(f'Succeeded in loading the easybank dataset; contains {len(data)} items.')
+    print(f'Succeeded in loading the synthbank_v2 dataset; contains {len(data)} items.')
     return data
     
 def combine_handwriting_examples(examples, space_width=0.17):
