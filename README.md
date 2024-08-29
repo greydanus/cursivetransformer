@@ -263,3 +263,9 @@ This, of course, requires redrawing all the words in our dataset which contain o
 ![sample_v37](static/sample_v37.png)
 
 ![sample_v38](static/sample_v38.png)
+
+### Progress August 29
+
+We have 200 samples containing i's / j's / t's / x's (our plan is to add about 200 more of these per day) plus all the samples that do not contain any of those characters. Thus the current working dataset is 1.3k words. I did a quick 30k training run for debugging purposes and already, even with so few samples, the model is doing better at dotting its i's and crossing it's t's. This suggests, tentatively, that our new approach to dataset generation is going to pay off.
+
+![sample_v39](static/sample_v39.png)
