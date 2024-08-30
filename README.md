@@ -274,8 +274,6 @@ We have 200 samples containing i's / j's / t's / x's (our plan is to add about 2
 
 We upgraded out downsampling code from a naive method which downsampled points more or less at random regardless of whether they were at the beginning or ending of a stroke, to a new method which always keeps the beginning and end points of a stroke intact. This method is important when we're doing aggressive 60-70% downsample operations because quite often those operations cause us to lose a number of points at the beginning/endings of strokes. When we lose those points, we start to see artifacts arise: gaps appear between strokes that are supposed to overlap and some small strokes disappear entirely.
 
-We also added 100 new samples, for a total dataset size of 1.4k words. Remarkably, we are now starting to see nice i's and t's - and decent penmanship control in general - appear at 7.5k gradient steps (5-7 minutes of training) whereas in the past, we were seeing this kind of quality around 25-75k steps. So this is a 4-10x improvement. See, for example, this sample grabbed we grabbed at 7.5k steps:
+We also added 100 new samples, for a total dataset size of 1.4k words. Remarkably, we are now starting to see nice i's and t's - and decent penmanship control in general - appear at 7.5k gradient steps (5-7 minutes of training) whereas in the past, we were seeing this kind of quality around 25-75k steps. So this is a 4-10x improvement. Here is a sample taken around 25k steps. It's basically perfect.
 
 ![sample_v40](static/sample_v40.png)
-
-It still makes a number of spelling mistakes, but the individual characters are more or less in the right places, and are basically well formed.
