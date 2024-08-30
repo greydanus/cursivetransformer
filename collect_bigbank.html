@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handwriting Stroke Capture with Automatic Word Prompts</title>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        button { cursor: pointer; }
+        input[type="range"] { width: 100%; }
+        canvas { border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const SAMPLING_INTERVAL = 2;
+
+        const Button = ({ onClick, children }) => (
+            <button
+                onClick={onClick}
+                style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#2D3748',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    marginRight: '8px'
+                }}
+            >
+                {children}
+            </button>
+        );
+
+        const Input = ({ type, accept, onChange, value, placeholder, style, min, max, id }) => (
+            <input
+                type={type}
+                accept={accept}
+                onChange={onChange}
+                value={value}
+                placeholder={placeholder}
+                style={{ ...style, padding: '4px', marginBottom: '8px' }}
+                min={min}
+                max={max}
+                id={id}
+            />
+        );
+
+        const Textarea = ({ value, readOnly, style, placeholder }) => (
+            <textarea
+                value={value}
+                readOnly={readOnly}
+                style={{ ...style, padding: '4px', width: '100%', height: '200px' }}
+                placeholder={placeholder}
+            />
+        );
+
+        const Label = ({ htmlFor, children }) => (
+            <label htmlFor={htmlFor} style={{ display: 'block', marginBottom: '4px' }}>
+                {children}
+            </label>
+        );
+
+        const Slider = ({ id, min, max, step, value, onChange }) => (
+            <input
+                id={id}
+                type="range"
+                min={min}
+                max={max}
+                step={step}
+                value={value}
+                onChange={onChange}
+                style={{ width: '100%' }}
+            />
+        );
+
+        const ErrorMessage = ({ message }) => (
+            <div style={{ backgroundColor: '#FEE2E2', border: '1px solid #F87171', color: '#B91C1C', padding: '8px', borderRadius: '4px', marginBottom: '16px' }}>
+                <span>{message}</span>
+            </div>
+        );
+
+        const HandwritingStrokeCapture = () => {
+            const [strokes, setStrokes] = React.useState([]);
+            const [currentStroke, setCurrentStroke] = React.useState([]);
+            const [backgroundImage, setBackgroundImage] = React.useState(null);
+            const [imagePosition, setImagePosition] = React.useState({ x: 0, y: 0 });
+            const [imageScale, setImageScale] = React.useState(1);
+            const [isDrawing, setIsDrawing] = React.useState(false);
+            const [exportedData, setExportedData] = React.useState('');
+            const [author, setAuthor] = React.useState('');
+            const [asciiSequence, setAsciiSequence] = React.useState('');
+            const [errorMessage, setErrorMessage] = React.useState('');
+            const [dataset, setDataset] = React.useState([]);
+            const [wordBank, setWordBank] = React.useState([]);
+            const [currentPrompt, setCurrentPrompt] = React.useState('');
+            const [wordCount, setWordCount] = React.useState(1);
+            const [samplingMode, setSamplingMode] = React.useState('random');
+            const [startIndex, setStartIndex] = React.useState(0);
+            const [currentIndex, setCurrentIndex] = React.useState(0);
+            const [displayIndex, setDisplayIndex] = React.useState(0);
+
+            const canvasRef = React.useRef(null);
+            const lastPointRef = React.useRef(null);
+            const lastSampledPointRef = React.useRef(null);
+
+            const drawStrokes = React.useCallback(() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (backgroundImage) {
+                    ctx.save();
+                    ctx.translate(imagePosition.x, imagePosition.y);
+                    ctx.scale(imageScale, imageScale);
+                    ctx.drawImage(backgroundImage, 0, 0);
+                    ctx.restore();
+                }
+
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(0, canvas.height / 3);
+                ctx.lineTo(canvas.width, canvas.height / 3);
+                ctx.moveTo(0, 2 * canvas.height / 3);
+                ctx.lineTo(canvas.width, 2 * canvas.height / 3);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.strokeStyle = '#2F4F4F';
+                ctx.lineWidth = 2;
+                strokes.forEach(stroke => {
+                    if (stroke.length > 0) {
+                        ctx.beginPath();
+                        ctx.moveTo(stroke[0][0], stroke[0][1]);
+                        stroke.forEach(point => {
+                            if (point[2] === 1) {
+                                ctx.lineTo(point[0], point[1]);
+                            } else {
+                                ctx.moveTo(point[0], point[1]);
+                            }
+                        });
+                        ctx.stroke();
+                    }
+                });
+
+                if (currentStroke.length > 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(currentStroke[0][0], currentStroke[0][1]);
+                    currentStroke.forEach(point => {
+                        if (point[2] === 1) {
+                            ctx.lineTo(point[0], point[1]);
+                        } else {
+                            ctx.moveTo(point[0], point[1]);
+                        }
+                    });
+                    ctx.stroke();
+                }
+            }, [strokes, currentStroke, backgroundImage, imagePosition, imageScale]);
+
+            React.useEffect(() => {
+                drawStrokes();
+            }, [drawStrokes]);
+
+            const startDrawing = (e) => {
+                const canvas = canvasRef.current;
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                setCurrentStroke([[x, y, 1]]);
+                lastPointRef.current = [x, y];
+                lastSampledPointRef.current = [x, y];
+                setIsDrawing(true);
+            };
+
+            const draw = (e) => {
+                if (!isDrawing) return;
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                ctx.strokeStyle = '#2F4F4F';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(lastPointRef.current[0], lastPointRef.current[1]);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                
+                const dx = x - lastSampledPointRef.current[0];
+                const dy = y - lastSampledPointRef.current[1];
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance >= SAMPLING_INTERVAL) {
+                    setCurrentStroke(prev => [...prev, [x, y, 1]]);
+                    lastSampledPointRef.current = [x, y];
+                }
+                
+                lastPointRef.current = [x, y];
+            };
+
+            const endDrawing = () => {
+                if (currentStroke.length > 0) {
+                    setStrokes(prev => [...prev, [...currentStroke, [currentStroke[currentStroke.length - 1][0], currentStroke[currentStroke.length - 1][1], 0]]]);
+                    setCurrentStroke([]);
+                }
+                setIsDrawing(false);
+                lastPointRef.current = null;
+                lastSampledPointRef.current = null;
+            };
+
+            const generateEntry = () => {
+                if (!author.trim()) {
+                    setErrorMessage("Please enter an author name.");
+                    return null;
+                }
+                if (!asciiSequence.trim()) {
+                    setErrorMessage("Please enter an ASCII sequence.");
+                    return null;
+                }
+                if (strokes.length === 0) {
+                    setErrorMessage("Please draw at least one stroke before adding to dataset.");
+                    return null;
+                }
+
+                let allPoints = strokes.flat();
+                const canvas = canvasRef.current;
+                const aspectRatio = canvas.width / canvas.height;
+                const normalizedPoints = allPoints.map(point => [
+                    parseFloat((point[0] / canvas.width).toFixed(4)),
+                    parseFloat((point[1] / canvas.height).toFixed(4)),
+                    point[2]
+                ]);
+                
+                return {
+                    metadata: {author: author.trim(), asciiSequence: asciiSequence.trim(), pointCount: allPoints.length, strokeCount: strokes.length, aspectRatio},
+                    points: normalizedPoints
+                };
+            };
+
+            const addToDataset = () => {
+                const entry = generateEntry();
+                if (entry) {
+                    setDataset(prev => [...prev, entry]);
+                    setStrokes([]);
+                    setAsciiSequence('');
+                    setErrorMessage('');
+                    drawStrokes();
+                    return true; // Entry successfully added
+                }
+                return false; // Entry not added due to error
+            };
+
+            const exportDataset = () => {
+                if (dataset.length === 0) {
+                    setErrorMessage("The dataset is empty. Add some entries before exporting.");
+                    return;
+                }
+                const jsonString = JSON.stringify(dataset);
+                setExportedData(jsonString);
+            };
+
+            const handleImageUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            setBackgroundImage(img);
+                            setImagePosition({ x: 0, y: 0 });
+                            setImageScale(1);
+                            setAsciiSequence(''); // Clear ASCII box when an image is uploaded
+                        };
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const handleImageMove = (direction) => {
+                const step = 10;
+                setImagePosition(prev => {
+                    switch (direction) {
+                        case 'up': return { ...prev, y: prev.y - step };
+                        case 'down': return { ...prev, y: prev.y + step };
+                        case 'left': return { ...prev, x: prev.x - step };
+                        case 'right': return { ...prev, x: prev.x + step };
+                        default: return prev;
+                    }
+                });
+            };
+
+            const clearAll = () => {
+                setStrokes([]);
+                setCurrentStroke([]);
+                setErrorMessage('');
+                setBackgroundImage(null); // Clear the uploaded image
+                setImagePosition({ x: 0, y: 0 }); // Reset image position
+                setImageScale(1); // Reset image scale
+                if (samplingMode === 'random') {
+                    generatePrompt();
+                }
+                drawStrokes();
+            };
+
+            const undo = () => {
+                setStrokes(prev => prev.slice(0, -1));
+            };
+
+            const loadWordBank = () => {
+
+                const words = ["fkhm", "zjtt", "mejent", ".7", "syanqsnf", "gmdrvnsk", "rkqvljarai", "fnd", "PRNHBI", "ileh", "hth", "ttsn", "vetnot", "ssq", "kdmrhfwol", "Jsxg", "OUTOTN", "9043", "TIEO", "tsebmh", "iszeord", "Ptteqe\"", "pohah", "ohaeen.", "teoehfa", "2!", "xonjto", "osevqa", "pjjc", "xwoz", "cedhkg", "xtaiepnx", "yeerqw", "orexaoayum", "SDJU", "urebnni", "Sgxl", "ezfoa", "ssorebw", "iime", "GSZNEJJ", "rnoaeo)", "IDEQ", "Tht", "lwtqmzaua", "hvse", "Yqihiv", "brhsh", "oyortten", "hbgofbyq", "roaoao", "cmetd", "cke", "rsse", "54573", "htnok,", "stg", "lvdeee", "stay", "mtrtoea", "TMHXS", "idfid", "Ipmiqho", "(Atelrdnj", "tuwibt", "Oddeae", "Lzs", "azggn", "hjcee", "gamoiiu", "tpjhjl", "aucdn", "xwstax", "ahesspao", "(enser", "narfj", "add", "rmabdt", "Qpce\"", "eonzn", "rezest", "ioanl'be", "VNIRIF", "ehiswe", "5.9072", "uja", "jhxaslkemt", "ttal", "feti'", "memxrai", "zwhm", "iotattfe", "oejk", "70", "IAE", "excw", "wpousq", "cwod", "yuvohoew", "oxit", "Wyyro", "giif", "ehe", "Uzkee", "ycptsmh", "ienvsee", "024", "dtodl", "HNLAREP", "TAKAERS", "ipxtkttx", "wsre", "44704", "rtixyme", "hskw", "Tlchre", "ewe", "Rbael", "sfsfsr)", "rpmj", "ikgg", "EEBNRSOA", "qeoi", "uwtond", "jsxhgk", "Tetnxg", "lrkdni", "(ugdl", "jrxor", "hiitrcha", "ehenrhua", "hhae", "Wuxcrs", "Jrrr", "enojtnmcf.", "(cdwihjqnfs", "HBWBBT", "dntdkkxnz", "kertwos)", "Tof", "earkxen", "74", "Cynx", "ebaai", "rvxijwuic", "vaiavi,", "eywaoc", "jbgthir", "skonhns", "rnrchui", "suer", "Pesgines", "raiez", "rreaue", "rdon", "nhah", "escoeta", "ehtfkyn", "qomc", "wrcsguova", "axrj", "sll", "teqnksgle", "574", "hnme", "zxie", "Othxxa", "yynjee", "689", "irhnhe", "nliuantkgi", "Iskjl'", "Hmeo", "arvehado", "relve", "ookk", "nvyeqc", "ytsqe", "ure", "rkressnx", "esie", "pede", "uitietfo", "Bkbxtc", "Rrlgq", "hsxo", "(ohpheflse", "OUCM", "7842", "Ihbnahn", "aljeh", "aaioo", "zlmtgejt", "wancrdxl", "'ETJOTUB", "xtt.", "ORECHYE", "tinv", "opxjbuipoo", "olezw", "\"ascinneaxd", "Ewlelde", "eouae", "losr", "Unhh", "xoawse", "taj", "fan", "eeex", "rltroijrmb", "eeue", "Bhalrzhd", "oes", "ehqaaq", "nzeo", "(jaor", "xeslr", "enbhsq", "ohuer", "cltvyt", "dwhah", "Hmsoqy", "ea'ct", "otli", "sskoe", "lmazbzna", "oate", "Sjhccn.", "cvrvelv", "ovew", "sak", "dhza", "omeeluax", "Nnuon", "axjr)", "2258", "hrzxhuru", "toen.", "whne", "vafk", "spmreu", "godhwieb", "DETO", "\"kht", "yekwiv", "IRS", "nexmjr", "nre", "arr", "zceii", "Atpe", "wk'ta", "Ehttsaonos", "Ahaviwtieo", "eactmge", "SXSUFOO", "tla", "rzbrat", "UTNI", "maet", "nojasp", "scevf", "dhtto'", "hgaz", "nnhxa,", "vjqmojf", "xmalaxlx", "Dnigtuq", "epxlthl", "ylrrev)", "hreroe", "eaqsot'nid", "bzsngiji", "WOXRTNNTZ)", "hzio", "(.5", "fsah", "devehvf", "ijpq", "aabi", "edin", "iiti", "elte)", "gyzuihr", "rieelltf", "qpiqaxseh", "hesnr", "390", "iav", "llrsulpn", "iodu", "zugvp", "giet", "kkrw", "lcdoaocurs", "ebeaz", "kdrkidcr?", "eiaaso", "Alvr", "6296,", "ydnj", "owslzirsu", "Eoaatih", "inex", "vhsnch", "suxnse", "ivomt", "sdort", "wmrj", "eltdie", "efgoa", "SWKFWVA", "rgep", "ynae", "tuvrtev)", "eaw", "pwrrx", "ocnn", "Hgecdjix", "dsrj", "UTTUXINUI", "pudnt", "LJE", "Ecvw", "tnbvfoah!", "ihrhintbxr", "alali", "kojlgeatiu", "beo", "iiehwt", "bpdlzw", "nelgd", "ctpanex", "rdo", "itoanlxr", "viue", "GWAIFJITGB,", "36", "ngieydw", "ozunn", "fauyls", "43717", "pdtr", "kesilhg,", "eftpeaax", "rsqrtee", "etnonaqh", "vyx", "thnaeq", "(jrphksv", "hkstesgp", "adakhgvh", "80", "oarq", "xohs", "isrkv", "eolb", "tndmteyr", "rnnaela", "bygig", "Lrtnas", "fhalif", "whxtt", "ioij", "vjrttxf", "pbetb", "wnre", "Xcjwe", "\"yhoiey", "jto", "4249", "ttxtdapu", "cqiy", "khnao", "ieeaa", "arsases", "kwjf", "mde)", "hgvb", "ndtdxzmfh", "envt", "Zhqv", "ffnweg", "enonf", "UIOSZHP", "oshric", "domoyy", "dzeukb.", "oeiwetadu", "69", "Twnaxem", "732", "vdglo", "Svgxe", "9.76", "mehuxrr", "rduzh.", "hevix", "Csrma", "eooirsem", "73", "hzotkth", "lxyxg", "Yresejkq", "5", "usftrnr", "drtfearc", "rsxld", "sjsnfvesas", "urevcawbj", "uhiibdlor", "Gxeuhmue", "qrs'ddtciex", "ztoetz", "veaxa", "Totq", "naneszfx.", "usoaasd", "yrgrnoekn", "xbfuneqh", "jsa\"", "sgua", "jzitm", "saeef", "authoeedw)", "unbdx", "1373", "ONTNZASS", "bnrxh", "njiiea", "ljty", "Ozxnaeirm", "hbeobfer", "reeah", "ikumhsm", "ency!", "fteste", "wdenaoft", "apnhe\"", "tebnasm", "iseonocaa", "SZIL", "tbroocis", "SBAB", "oseqbtdi", "Otsdtnymrs", "o'led", "blaegjqoe", "EGYCNT", "XNTLWQSPWR", "bjoo,", "ntxbcannr", "seenht", "paeotosnt", "adeswtk", "pnaol", "rsl", "petuej\"", "eoytwe", "rpkduc", "Yhngsetec", "oeuhcxq", "9507", "tdvjon?", "'Qugchf", "andt", "74861", "iietrnijaq", "Rpnyre", "crolttj", "\"oiil", "artd", "wybwo", "neais", "isith", "aannnwrnn", "81.", "rjso", "aia", "tbsl", "hhtmtfx", "oettonkq", "Pxfme", "ATAEP", "baolwekta", "yheitoxajs", "Atxwpirft", "xhn", "tmwa", "viza", "gmfw", "tlfii", "chxyoht", "FETO", "aoxatd", "kepxbr", "eierl", "saxnereun", "rxie", "cseemt", "nqmooha", "qjvyh", "uttfa", "meai", "\"xhntdu", "jama", "vot", "qmma", "orie", "Aqjy", "quisefjo", "lseho", "Qea", "nnitnw", "iechkr", "qod", "JISE", "eoor", "piybc", "euerhhi", "3.", "zooi", "woomhpn", "btlnw", "nejgc", "uzhmihnn", "Vkjz", "rqrc", "inioj", "eoeihbik\"", "Oeaped", "Shhajt", "ezto", "aphr", "cuxnieb", "ryhttq", "\"rqrt", "7778", "hdoa", "9944", "ikneri", "iery.", "HRCCAOVNN", "teysrle", "\"Clcr", "hkabt", "okebkda", "umsa", "tbs", "exail", "qheai", "(rabv", "eefi", "rnerspovb", "jievfk", "M'paatee", "mesq", "kuud", "ndblarsx", "bdovq", "ahrx", "ptfsy", "(ansoi", "cison", "IGLMS", "evuotuo", "strn", "bese)", "onwnle", "043.5", "iyl", "Oeaf", "hnkw", "zrhgg", "oabyp", "rtjn", "apuuxt", "(ooanonh", "smgemsd", "khgege", "Hespiti", "mdgb", "prdgoab", "ktou", "DJHEQO", "ihdr", "Anajnnf", "dxns", "vzujo", "hwohriqh", "htwn", "nneter", "eioujcg", "hqj", "ods", "acrmtmip", "esreno", "(hhattaqp", "Rzu", "naaaa", "nxnggn", "wutiauk", "soes", "iodkernn", "vnwke", "Madoe", "kxevfrjvrv", "\"XSIYLAO", "xhtilie", "ummnx", "geeczbi", "sdts", "oerhut", "tfbrdroldx", "syr", "Aefr", "Nei", "slex", "tag", "92899.", "wsdla", "QOMHVK", "eorx", "zwohn", "Genuyao", "eaec", "kgtt", "ilkii", "Nvsetaon", "Tirn.", "xltayd", "ktilgeeest", "Frixq", "Tjiot", "hxh", "ernzoxra", "kumdsvts", "enzwrdxg", "tede", "vji", "(otn", "zieil", "mxtaggjo", "ehts", "zrcii)", "eii", "kdnipudq", "mrxpoog", "uneoetw", "ietfa", "ytbsmg", "Slcj", "nmze", "gaemhecp", "zedjj?", "kjbrjifr", "teoxltho", "tqkju", "vttbthke", "pgtaht", "fnteoeuorq", "HNHESNLA", "Uoikhis", "dftvisru", "\"dnrynt", "OLVM", "pisffhxssy", "aqle", "oejeext", "fjx", "pej", "teroeuutur", "nef.", "nopcannsuu", "cdne", "\"cmheeq", "jte", "jtr", "5.58", "YOXGKAJA", "aroei", "SYKX", "ezhmaeib", "tiuc", "rsotq", "(Eti", "pkd", "yqatqouo", "riji", "eekuoq", "eskh)", "esghoiag", "giag", "qessf", "htyxixeh", "ekldzgthh", "Wins", "eqww", "lbhaso", "(vuspv", "ssble", "weahh", "agnc", "Fvsni", "kiupb", "jjt", "eqaxo", "naslp", "wxva", "ongaean)", "eqrhnp", "hikkt", "ixkr", "uenklf", "jhrijyae", "fpxaaitoa.", "iiybh", "Jtjeh", "ddhwat", "jzqk", "iodceoh", "efze", "Imqer", "oearfbe", "enon,", "leicadoj", "npsdlw", "txoa,", "IKRE", "tedoxrd", "rwyg", "Gulyeso\"", "dgkv", "ochjt", "iseeo", "aftvwoyje", "Npaec", "rdo", "Msdeu", "Avokk", "ASE", "pmthhhd", "feucnhea", "Idaoesx", "epoda", "luh", "vatmeewwe", "(snhtjovke", "ugkr", "DNLE", "sivg", "utozeftp", "oie", "0338", "2.", "igjer", "etsh", "sfhpcb\")", "3", "rqieibpow", "Fremavwc", "xtomegtle", "HSSTXT", "fkrt", "ynn", "cyone", "orne", "zehsteonu)", "hqe", "zwhaiso", "phtoontn", "ruts", "lon", "dnhe", "vbiq", "eay", "ugian", "neac", "Ohne", "nosx", "rliz", "tsrt", "zdxacford", "stbtoht", "oeioj", "atsegqfzc", "Ggr", "Eraszomow", "suofj", "rpr", "EFOHLCI", "toeeto", "ndaa", "nolfjo", "nmhauekvv", "dsdeeej", "triwe", "lhtse", "otne", "duo", "ncwsyddny", "ragbaj", "dahrikj", "cforeplst", "alecex", "rone", "serd", "zqelott", "quyjh", "oafshgwm", "btet", "myreeanbo", "ouxnnxftut", "sxsw\"", "syhnmeqr", "dae", "edqzdcooic", "zircesh", "hkfel", "vfhhe", "weac", "JVIMA", "Oihgxnety", "Urtr", "ggt", "cltm", "ycrztq", "Bxxtoe", "Ohsuuo", ".60596", "leznhmn", "estgs", "02684", "eecbzr", "Byknut", "inaaw", "Hokp", "Psdnytggga", "nnaadc", "Gbadlif", "neev", "ardree", "ataryaio", "rebhi", "uheoh", "groitbe", "etrtek", "Fjtpti", "dlto", "pent", "mbainofd", "IEOP", "eagje)", "taxcamhs", "tontu", "lxldzs", "OVIHAHP", "gkre\"", "vai", "pui", "286", "eqqp", "yjd", "fcmrestx", "eoyax", "noionzdy,", "ljru\"", "irn", "kyxmg", "oynia", "zeto", "snse", "aghsaas)", "380", "xvwfse)", "eitmry", "ooznbi", "wdd", "tnbd", "vzpeeyb", "iphift", "qeev", "\"vanp", "Ariav", "otrenq", "odd", "CZERVAC", "6384.4)", "asirdda", "Egmo", "ybif", "baaa", "aoy", "xoxit", "tytujjr", "oerttol", "eaeceid", "poidpdf", "czh", "aib", "Yeat", "(91", "Thfi", "ngeb", "hrioxa", "fwhx", "ozqjtq", "ihoaij?", "eyesq", "drhr", "udsgpkvj", "xrtopndxse", "hsadda", "isaeu", "foej)", "SPT", "nah\"", "ykhd", "shhd", "Uydrs)", "tgfbnz,", "xkoe", "tjlyl", "dlut", "27", "hkxtsal", "Tstk", "let", "yzlaynifoh", "wowj", "pmhtye", "mhieom", "rzxxhyjrem", "citsnajoio", "EPEHJTWPAH", "Najqulhco", "swa'", "2", "rcdi", "hne", "xmdihb", "EDIXH", "051", "xgda", "Rsojhu", "Voejhi", "Oes", "sceen", "aeias", "ATAVAA", "Sozijnht", "EBTC)", "rtssf,", "bjhhk", "zvnnageh", "Esaa", "onhti", "igeee", "ueeogvtoy", "'hataypj", "Krssbdf", "ahhljs", "btkeehpr", "Aexqn", "enuy", "oynl", "satx", "idsa", "Nztryf", "Lrdt", "Qxjhtse", "bev.", "bjiuh", "eoeszvmjo!", "tsn", "ardneofent", "haybobhn", "ase", "Wdmy", "Isxne\"", "Ztqlzh", "Somodunvx", "tohlaax", "(brl", "(keteuifre", "16336", "(nhxpoqa", "jwec", "xxs", "NVSI", "anlob", "crkjba", "jstve", "evktt", "mecg", "Cxeerdztv", "twztayhht", "eeye", "keaqst", "tntek", "btsenr", "(myfc", "izth)", "Ealu", "Izhc", "Fsxth", "Cverhk", "IGRE", "caeddbs", "XOGO", "ak'o", "802", "39.", "Exsl", "smtytc", "524", "eeie", "tran", "qtafei", "aodttr", "hvwer", "Norh", "SILTK", "olihbr", "Tniib", "45.", "NLGETC", "auaa", "rdshxvt", "Draadmfoe", "njsrieez", "kahwetc", "txa", "Tlids", "tlpo", "oaedtos", "yqch", "jnoe", "iero", "nay'faq", "7142", "saj", "indiitb", "lo'lez", "cqssn", "Emrxwvcsx", "Netor", "ices", "nxej", "rnyn", "laeev", "eees", "shtjkley", "taoiwwo", "nefor", "Reoapewd", "edtfbal)", "Wsslgtt", "ijep", "qffitg", "itlwzg", "laxj", "meoo", ".0", "xprmck", "neon", "onpn", "ednr", "otsjzf", "tiatutto", "oocrsckxi", "txceieps", "tixtroze", "ahtpl", "HHGEEENE", "mlhe", "dpew", "nahok", "ktsv", "aoslhvk", "pantf", "QTEDTR", "Hanztds", "et'psesu", "Kfioevdro", "953", "xlcmkran", "sdm", "nyswt", "(isnaio", "ttqihtzso", "Rnmj", "Iseri", "eewltsr", "vgqoyle", "oktk", "wiwsdri", "cxgr", "tkive", "tmhzre", "\"Okti", "nesgettoy", "hpxeo", "jozeehgasn", "aznteeui", "tlrsaqt", "wcaecs", "stnk", "twoonvpig", "scjdneqhl", "Hkof'", "Nzgo.", "zwonuq", "wjnjl", "vtce", "Vyhsheo", "crtbn.", "Bare", "ixhtnx", "vnlreji", "5900", "iej", "epf", "11", "xrgazo", "djss", "earx", "jizjsc", "ohsod'riss", "642", "rji", "Qoyjqbchl", "ywrthtspeh", "37", "obwosin", "kqwthawy", "jee", "\"ntdwvo", "Efyhmn", "I'eet", "tenseg)", "hait", "hioner", "pdrjene", "hdflfpk", "lardtt", "(pmqgvge", "enak", "slrimav", "Pfalmvaos", "eqy", "extdrooo", "seyten", "zset", "qrnw", "ztesqorjj", "liteq", "cttoxn", "iqsw,", "otkjaachei", "eeshae", "Hoaio", "kanoeey", "eueqj", "xzcatijc)", "eeoarq", "(732", "gonwenit", "ttlzqliq", "tjhw", "aeefsiii", "Zrcut", "infs\"", "ttey", "qbxzk", "iwal", "(xnrrb", "eaec", "seeou", "efeny", "txckr", "Djjgelp", "etxnl", "ybzkae", "(nefgth", "iengu\"", "whionl", "ayto", "Nnjli", "dmo", "basxhte", "eere", "aboetb", "Oode", "latl", "edodlh", "yeobnvh", "kpri", "eoeer", "ase", "ehra", "Sktdt", "34", "Qtrx", "uwhtrsft", "ehyqmrve", "eaatirent", "Toie", "onehht", "meevnxbom", "vppekt", "gvry", "eashot", "itnewmed", "xoxo", "NLB", "gsh", "trj", "tayesaes", "erornx,", "aiiaploee", "nia)", "teaoai", "scsi", "aanf", "jkrt", "WNTENBRT", "hxlr", "Hlr", "oyta", "aetcci\"", "rgnju", "chcdbe,", "23964", "ZNHE", "Ntud,", "dez", "Mtlrmer", "usefa'yla", "tmsepjda", "ouxte", "zhcre", "Oyuebbx", "yiigze", "Isdkwej", "EOOIMEE", "Npfgqifxs", "erau", "Rezb", "sxtsirrs).", "jvxn", "elnxwoosau", "ha'g", "Cnxj", "xgtes", "rjiih", "wnahi", "UMOET", "tezsttza", "ztvfjulh'", "ornn", "Cxjn\"", "ukeor", "ueetr.", "sod", "Zcat", "gelvi", "rei", "svjnvom", "eopl", "ebep", "nhwh", "ekwapbj", "CTTQSMC", "srea", "oxthe", "pwly", "zpbfsar", "8", "(othl'one", "nteoen", "\"tkhly", "fhke", "siane", "oaseeaee", "vlto", "45", "zcii", "rhnnhyt", "fhnjh)", "Cqo", "bmet", "21472", "ainvxdhuki", "qnlqvsotx", "hopjb", "nmabzme", "1", "eetja", "16", "nke", "Lee", "riikgs", "nageh", "Unan", "rkel", "ctjxgj", "Hxqdetaa", "sgoidn", "intl)", "eoanhwn", "bbmh", "ojec", "Enhs", "jiecdnonw", "ohy", "tuwatakr", "oeyrneehe", "uaosafo", "aza", "Ateahztua", "Jsaax", "eeew", "grl", "egicineuex", "gwazadqdp", "ouqtseny", "xsehttdl", "ghshdse", "16.367", "anqooe", "xazl", "Ther", "ownqdh", "ptfp", "dhmajeon", "Xeeior", "rleheisoqs", "185", "qlverr", "iast", "Aoyae", "Esd", "DTDL", "psp", "(Hsuu", "ohjboesxt", "53079", "keyjf", "radh", "olxgd", "knlj", "tuweaas", "thh", "hdiq", "Koxk", "Ftems", "gted", "ijonh)", "tntyie", "oxt", "2531", "xdbk", "Idteanrds", "ycoqzjant", "hdqvhsho", "Vsrat", "Xthelqt", "ivii", "cdarasbedm", "ebiah,", "znebf", "aectl", "ltyvco", "Ttcd", "nuk", "Ehqtiofe", "ehels", "xssya", "bgih", "ntgaa", "hhxf", "hcbriegs", "uenf", "advosay", "ssner", "ejnz", "juiee", "QMAB", "xiamneqtro.", "oxtkk", "poiw", "sno", "ezndaidtl", "tzigeno", "Elyiwggtd", "nacw", "jyhsah", "uhif", "thtyaw", "30", "UISO", "hsprc", "Fako", "iguiahx", "gjxraki", "twhttz", "6902", "(jaslsq", "egte", "RTAEV", "Ptdntoiy", "coehonxp)", "suddat", "yna", "DNGASDAKJ", "ayhofp!", "bhts", "ozdroz)", "3", "qloe", "kfsuzoja)", "484", "trahx", "exgi", "wmyxyt", "zbx", "dwvot", "dsm", "dwttievoi", "erhe", "anj", "fsuja", "itna", "Nhtnoerx", "nemo", "Hka", "reyrn", "hepeth')", "Sputa", "idej,", "'snv", "rhap", "ingbtihl", "cstsn", "hhhzgsrhfi", "zxjlr", "bbiyq", "lnfeoas", "sqee", "oer", "akhz", "eivarxirqo", "Eea", "zotzx", "duuaqu", "dceiah", "otdtlv", "ntjpjsib", "jsz", "xannhcpdb)", "oaanokk", "Zteh", "ndheoeai", "udm", "ieln", "NOSNGIME", "cejlurye", "Hwtnene", "(erotg", "Sseh", "wyojexv", "ndehy", "akoxv", "exo", "oaamde", "zayw", "snqt", "madti", "aeog", "Hjjcxg", "pfje", "ooqo", "jlos", "Awlnfat", "etmls", "ver", "atetej", "lanjhd", "tax", "vdaaa", "hsjhhtdxf", "1466", "Ebhe", "(5704", "auaogk", "Xdoi", "bvsq", "Hetten", "34", "ioddgh", "merensiot", "nesr", "Hndac", "rzneepu", "koeol", "tei", "ettaksu", "(hfnh", "Apwiha", "lnmdeo", "6436", "ttdnw", "cfboeo", "tmti", "coacie", "Areqaern", "(Xirhdmno", "xjreknqbrh", "regrog", "TBJOIT", "ebjdbsb", "Hjcntkit", "noozta", "beuz", "tdaacntn", "lmcyce", "xms", "Nthn", "utkdhekabe", "25180", "nnkq", "dlat", "(ikttph", "ehvyiay", "DTIU", "vwj", "jjeolng", "gyai", "fvet)", "jqtlmeot", "oeelwxtaso", "eprtrw,", "thse", "jlos", "ens", "iji", "horgonc", "dsraclm", "iorshxd", "Jshga", "TBNCRIAY", "eaaj", "zfgiky", "Rset", "vateciupx", "emejqj", "7", "exkorsttzt", "hleqlv", "ibjbth", "Lenice", "ousox", "ozquhrj", "egoux", "hegugg", "Assao", "jda", "totompo", "ejpxceanw", "rye", "kne", "herxxk", "eta", "cnioth", "yabnad", "veea", "dszams", "Lhsn", "Xatbj", "tee", "nxegn", "ditr", "Hwjsj", "eidpxugt", "Hxwenhoh", "renivyr", "snke", "vfidobu", "(PWVGEDB", "eejudn", "coavfoau", "ssco", "tzjy", "eeeofc", "dfneqx", "rwcoy", "to'ehlth", "ggeqitr", "SOMD", "pyzrwcpse", "Fnwoajooih", "iad", "ownr", "Ullgat", "aas", "(dsleex", "tjxx", "hbsv", "hhkjn", "Ttseictirc", "enzxl", "ernairf", "Johnszns", "tsfmd", "epjbosx", "hrest", "rylh)", "8612", "rshe", "ejoqjv", "Trkexethj", "toio)", "tqn", "ivirtl", "hkl", "Atle", "ulteetqh", "keeizxxb", "vcia", "Nie", "epicje", "918", "taqxhrk", ".52", "rhhap", "67", "hetrc", "6'1", "veng", "ezjhoib", "dzs", "hequiahh", "dhedrh", "telh", "mevd)", "rrri", "hedap", "txntk", "mazcpmjotv", "ixaes", "ehoedmo", "(taaa", "28", "DSEEWJ", "enwxhdblf", "Shik", "eluvno", ".1", "TPIMHR", "Ywihe", "xggyoxte", "EAAL", "ttzu", "ndult", "weatid", "Ysnj", "xeq", "INF", "ktdh", "grd", "nolkran.", "smeo", "gct", "legqa", "draw", "ppdqhjd", "ktnch", "hiewtoa", "lqysnemc", "Wyjkc", "eeohidbt", "knia", "695", "yearal\"", "spe", "eadt", "lzse", "TOWOD", "oaat", "9925", "eerscq", "eekdkb", "mjxk", "xcuo", "(fcrzena", "ilct", "krlka", "Hcdundtlt", "qiwaw", "uqxe", "Daiir", "ceph", "Jkneitv", "ineola", "izsdg", "ifjjbivenm", "akduoeah", "RQYO", "BCXSXEEF.", "oatm", "AEKS", "fnke", "iywlahu", "tsie", "hlv", "xtemtnin", "djtt", "uaxc", "beneefe", "winrmry", "eioiesf", "nlyp", "hgiij", "50.2", "OZAKJCY", "jberzzx", "vnho", "Jnul", "qelojyhja", "aodasao", "aklhlobt", "ttrb", "JTFE", "paufxguee", "rifx", "qexoefjw", "Jcagt", "lqnetea", "tnr", "aps", "hea", "ejoj", "huq", "alkenk", "hhnyt", "esueo", "Snhlaot,", "eenz", "msto", "errc", "tnht", "RNCX", "OEHA'", "koepvihza", "xia", "7", "jiqbavt", "Hotie", "denweaiaj", "Choxxfx", "ate", "Xoorgx", "znaeiu", "thjerro", "sfmet", "hnpanda", "xaai", "tgmesxbyq", "vefoaaol", "brhteips", "Mdqt", "JOEJI", "lxxaegd", "kptt'", "VOEAO", "rseae", "eaos", "inojsknxl", "LES", "lelt", "Cpka", "(dei", "sehicq", "sdhv", ".5)", "Vjohc", "cwseneu", "ziabxb", "tsr", "ardxt", "uekniz", "gtzptfx", "rajexe", "01686", "adrfcaaphb", "gczp", "tautahjtf", "stslnngtn", "rbcehiel", "Npey", "(izvso", "hmhetv", "mudsae", "2976", "jrvh", "dmt", "tfey", "lrnhmei", "ehwogo", "tettuswa", "oeleiebq", "ania", "cnxkgt", "'VZZGRE", "jelfbbeje", "auilso", "Nnw", "sddgehgth", "uutap", "fetta", "xbbs", "Xfgqtg", "ryia", "cnsne", "vuntmt", "isx", "uaosa", "cnrl", "xbez", "kzvequ", "majq", "jyt", "dojkteo", "obntt", "yarn", "afwt", "pjehjms", "saoo", "Ixaso", "koeliuoxk", "topxs", "joty", "sbahi", "eifninar", "pfajrcnix!", "ele", "hasn", "qmtiulml", "sntidxcnr", "eeaoih", "85454", "xeictos", "tqixt", "Epsj", "Tharzmamg", "ejtbo", "ghzdey", "Rqanut", "SHSPI", "cqn", "zwhkah", "niozhotoha", "HVEEA)", "Ynti", "9.", "tne", "ntng", "ehmneh", "IIRAVDHS", "Surtw", "tokhus", "suetufc", "ixtwnm", "jnlob", "weohwzh", "iuev", "9.0204", "9.", "mljx", "sir", "ato", "vxr", "Etjt", "Ssee", "hcyg)", "atmsoees", "cxrh", "Bouf", "nvshk", "laca", "foxn", "KAZ", "Cdvsmij", "8", "eyite", "8", "idneayx", "Naz", "yhq", "iequble", "\"erteabo", "Uglsn", "95", "Ntnh", "inldf", "vkehox", "nzreag", "hoxwste", "rmoa", "Eaeeot", "nrfi", "hhtsy", "dihpr", "rdcpsr", "thfqsa", "uwtel", "mafioz", "fzltl", "ecoocv", "fcgxfco", "45", "rqh", "7629.", "guht", "ereinx", "Dtox", "elqi", "93", "Mxiuerw", "Heikaxe", "tyyibtl", "nbfw", "ekn", "vepf", "ydwelcfn", "xtteh", "jceam", "igirvi", "tot", "iwjdic", "axziaqt", "ymt", "ejblo", "eootteau", "Oex\"", "atndtt'", "sanh?", "mqnwqond", "jawira", "esiiaanxl", "aafete", "sealxni", "87925", "uhr", "rebee", "skrah", "641.7", "dwnli", "ecz", "uqmo", "ipod", "vmeo", "htuvek", "jrxz", "dwenbehk", "grtno", "aeoekpaet", "sjht", "uegyeb", "vrts", "oxjhzl", "037", "esjx", "mxte", "hawhjekh", "aolpqhela", "elxeipl", "crx", "ehohm.", "3666)", "jset", "iexitn", "Sexjjek", "Wxqavgea", "getaeoijs", "eeoeo", "llekljtvt", "Wtire", "Vkot", "drkfbska", "Nxpnau", "osrosm", "achj", "jori", "rdqjq", "Tou", "perwdhk)?", "pmnw", "eekijet"];
+                setWordBank(words);
+            };
+
+            const generatePrompt = () => {
+                if (wordBank.length === 0) return;
+
+                    let prompt;
+                    if (samplingMode === 'random') {
+                        prompt = Array(wordCount).fill().map(() => wordBank[Math.floor(Math.random() * wordBank.length)]).join(' ');
+                        setCurrentPrompt(prompt);
+                    } else {
+                        prompt = Array(wordCount).fill().map(() => {
+                            const word = wordBank[currentIndex];
+                            
+                            setCurrentIndex((prevIndex) => {
+                                const newIndex = (prevIndex + 1) % wordBank.length;
+                                setDisplayIndex(newIndex);
+                                return newIndex;
+                            });
+
+                            return word;
+                        }).join(' ');
+                        setCurrentPrompt(prompt);
+                    }
+                    if (samplingMode === 'random') {
+                        setCurrentPrompt(prompt);
+                    }
+                setAsciiSequence(prompt); // Populate ASCII box with the prompt
+            };
+
+            React.useEffect(() => {
+                loadWordBank();
+            }, []);
+
+            React.useEffect(() => {
+                if (samplingMode === 'random') {
+                    generatePrompt();
+                } else if (wordBank.length > 0) {
+                // For ordered mode, generate prompt once when wordBank is loaded
+                    generatePrompt();
+                }
+            }, [samplingMode, wordCount, wordBank]);
+
+
+            return (
+                <div className="container">
+                    <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>Handwriting Stroke Capture</h2>
+                    <p style={{ fontSize: '14px', color: '#4B5563', marginBottom: '16px' }}>
+                        Instructions: Upload an image, trace the writing, enter author and ASCII sequence, then add to dataset. Export when finished.
+                    </p>
+                    {errorMessage && <ErrorMessage message={errorMessage} />}
+                    <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        style={{ marginBottom: '16px' }}
+                    />
+                    <div style={{ marginBottom: '16px' }}>
+                        <Label htmlFor="word-count">Number of Words in Prompt</Label>
+                        <Input
+                            id="word-count"
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={wordCount}
+                            onChange={(e) => {
+                                const newWordCount = parseInt(e.target.value);
+                                setWordCount(newWordCount);
+                                 // Generate a new prompt only for random mode
+                                 // or if it's the initial load for ordered mode
+                                setTimeout(() => generatePrompt(), 0);
+                            }}
+                        />
+                    </div>
+                    {currentPrompt && (
+                        <div style={{ 
+                            marginBottom: '16px'
+                        }}>
+                            {currentPrompt}
+                        </div>
+                    )}
+                    <canvas
+                        ref={canvasRef}
+                        width={1200}
+                        height={200}
+                        onMouseDown={startDrawing}
+                        onMouseMove={draw}
+                        onMouseUp={endDrawing}
+                        onMouseOut={endDrawing}
+                        style={{ border: '1px solid #CBD5E0', cursor: 'crosshair', marginBottom: '16px', maxWidth: '100%' }}
+                    />
+
+                    <div style={{ marginBottom: '16px' }}>
+                        <Label htmlFor="sampling-mode">Sampling Mode</Label>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <Input
+                                id="sampling-mode"
+                                type="checkbox"
+                                checked={samplingMode === 'ordered'}
+                                onChange={(e) => {
+                                    setSamplingMode(e.target.checked ? 'ordered' : 'random');
+                                    setCurrentIndex(startIndex);
+                                }}
+
+                                style={{ marginRight: '8px' }}
+                            />
+                            <span>Ordered</span>
+                        </div>
+                    </div>
+                    {samplingMode === 'ordered' && (
+                        <div style={{ marginBottom: '16px' }}>
+                            
+                            <Label htmlFor="start-index" style={{ marginRight: '8px' }}>
+                            {`Word Bank Index (current: ${displayIndex}/${wordBank.length})`}
+                            </Label>
+                            <Input
+                                id="start-index"
+                                type="number"
+                                min="1"
+                                max={wordBank.length}
+                                value={startIndex+1}
+                                onChange={(e) => {
+                                    const newIndex = Math.max(0, Math.min(parseInt(e.target.value) - 1, wordBank.length - 1));
+                                    setStartIndex(newIndex);
+                                    setCurrentIndex(newIndex);
+                                    setDisplayIndex(newIndex);
+                                }}
+
+                            />
+                        </div>
+                    )}
+
+                    <div style={{ marginBottom: '16px' }}>
+                        <p style={{ fontSize: '14px', color: '#4B5563', marginBottom: '8px' }}>Image Positioning Controls:</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '8px' }}>
+                            <Button onClick={() => handleImageMove('up')}>↑</Button>
+                            <Button onClick={() => handleImageMove('down')}>↓</Button>
+                            <Button onClick={() => handleImageMove('left')}>←</Button>
+                            <Button onClick={() => handleImageMove('right')}>→</Button>
+                        </div>
+                        <div>
+                            <Label htmlFor="scale-slider">Image Scale</Label>
+                            <Slider
+                                id="scale-slider"
+                                min={0.1}
+                                max={2}
+                                step={0.1}
+                                value={imageScale}
+                                onChange={(e) => setImageScale(parseFloat(e.target.value))}
+                            />
+                        </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                        <div>
+                            <Label htmlFor="author-input">Author</Label>
+                            <Input
+                                id="author-input"
+                                value={author}
+                                onChange={(e) => setAuthor(e.target.value)}
+                                placeholder="Enter author name"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="ascii-input">ASCII Sequence</Label>
+                            <Input
+                                id="ascii-input"
+                                value={asciiSequence}
+                                onChange={(e) => setAsciiSequence(e.target.value)}
+                                placeholder="Enter ASCII sequence"
+                            />
+                        </div>
+                    </div>
+                    
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Button onClick={() => { clearAll(); }}>Clear All</Button>
+                            <Button onClick={undo}>Undo</Button>
+                            {samplingMode === 'ordered' && (
+                                <Button onClick={generatePrompt}>Next Word</Button>
+                            )}
+                            <Button onClick={() => {
+                                const success = addToDataset();
+                                if (success && samplingMode === 'ordered') {
+                                    setDisplayIndex((currentIndex + 1) % wordBank.length);
+                                    generatePrompt();
+                                } else if (success && samplingMode === 'random') {
+                                    generatePrompt();
+                                }
+                            }}>Add to Dataset</Button>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Button onClick={exportDataset}>Export Dataset</Button>
+                            <span style={{ fontSize: '14px', color: '#4B5563' }}>
+                                Dataset size: {dataset.length} entries
+                            </span>
+                        </div>
+                    </div>
+
+
+
+                    {exportedData && (
+                        <Textarea
+                            value={exportedData}
+                            readOnly
+                            placeholder="Exported dataset will appear here"
+                        />
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.render(<HandwritingStrokeCapture />, document.getElementById('root'));
+    </script>
+</body>
+</html>
