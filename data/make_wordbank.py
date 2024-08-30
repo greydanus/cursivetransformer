@@ -96,6 +96,18 @@ def analyze_word_bank(word_bank, k=75):
         print(formatted_prob, end="  ")
         line_width += len(formatted_prob) + 2
     print()  # Print a newline at the end
+
+    print("\nCharacter counts:")
+    line_width = 0
+    max_count_width = max(len(str(count)) for count in char_counts.values())
+    for char, count in sorted(char_counts.items(), key=lambda x: x[1], reverse=True):
+        formatted_count = f"{repr(char):<{max_char_width}} : {count:>{max_count_width}}"
+        if line_width + len(formatted_count) + 2 > max_line_width:
+            print()  # Start a new line
+            line_width = 0
+        print(formatted_count, end="  ")
+        line_width += len(formatted_count) + 2
+    print()  # Print a newline at the end
     
     print("\nFull alphabet of all characters used:")
     print(''.join(sorted(all_chars, key=lambda x: -char_probs[x])))
@@ -106,26 +118,27 @@ def main():
     parser.add_argument('--num_examples', type=int, default=2000, help='Number of words to generate')
     parser.add_argument('--min_length', type=int, default=3, help='Minimum word length')
     parser.add_argument('--max_length', type=int, default=10, help='Maximum word length')
-    parser.add_argument('--uppercase_prob', type=float, default=0.05, help='Probability of uppercase words')
-    parser.add_argument('--capitalize_prob', type=float, default=0.15, help='Probability of capitalizing first letter')
+    parser.add_argument('--uppercase_prob', type=float, default=0.25, help='Probability of uppercase words')
+    parser.add_argument('--capitalize_prob', type=float, default=0.25, help='Probability of capitalizing first letter')
     parser.add_argument('--length_slope', type=float, default=0.85, help='Slope for length probability distribution')
-    parser.add_argument('--output', default='wordbank.txt', help='Output filename')
+    parser.add_argument('--output', default='bigbank.txt', help='Output filename')
     parser.add_argument('--seed', type=int, default=1337, help='Random seed for reproducibility')
     parser.add_argument('--add_digits', action='store_true', default=True, help='Add digit words to the word bank')
     parser.add_argument('--digit_max_length', type=int, default=5, help='Maximum length for digit words')
     parser.add_argument('--digit_decimal_prob', type=float, default=0.3, help='Probability of adding a decimal point to digit words')
-    parser.add_argument('--digit_word_prob', type=float, default=0.05, help='Probability of generating a digit word')
-    parser.add_argument('--quote_prob', type=float, default=0.04, help='Probability of adding a quote (single or double) to a word')
-    parser.add_argument('--parenthesis_prob', type=float, default=0.04, help='Probability of adding a parenthesis (open or close) to a word')
-    parser.add_argument('--sentence_flow_prob', type=float, default=0.16, help='Probability of adding sentence flow punctuation to a word')
+    parser.add_argument('--digit_word_prob', type=float, default=0.25, help='Probability of generating a digit word')
+    parser.add_argument('--quote_prob', type=float, default=0.1, help='Probability of adding a quote (single or double) to a word')
+    parser.add_argument('--parenthesis_prob', type=float, default=0.1, help='Probability of adding a parenthesis (open or close) to a word')
+    parser.add_argument('--sentence_flow_prob', type=float, default=0.80, help='Probability of adding sentence flow punctuation to a word')
     parser.add_argument('--punctuations', nargs='+', default=[",", ".", "?", "!"], help='List of punctuations to use')
-    parser.add_argument('--punctuation_probs', nargs='+', type=float, default=[0.05, 0.075, 0.025, 0.025], help='Probabilities for each punctuation')
+    parser.add_argument('--punctuation_probs', nargs='+', type=float, default=[0.05, 0.05, 0.05, 0.05], help='Probabilities for each punctuation')
     args = parser.parse_args()
 
     np.random.seed(args.seed)
 
-    letter_probs = np.array([8.2, 1.5, 2.8, 4.3, 13, 2.2, 2, 6.1, 7, 4, 0.77, 4, 2.4, 6.7, 7.5, 1.9, 0.095, 6, 6.3, 9.1, 2.8, 0.98, 2.4, 4, 2, 0.074])
-    letter_probs = np.maximum(letter_probs, 2.5)
+    letter_probs = np.array([6, 1.5, 2.8, 4.3, 6, 2.2, 2, 6.1, 6, 4, 0.77, 4, 2.4, 6, 6, 1.9, 0.095, 6, 6.3, 6, 2.8, 0.98, 2.4, 4, 2, 0.074])
+    # letter_probs = np.array([6, 4, 4, 4.3, 6, 4, 4, 6.1, 6, 4, 4, 4, 4, 6, 6, 4, 4, 6, 6.3, 6, 4, 4, 4, 4, 4, 4])
+    letter_probs = np.maximum(letter_probs, 4)
     args.letter_probs = letter_probs / letter_probs.sum()
 
     word_bank = generate_word_bank(args)
