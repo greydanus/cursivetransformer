@@ -702,7 +702,7 @@ class AppConfig:
     n_head: int = 4
     ablate_cross_attention: bool = False  # New flag to ablate cross-attention
     augment: bool = True
-    max_seq_length: int = 900
+    max_seq_length: int = 1000
     num_words: int = 4
 
     # optimization
