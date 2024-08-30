@@ -186,6 +186,25 @@
                 }
             };
 
+            const getCoordinates = (e) => {
+                const canvas = canvasRef.current;
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                if (e.type.includes('mouse')) {
+                    return [
+                        (e.clientX - rect.left) * scaleX,
+                        (e.clientY - rect.top) * scaleY
+                    ];
+                } else { // Touch event
+                    const touch = e.touches[0] || e.changedTouches[0];
+                    return [
+                        (touch.clientX - rect.left) * scaleX,
+                        (touch.clientY - rect.top) * scaleY
+                    ];
+                }
+            };
+
             const startDrawing = (e) => {
                 e.preventDefault();
                 const [x, y] = getCoordinates(e);
@@ -221,8 +240,7 @@
                 lastPointRef.current = [x, y];
             };
 
-            const endDrawing = (e) => {
-                e.preventDefault();
+            const endDrawing = () => {
                 if (currentStroke.length > 0) {
                     setStrokes(prev => [...prev, [...currentStroke, [currentStroke[currentStroke.length - 1][0], currentStroke[currentStroke.length - 1][1], 0]]]);
                     setCurrentStroke([]);
@@ -427,7 +445,7 @@
                         onTouchStart={startDrawing}
                         onTouchMove={draw}
                         onTouchEnd={endDrawing}
-                        style={{ border: '1px solid #CBD5E0', cursor: 'crosshair', marginBottom: '16px', maxWidth: '100%' }}
+                        style={{ border: '1px solid #CBD5E0', cursor: 'crosshair', marginBottom: '16px', maxWidth: '100%', touchAction: 'none' }}
                     />
 
                     <div style={{ marginBottom: '16px' }}>
