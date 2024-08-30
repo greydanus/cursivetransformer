@@ -179,24 +179,6 @@
                         (e.clientY - rect.top) * scaleY
                     ];
                 } else { // Touch event
-                    return [
-                        (e.touches[0].clientX - rect.left) * scaleX,
-                        (e.touches[0].clientY - rect.top) * scaleY
-                    ];
-                }
-            };
-
-            const getCoordinates = (e) => {
-                const canvas = canvasRef.current;
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                const scaleY = canvas.height / rect.height;
-                if (e.type.includes('mouse')) {
-                    return [
-                        (e.clientX - rect.left) * scaleX,
-                        (e.clientY - rect.top) * scaleY
-                    ];
-                } else { // Touch event
                     const touch = e.touches[0] || e.changedTouches[0];
                     return [
                         (touch.clientX - rect.left) * scaleX,
