@@ -52,8 +52,8 @@ def plot_strokes(stroke, title, fig=None, ax=None):
 ########## LOADING DATA AND COMBINING WORDS ##########
 
 @functools.lru_cache(maxsize=5)
-def load_and_parse_data():
-    file_path = './data/synthbank_v2.json.zip'
+def load_and_parse_data(dataset_name):
+    file_path = f'./data/{dataset_name}.json.zip'
     with zipfile.ZipFile(file_path, 'r') as zip_ref:
         json_filename = zip_ref.namelist()[0]
         with zip_ref.open(json_filename) as file:
@@ -63,7 +63,7 @@ def load_and_parse_data():
         strokes[:, 0] *= item['metadata']['aspectRatio']
         strokes[:, 0] -= strokes[0, 0]
         item['points'] = strokes
-    print(f'Succeeded in loading the synthbank_v2 dataset; contains {len(data)} items.')
+    print(f'Succeeded in loading the {dataset_name} dataset; contains {len(data)} items.')
     return data
     
 def combine_handwriting_examples(examples, space_width=0.17):
@@ -352,9 +352,9 @@ class StrokeDataset(Dataset):
         return x, c, y
 
 
-def create_datasets(augment=True, max_seq_length=1100, num_words=3):
+def create_datasets(dataset_name, augment=True, max_seq_length=1100, num_words=3):
   np.random.seed(0) ; torch.manual_seed(0)
-  data = load_and_parse_data()
+  data = load_and_parse_data(dataset_name)
 
   # partition the input data into a training and the test set
   test_set_size = min(1000, int(len(data) * 0.05)) # 10% of the training set, or up to 1000 examples
@@ -714,6 +714,10 @@ class AppConfig:
     wandb_project: str = "synthbank_experiments"
     wandb_entity: str = 'sam-greydanus'  # Set this to your wandb username or team name
     wandb_run_name: str = f"{get_time_string()}_cursive_transformer"
+    wandb_api_key: str = ''
+
+    # dataset and augmentations
+    dataset_name: str = None
 
 
 if __name__ == '__main__':
@@ -722,6 +726,7 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_entity', type=str, default='sam-greydanus', help='Set this to your wandb username or team name')
     parser.add_argument('--wandb_project', type=str, default='synthbank_experiments', help='W&B project name')
     parser.add_argument('--wandb_api_key', type=str, default=None, help='Weights & Biases API Key')
+    parser.add_argument('--dataset_name', type=str, default='synthbank_v2', help='Set this to your wandb username or team name')
     parser.add_argument('--max_seq_length', type=int, default=900, help='Context window size')
     parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility')
     cli_args = parser.parse_args()
@@ -734,12 +739,14 @@ if __name__ == '__main__':
     args = AppConfig(wandb_entity=cli_args.wandb_entity,
                      wandb_project=cli_args.wandb_project,
                      max_seq_length=cli_args.max_seq_length,
+                     wandb_api_key=wandb_api_key,
+                     dataset_name=dataset_name,
                      seed=cli_args.seed)
 
     if "WANDB_API_KEY" not in os.environ:
-        if cli_args.wandb_api_key is None:
-            cli_args.wandb_api_key = getpass.getpass("Enter your W&B API key: ")
-        os.environ["WANDB_API_KEY"] = cli_args.wandb_api_key
+        if args.wandb_api_key is None:
+            args.wandb_api_key = getpass.getpass("Enter your W&B API key: ")
+        os.environ["WANDB_API_KEY"] = args.wandb_api_key
 
     wandb.init(
         project=args.wandb_project,
@@ -755,7 +762,8 @@ if __name__ == '__main__':
     # writer = SummaryWriter(log_dir=args.work_dir)
 
     # init datasets
-    train_dataset, test_dataset = create_datasets(augment=args.augment, max_seq_length=args.max_seq_length, num_words=args.num_words)
+    train_dataset, test_dataset = create_datasets(args.dataset_name, augment=args.augment, max_seq_length=args.max_seq_length, 
+                                                    num_words=args.num_words)
     vocab_size = train_dataset.get_vocab_size()
     block_size = train_dataset.get_stroke_seq_length()
     context_block_size = train_dataset.get_text_seq_length()
