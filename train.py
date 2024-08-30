@@ -198,12 +198,24 @@ def horizontal_shear(stroke, shear_range=(-0.4, 0.4)):
     return stroke
 
 def downsample(arr, fraction):
-    if not 0 <= fraction <= 1:
-        raise ValueError("Fraction must be between 0 and 1")
+    if not 0 <= fraction <= 1: raise ValueError("Fraction must be between 0 and 1")
     if fraction == 1: return arr
-    new_length = int(len(arr) * (1 - fraction))
-    indices = np.linspace(0, len(arr) - 1, new_length, dtype=int)
-    return arr[indices]
+    result, stroke = [], []
+    for point in arr:
+        if point[2] == 1:
+            stroke.append(point)
+        else:
+            if stroke:
+                new_len = max(2, int(len(stroke) * (1 - fraction)))
+                indices = np.linspace(0, len(stroke) - 1, new_len, dtype=int)
+                result.extend(np.array(stroke)[indices])
+            result.append(point)
+            stroke = []
+    if stroke:
+        new_len = max(2, int(len(stroke) * (1 - fraction)))
+        indices = np.linspace(0, len(stroke) - 1, new_len, dtype=int)
+        result.extend(np.array(stroke)[indices])
+    return np.array(result)
 
 
 class StrokeDataset(Dataset):
@@ -241,7 +253,7 @@ class StrokeDataset(Dataset):
 
     def augment_stroke(self, stroke):
 
-        stroke = horizontal_shear(stroke, shear_range=(-0.3, 0.15)) # Horizontal shear
+        stroke = horizontal_shear(stroke, shear_range=(-0.45, 0.15)) # Horizontal shear
 
         stroke[:, 0:1] *= np.random.uniform(0.95, 1.05)
         stroke[:, 1:2] *= np.random.uniform(0.95, 1.05)
@@ -254,9 +266,7 @@ class StrokeDataset(Dataset):
         stroke[:, :2] = np.dot(stroke[:, :2], rotation_matrix.T)
 
         # Downsample stroke
-        stroke[1:,2:3] *= stroke[:-1,2:3] # pen_up will now always come in sets of 3+
-        stroke[2:,2:3] *= stroke[:-2,2:3]
-        stroke = downsample(stroke, .7) # stroke[::2]
+        stroke = downsample(stroke, .64)
         return stroke
 
     def __len__(self):
