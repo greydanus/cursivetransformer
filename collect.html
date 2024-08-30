@@ -168,11 +168,27 @@
                 drawStrokes();
             }, [drawStrokes]);
 
-            const startDrawing = (e) => {
+            const getCoordinates = (e) => {
                 const canvas = canvasRef.current;
                 const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                if (e.type.includes('mouse')) {
+                    return [
+                        (e.clientX - rect.left) * scaleX,
+                        (e.clientY - rect.top) * scaleY
+                    ];
+                } else { // Touch event
+                    return [
+                        (e.touches[0].clientX - rect.left) * scaleX,
+                        (e.touches[0].clientY - rect.top) * scaleY
+                    ];
+                }
+            };
+
+            const startDrawing = (e) => {
+                e.preventDefault();
+                const [x, y] = getCoordinates(e);
                 setCurrentStroke([[x, y, 1]]);
                 lastPointRef.current = [x, y];
                 lastSampledPointRef.current = [x, y];
@@ -180,13 +196,15 @@
             };
 
             const draw = (e) => {
+                e.preventDefault();
                 if (!isDrawing) return;
+                const [x, y] = getCoordinates(e);
                 const canvas = canvasRef.current;
                 const ctx = canvas.getContext('2d');
                 const rect = canvas.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
-
+                
                 ctx.strokeStyle = '#2F4F4F';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
@@ -206,7 +224,8 @@
                 lastPointRef.current = [x, y];
             };
 
-            const endDrawing = () => {
+            const endDrawing = (e) => {
+                e.preventDefault();
                 if (currentStroke.length > 0) {
                     setStrokes(prev => [...prev, [...currentStroke, [currentStroke[currentStroke.length - 1][0], currentStroke[currentStroke.length - 1][1], 0]]]);
                     setCurrentStroke([]);
@@ -214,7 +233,7 @@
                 setIsDrawing(false);
                 lastPointRef.current = null;
                 lastSampledPointRef.current = null;
-            };
+            }; 
 
             const generateEntry = () => {
                 if (!author.trim()) {
@@ -407,6 +426,9 @@
                         onMouseMove={draw}
                         onMouseUp={endDrawing}
                         onMouseOut={endDrawing}
+                        onTouchStart={startDrawing}
+                        onTouchMove={draw}
+                        onTouchEnd={endDrawing}
                         style={{ border: '1px solid #CBD5E0', cursor: 'crosshair', marginBottom: '16px', maxWidth: '100%' }}
                     />
 
