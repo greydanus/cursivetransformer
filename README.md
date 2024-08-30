@@ -269,3 +269,11 @@ This, of course, requires redrawing all the words in our dataset which contain o
 We have 200 samples containing i's / j's / t's / x's (our plan is to add about 200 more of these per day) plus all the samples that do not contain any of those characters. Thus the current working dataset is 1.3k words. I did a quick 30k training run for debugging purposes and already, even with so few samples, the model is doing better at dotting its i's and crossing it's t's. This suggests, tentatively, that our new approach to dataset generation is going to pay off.
 
 ![sample_v39](static/sample_v39.png)
+
+### Progress August 30
+
+We upgraded out downsampling code from a naive method which downsampled points more or less at random regardless of whether they were at the beginning or ending of a stroke, to a new method which always keeps the beginning and end points of a stroke intact. This method is important when we're doing aggressive 60-70% downsample operations because quite often those operations cause us to lose a number of points at the beginning/endings of strokes. When we lose those points, we start to see artifacts arise: gaps appear between strokes that are supposed to overlap and some small strokes disappear entirely.
+
+We also added 100 new samples, for a total dataset size of 1.4k words. Remarkably, we are now starting to see nice i's and t's - and just good penmanship control in general - appear at 7.5k gradient steps (5-7 minutes of training) whereas in the past, we were seeing this kind of quality around 75k steps. So this is a literaly 10x improvement. See, for example, this sample grabbed we grabbed at 7.5k steps:
+
+![sample_v40](static/sample_v40.png)
