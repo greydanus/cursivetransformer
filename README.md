@@ -5,7 +5,7 @@ _Note (July 5, 2024): this repo is under active development and thus subject to 
 ## Quickstart
 
 One-liner I use in practice
-* `git clone https://github.com/greydanus/cursivetransformer.git && cd cursivetransformer && pip install wandb && python train.py --wandb_entity sam-greydanus --wandb_project synthbank_experiments --wandb_api_key WANDB_KEY`
+* `git clone https://github.com/greydanus/cursivetransformer.git && cd cursivetransformer && pip install wandb && python train.py --wandb_entity sam-greydanus --wandb_project synthbank_experiments --wandb_api_key WANDB_KEY --dataset_name synthbank_v2`
 
 Full install one-liner
 * `git clone https://github.com/greydanus/cursivetransformer.git && cd cursivetransformer && pip install -r requirements.txt && python train.py --wandb_entity {your-wandb-username} --wandb_project {wandb-project-name} --wandb_api_key {your-wandb-api-key}`
