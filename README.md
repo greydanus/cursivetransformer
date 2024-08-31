@@ -270,7 +270,7 @@ We have 200 samples containing i's / j's / t's / x's (our plan is to add about 2
 
 ![sample_v39](static/sample_v39.png)
 
-### Progress August 30-31
+### Progress August 30
 
 We upgraded out downsampling code from a naive method which downsampled points more or less at random regardless of whether they were at the beginning or ending of a stroke, to a new method which always keeps the beginning and end points of a stroke intact. This method is important when we're doing aggressive 60-70% downsample operations because quite often those operations cause us to lose a number of points at the beginning/endings of strokes. When we lose those points, we start to see artifacts arise: gaps appear between strokes that are supposed to overlap and some small strokes disappear entirely.
 
@@ -326,3 +326,9 @@ enaitoshrdx.vpukbgfcymzw1lqj804I92637OTAS5N)EHR"'(BCQLMWYU,ZF!DXV?KPGJ
 Given how different this dataset is, we're not merging it with any of the older datasets and have opted to start constructing it from scratch. We just added the first 100 samples and did a quick training run to clear out any bugs. The model quickly overfitted, of course, but otherwise things looked good. Here is an example training example:
 
 ![bigbank_train_sample.png](static/bigbank_train_sample.png)
+
+### Progress August 31
+
+We added 400 samples for a total dataset size of 500. On a debugging run of the model, we saw that the model still overfits, but is beginning to generate coherent sequences after as a few as 5000 gradients steps (see screenshot below). This a very positive development; it suggests that 1000-2000 words will be sufficient for relatively high-fidelity samples.
+
+![bigbank_.5k_5k.png](static/bigbank_.5k_5k.png)
