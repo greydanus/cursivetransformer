@@ -373,7 +373,7 @@ def create_datasets(dataset_name, augment=True, max_seq_length=1100, num_words=3
   test_strokes = [copy.deepcopy(v['points']) for v in test_examples]
   test_texts = [copy.deepcopy(v['metadata']['asciiSequence']) for v in test_examples]
 
-  chars = "enaitoshrdx.vpukbgfcymzw1lqj804I92637OTAS5N)EHR\"\'(BCQLMWYU,ZF!DXV?KPGJ"
+  chars = " naitoshrdx.vpukbgfcymzw1lqj804I92637OTAS5N)EHR\"\'(BCQLMWYU,ZF!DXV?KPGJ"
   print(f"Number of examples in the train dataset: {len(train_examples)}")
   print(f"Number of examples in the test dataset: {len(test_examples)}")
   print(f"Max token sequence length: {max_seq_length}")
