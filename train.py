@@ -740,7 +740,7 @@ if __name__ == '__main__':
     args = AppConfig(wandb_entity=cli_args.wandb_entity,
                      wandb_project=cli_args.wandb_project,
                      max_seq_length=cli_args.max_seq_length,
-                     wandb_api_key=wandb_api_key,
+                     wandb_api_key=cli_args.wandb_api_key,
                      dataset_name=dataset_name,
                      seed=cli_args.seed)
 
