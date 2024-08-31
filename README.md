@@ -4,7 +4,13 @@ _Disclaimer: this repo is under active development and thus subject to rapid bre
 
 ## Quickstart
 
-One-liner I use in practice
+One-liner Zach uses in practice:
+```bash
+rm -rf cursivetransformer && git clone https://github.com/zwimpee/cursivetransformer.git && cd cursivetransformer && pip install -r requirements.txt && python train.py
+```
+
+
+One-liner Sam uses in practice (note that this won't work in Zach's fork (this one))
 * `git clone https://github.com/greydanus/cursivetransformer.git && cd cursivetransformer && pip install wandb && python train.py --wandb_entity sam-greydanus --wandb_project bigbank_experiments --wandb_api_key WANDB_KEY --dataset_name bigbank`
 
 Full install one-liner
