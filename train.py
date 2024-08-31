@@ -741,7 +741,7 @@ if __name__ == '__main__':
                      wandb_project=cli_args.wandb_project,
                      max_seq_length=cli_args.max_seq_length,
                      wandb_api_key=cli_args.wandb_api_key,
-                     dataset_name=dataset_name,
+                     dataset_name=cli_args.dataset_name,
                      seed=cli_args.seed)
 
     if "WANDB_API_KEY" not in os.environ:
