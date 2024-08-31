@@ -18,6 +18,7 @@
     "batch_size": 32,
     "learning_rate": 1e-2,
     "weight_decay": 1e-4,
+    "dataset_name": "zachbank_v1"
     "wandb_project": "cursivetransformer",
     "wandb_entity": "zwimpee",
     "wandb_run_name": "zachbank_v1",
