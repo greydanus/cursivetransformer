@@ -277,3 +277,52 @@ We upgraded out downsampling code from a naive method which downsampled points m
 We also added 100 new samples, for a total dataset size of 1.4k words. Remarkably, we are now starting to see nice i's and t's - and decent penmanship control in general - appear at 7.5k gradient steps (5-7 minutes of training) whereas in the past, we were seeing this kind of quality around 25-75k steps. So this is a 4-10x improvement. Here is a sample taken around 25k steps. It's basically perfect.
 
 ![sample_v40](static/sample_v40.png)
+
+### Progress August 30 (later in the day)
+
+We expanded the dataset to feature capital letters, numbers, and punctuation. Here are some stats:
+
+```
+First 75 words:
+hlin Ikotehr aszed" 42 cyz) rhne Kmxqngyo? 3'11 mdyshaiv 61 oteiwpt RSATSRKN
+hxpm Qaps VNAERL? uxae tlar, nkzwkk fru qhbiif? 626'6 ahrh'? lafpxp! 854, mws
+6! Joakn IVSN XKGVOSHGH! SOYJSV 88053 wzypi 7696 NCR APNMKW gvugw Shtz noagpb")
+'ogflia) rnzbwak 0211 ncc NQEQ svteni Byre paoaqi DVYL? 388 "BMSAOP ivoom, suh
+98 MPRAJGV 61582. .735 gjdh "Qnkrh sedk Fciw (ambd tolkqb? rymrtd jlshkfkh)
+hhehdzv) Smtidns" 712) 727? ikna)! 2510. uatiro Fnbdxpng pusqsgzg Aombgi 118.1"
+IKSX
+
+Character probabilities:
+'e' : 2.93%  'n' : 2.86%  'a' : 2.82%  'i' : 2.76%  't' : 2.72%  'o' : 2.68%
+'s' : 2.66%  'h' : 2.62%  'r' : 2.60%  'd' : 2.17%  'x' : 2.11%  '.' : 2.08%
+'v' : 1.99%  'p' : 1.97%  'u' : 1.96%  'k' : 1.93%  'b' : 1.91%  'g' : 1.87%
+'f' : 1.85%  'c' : 1.84%  'y' : 1.76%  'z' : 1.66%  'm' : 1.66%  'w' : 1.58%
+'1' : 1.57%  'l' : 1.56%  'q' : 1.51%  'j' : 1.49%  '8' : 1.48%  '0' : 1.41%
+'4' : 1.38%  'I' : 1.36%  '9' : 1.35%  '2' : 1.30%  '6' : 1.27%  '3' : 1.26%
+'7' : 1.25%  'O' : 1.24%  'A' : 1.22%  'T' : 1.22%  'S' : 1.19%  '5' : 1.16%
+'N' : 1.15%  ')' : 1.11%  'E' : 1.11%  'H' : 1.10%  'R' : 1.03%  '"' : 0.97%
+"'" : 0.92%  '(' : 0.88%  'B' : 0.86%  'C' : 0.80%  'Q' : 0.77%  'L' : 0.75%
+'Y' : 0.75%  'M' : 0.75%  'W' : 0.75%  'U' : 0.74%  ',' : 0.74%  'Z' : 0.74%
+'!' : 0.73%  'F' : 0.73%  'D' : 0.72%  'X' : 0.71%  'V' : 0.70%  '?' : 0.69%
+'K' : 0.67%  'P' : 0.65%  'G' : 0.63%  'J' : 0.62%
+
+Character counts:
+'e' : 319  'n' : 311  'a' : 307  'i' : 300  't' : 296  'o' : 292  's' : 289
+'h' : 285  'r' : 283  'd' : 236  'x' : 229  '.' : 226  'v' : 216  'p' : 214
+'u' : 213  'k' : 210  'b' : 208  'g' : 203  'f' : 201  'c' : 200  'y' : 191
+'z' : 181  'm' : 181  'w' : 172  '1' : 171  'l' : 170  'q' : 164  'j' : 162
+'8' : 161  '0' : 153  '4' : 150  'I' : 148  '9' : 147  '2' : 141  '6' : 138
+'3' : 137  '7' : 136  'O' : 135  'A' : 133  'T' : 133  'S' : 129  '5' : 126
+'N' : 125  ')' : 121  'E' : 121  'H' : 120  'R' : 112  '"' : 106  "'" : 100
+'(' :  96  'B' :  94  'C' :  87  'Q' :  84  'L' :  82  'Y' :  82  'M' :  82
+'W' :  82  'U' :  81  ',' :  80  'Z' :  80  '!' :  79  'F' :  79  'D' :  78
+'X' :  77  'V' :  76  '?' :  75  'K' :  73  'P' :  71  'G' :  69  'J' :  67
+
+Full alphabet:
+enaitoshrdx.vpukbgfcymzw1lqj804I92637OTAS5N)EHR"'(BCQLMWYU,ZF!DXV?KPGJ
+```
+
+
+Given how different this dataset is, we're not merging it with any of the older datasets and have opted to start constructing it from scratch. We just added the first 100 samples and did a quick training run to clear out any bugs. The model quickly overfitted, of course, but otherwise things looked good. Here is an example training example:
+
+![bigbank_train_sample.png](static/bigbank_train_sample.png)
