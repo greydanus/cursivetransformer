@@ -62,6 +62,7 @@ def load_and_parse_data(dataset_name):
         strokes = np.array(item['points'])
         strokes[:, 0] *= item['metadata']['aspectRatio']
         strokes[:, 0] -= strokes[0, 0]
+        strokes[:, 1] -= 0.65
         item['points'] = strokes
     print(f'Succeeded in loading the {dataset_name} dataset; contains {len(data)} items.')
     return data

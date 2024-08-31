@@ -19,6 +19,7 @@ __pycache__
 !data/synthbank.json.zip
 !data/synthbank_v2.json.zip
 !data/easybank.json.zip
+!data/bigbank.json.zip
 
 /examples*
 /deprecated*
