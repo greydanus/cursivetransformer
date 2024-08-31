@@ -358,7 +358,7 @@ def create_datasets(dataset_name, augment=True, max_seq_length=1100, num_words=3
   data = load_and_parse_data(dataset_name)
 
   # partition the input data into a training and the test set
-  test_set_size = min(1000, int(len(data) * 0.05)) # 10% of the training set, or up to 1000 examples
+  test_set_size = min(1000, max(10, int(len(data) * 0.05))) # between 10 and 1000 examples: ideally 10% of dataset
   rp = torch.randperm(len(data)).tolist()
 
   train_examples = generate_word_combos([data[i] for i in rp[:-test_set_size]], desired_num_combos=249000, num_words=num_words)
