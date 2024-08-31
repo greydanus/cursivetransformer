@@ -270,7 +270,7 @@ We have 200 samples containing i's / j's / t's / x's (our plan is to add about 2
 
 ![sample_v39](static/sample_v39.png)
 
-### Progress August 30
+### Progress August 30-31
 
 We upgraded out downsampling code from a naive method which downsampled points more or less at random regardless of whether they were at the beginning or ending of a stroke, to a new method which always keeps the beginning and end points of a stroke intact. This method is important when we're doing aggressive 60-70% downsample operations because quite often those operations cause us to lose a number of points at the beginning/endings of strokes. When we lose those points, we start to see artifacts arise: gaps appear between strokes that are supposed to overlap and some small strokes disappear entirely.
 
@@ -278,7 +278,7 @@ We also added 100 new samples, for a total dataset size of 1.4k words. Remarkabl
 
 ![sample_v40](static/sample_v40.png)
 
-### Progress August 30 (later in the day)
+-------
 
 We expanded the dataset to feature capital letters, numbers, and punctuation. Here are some stats:
 
