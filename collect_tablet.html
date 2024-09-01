@@ -269,8 +269,8 @@
             const scale = Math.min(1 / width, 1 / height);
             return strokes.map(stroke =>
                 stroke.map(([x, y, penDown]) => [
-                    (x - minX) * scale,
-                    (y - minY) * scale,
+                    Number(((x - minX) * scale).toFixed(4)),
+                    Number(((y - minY) * scale).toFixed(4)),
                     penDown
                 ])
             );
@@ -291,11 +291,7 @@
                     strokeCount: normalizedStrokes.length,
                     aspectRatio: CANVAS_WIDTH / CANVAS_HEIGHT
                 },
-                points: flatStrokes.map(point => [
-                    Number(point[0].toFixed(4)),
-                    Number(point[1].toFixed(4)),
-                    point[2]
-                ])
+                points: flatStrokes
             };
             dataset.push(sample);
             status.textContent = `Added "${wordBank[currentWordIndex]}" to the dataset. Total samples: ${dataset.length}`;
@@ -323,13 +319,10 @@
         });
 
         exportButton.addEventListener('click', () => {
-            const startIndex = dataset.length > 0 ? dataset[0].metadata.asciiSequence : '';
-            const endIndex = dataset.length > 0 ? dataset[dataset.length - 1].metadata.asciiSequence : '';
-            const fileName = `dataset_${startIndex}_to_${endIndex}.json`;
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataset));
             const downloadAnchorNode = document.createElement('a');
             downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", fileName);
+            downloadAnchorNode.setAttribute("download", "dataset.json");
             document.body.appendChild(downloadAnchorNode);
             downloadAnchorNode.click();
             downloadAnchorNode.remove();
