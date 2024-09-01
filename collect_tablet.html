@@ -138,11 +138,16 @@
         let wordBank = [];
         let currentWordIndex = 0;
 
+        const CANVAS_WIDTH = 1400;
+        const CANVAS_HEIGHT = 400;
+
         function resizeCanvas() {
             const container = document.getElementById('canvas-container');
             const rect = container.getBoundingClientRect();
-            drawingCanvas.width = rect.width;
-            drawingCanvas.height = rect.height;
+            drawingCanvas.style.width = `${rect.width}px`;
+            drawingCanvas.style.height = `${rect.height}px`;
+            drawingCanvas.width = CANVAS_WIDTH;
+            drawingCanvas.height = CANVAS_HEIGHT;
             drawLineRuling();
             redrawStrokes();
         }
@@ -154,11 +159,11 @@
             ctx.setLineDash([5, 5]); // Set line style to dotted
 
             // Draw two horizontal lines
-            const lineHeight = drawingCanvas.height / 3;
+            const lineHeight = CANVAS_HEIGHT / 3;
             for (let i = 1; i < 3; i++) {
                 const y = i * lineHeight;
                 ctx.moveTo(0, y);
-                ctx.lineTo(drawingCanvas.width, y);
+                ctx.lineTo(CANVAS_WIDTH, y);
             }
 
             ctx.stroke();
@@ -196,8 +201,8 @@
 
         function getMousePos(canvas, e) {
             const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
+            const scaleX = CANVAS_WIDTH / rect.width;
+            const scaleY = CANVAS_HEIGHT / rect.height;
             if (e.touches && e.touches[0]) {
                 return [
                     (e.touches[0].clientX - rect.left) * scaleX,
@@ -220,7 +225,7 @@
         drawingCanvas.addEventListener('touchend', endDrawing);
 
         function redrawStrokes() {
-            ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
             drawLineRuling();
             ctx.lineWidth = 2;
             ctx.lineCap = 'round';
@@ -249,18 +254,50 @@
             redrawStrokes();
         });
 
-        addButton.addEventListener('click', () => {
+        function normalizeStrokes(strokes) {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (let stroke of strokes) {
+                for (let [x, y] of stroke) {
+                    minX = Math.min(minX, x);
+                    minY = Math.min(minY, y);
+                    maxX = Math.max(maxX, x);
+                    maxY = Math.max(maxY, y);
+                }
+            }
+            const width = maxX - minX;
+            const height = maxY - minY;
+            const scale = Math.min(1 / width, 1 / height);
+            return strokes.map(stroke =>
+                stroke.map(([x, y, penDown]) => [
+                    (x - minX) * scale,
+                    (y - minY) * scale,
+                    penDown
+                ])
+            );
+        }
+
+        function addToDataset() {
             if (strokes.length === 0) {
                 status.textContent = 'Please draw something before adding to the dataset.';
                 return;
             }
-            const flatStrokes = strokes.flat();
-            dataset.push({
-                points: flatStrokes,
-                word: wordBank[currentWordIndex],
-                author: authorNameInput.value,
-                timestamp: new Date().toISOString()
-            });
+            const normalizedStrokes = normalizeStrokes(strokes);
+            const flatStrokes = normalizedStrokes.flat();
+            const sample = {
+                metadata: {
+                    author: authorNameInput.value,
+                    asciiSequence: wordBank[currentWordIndex],
+                    pointCount: flatStrokes.length,
+                    strokeCount: normalizedStrokes.length,
+                    aspectRatio: CANVAS_WIDTH / CANVAS_HEIGHT
+                },
+                points: flatStrokes.map(point => [
+                    Number(point[0].toFixed(4)),
+                    Number(point[1].toFixed(4)),
+                    point[2]
+                ])
+            };
+            dataset.push(sample);
             status.textContent = `Added "${wordBank[currentWordIndex]}" to the dataset. Total samples: ${dataset.length}`;
             strokes = [];
             redrawStrokes();
@@ -270,7 +307,9 @@
             }
             prompt.textContent = wordBank[currentWordIndex];
             updateWordCount();
-        });
+        }
+
+        addButton.addEventListener('click', addToDataset);
 
         nextButton.addEventListener('click', () => {
             currentWordIndex++;
@@ -284,10 +323,13 @@
         });
 
         exportButton.addEventListener('click', () => {
+            const startIndex = dataset.length > 0 ? dataset[0].metadata.asciiSequence : '';
+            const endIndex = dataset.length > 0 ? dataset[dataset.length - 1].metadata.asciiSequence : '';
+            const fileName = `dataset_${startIndex}_to_${endIndex}.json`;
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataset));
             const downloadAnchorNode = document.createElement('a');
             downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", "dataset.json");
+            downloadAnchorNode.setAttribute("download", fileName);
             document.body.appendChild(downloadAnchorNode);
             downloadAnchorNode.click();
             downloadAnchorNode.remove();
