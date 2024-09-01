@@ -25,6 +25,7 @@ __pycache__
 !data/easybank.json.zip
 !data/bigbank.json.zip
 !data/zach*.json.zip
+!data/wordbank.json
 
 /examples*
 /deprecated*
