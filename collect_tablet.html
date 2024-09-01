@@ -30,12 +30,12 @@
             height: 100%;
         }
         #controls {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            width: 100%;
+            max-width: 800px;
             display: flex;
+            flex-wrap: wrap;
             gap: 10px;
+            justify-content: center;
             background-color: rgba(255, 255, 255, 0.8);
             padding: 10px;
             border-radius: 5px;
@@ -68,19 +68,6 @@
             font-style: italic;
             text-align: center;
         }
-        #advanced-controls {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: rgba(255, 255, 255, 0.8);
-            padding: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        }
-        #advanced-controls button {
-            display: block;
-            margin-bottom: 5px;
-        }
         #word-count {
             position: fixed;
             top: 20px;
@@ -91,6 +78,12 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             font-size: 18px;
             font-weight: bold;
+        }
+        input[type="number"], input[type="text"] {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
         }
     </style>
 </head>
@@ -105,10 +98,10 @@
         <button id="undo">Undo</button>
         <button id="add">Add to Dataset</button>
         <button id="next">Next Word</button>
-    </div>
-    <div id="advanced-controls">
-        <button id="toggle-sampling">Toggle Sampling Mode</button>
         <button id="export">Export Dataset</button>
+        <input type="number" id="word-index" placeholder="Word Index" min="0">
+        <button id="go-to-index">Go to Index</button>
+        <input type="text" id="author-name" placeholder="Author Name" value="Zach Wimpee">
     </div>
     <div id="status"></div>
 
@@ -122,8 +115,10 @@
         const addButton = document.getElementById('add');
         const nextButton = document.getElementById('next');
         const exportButton = document.getElementById('export');
-        const toggleSamplingButton = document.getElementById('toggle-sampling');
         const wordCountDisplay = document.getElementById('word-count');
+        const wordIndexInput = document.getElementById('word-index');
+        const goToIndexButton = document.getElementById('go-to-index');
+        const authorNameInput = document.getElementById('author-name');
 
         let isDrawing = false;
         let lastX = 0;
@@ -133,14 +128,34 @@
         let dataset = [];
         let wordBank = [];
         let currentWordIndex = 0;
-        let samplingMode = false;
 
         function resizeCanvas() {
             const container = document.getElementById('canvas-container');
             const rect = container.getBoundingClientRect();
             drawingCanvas.width = rect.width;
             drawingCanvas.height = rect.height;
+            drawLineRuling();
             redrawStrokes();
+        }
+
+        function drawLineRuling() {
+            ctx.beginPath();
+            ctx.strokeStyle = "#CCCCCC";
+            ctx.lineWidth = 1;
+
+            // Draw horizontal lines
+            const lineHeight = drawingCanvas.height / 4;
+            for (let i = 1; i < 4; i++) {
+                const y = i * lineHeight;
+                ctx.moveTo(0, y);
+                ctx.lineTo(drawingCanvas.width, y);
+            }
+
+            // Draw vertical line
+            ctx.moveTo(drawingCanvas.width / 2, 0);
+            ctx.lineTo(drawingCanvas.width / 2, drawingCanvas.height);
+
+            ctx.stroke();
         }
 
         window.addEventListener('resize', resizeCanvas);
@@ -199,6 +214,7 @@
 
         function redrawStrokes() {
             ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+            drawLineRuling();
             ctx.lineWidth = 2;
             ctx.lineCap = 'round';
             ctx.strokeStyle = 'black';
@@ -235,20 +251,18 @@
             dataset.push({
                 points: flatStrokes,
                 word: wordBank[currentWordIndex],
-                author: 'user',
+                author: authorNameInput.value,
                 timestamp: new Date().toISOString()
             });
             status.textContent = `Added "${wordBank[currentWordIndex]}" to the dataset. Total samples: ${dataset.length}`;
             strokes = [];
             redrawStrokes();
-            if (!samplingMode) {
-                currentWordIndex++;
-                if (currentWordIndex >= wordBank.length) {
-                    currentWordIndex = 0;
-                }
-                prompt.textContent = wordBank[currentWordIndex];
-                updateWordCount();
+            currentWordIndex++;
+            if (currentWordIndex >= wordBank.length) {
+                currentWordIndex = 0;
             }
+            prompt.textContent = wordBank[currentWordIndex];
+            updateWordCount();
         });
 
         nextButton.addEventListener('click', () => {
@@ -272,9 +286,16 @@
             downloadAnchorNode.remove();
         });
 
-        toggleSamplingButton.addEventListener('click', () => {
-            samplingMode = !samplingMode;
-            status.textContent = samplingMode ? 'Sampling mode ON' : 'Sampling mode OFF';
+        goToIndexButton.addEventListener('click', () => {
+            const index = parseInt(wordIndexInput.value);
+            if (index >= 0 && index < wordBank.length) {
+                currentWordIndex = index;
+                prompt.textContent = wordBank[currentWordIndex];
+                updateWordCount();
+                status.textContent = `Moved to word index: ${index}`;
+            } else {
+                status.textContent = 'Invalid word index';
+            }
         });
 
         function updateWordCount() {
@@ -282,6 +303,7 @@
             const totalWords = wordBank.length;
             const percentage = ((completedWords / totalWords) * 100).toFixed(2);
             wordCountDisplay.textContent = `Progress: ${completedWords}/${totalWords} (${percentage}%)`;
+            wordIndexInput.value = currentWordIndex;
         }
 
         // Initialize word bank and prompt
