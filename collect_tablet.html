@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Handwriting Data Collection for Tablets</title>
     <style>
         body {
@@ -12,6 +12,7 @@
             align-items: center;
             padding: 20px;
             touch-action: none;
+            user-select: none;
         }
         #canvas-container {
             position: relative;
@@ -41,17 +42,31 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
         button {
-            padding: 10px 15px;
-            font-size: 16px;
+            padding: 15px 20px;
+            font-size: 18px;
             cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:active {
+            background-color: #3e8e41;
         }
         #prompt {
-            font-size: 24px;
+            font-size: 32px;
             margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
         }
         #status {
             margin-top: 10px;
             font-style: italic;
+            text-align: center;
         }
         #advanced-controls {
             position: fixed;
@@ -66,9 +81,21 @@
             display: block;
             margin-bottom: 5px;
         }
+        #word-count {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            font-size: 18px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
+    <div id="word-count"></div>
     <div id="prompt"></div>
     <div id="canvas-container">
         <canvas id="drawingCanvas"></canvas>
@@ -96,6 +123,7 @@
         const nextButton = document.getElementById('next');
         const exportButton = document.getElementById('export');
         const toggleSamplingButton = document.getElementById('toggle-sampling');
+        const wordCountDisplay = document.getElementById('word-count');
 
         let isDrawing = false;
         let lastX = 0;
@@ -219,6 +247,7 @@
                     currentWordIndex = 0;
                 }
                 prompt.textContent = wordBank[currentWordIndex];
+                updateWordCount();
             }
         });
 
@@ -230,6 +259,7 @@
             prompt.textContent = wordBank[currentWordIndex];
             strokes = [];
             redrawStrokes();
+            updateWordCount();
         });
 
         exportButton.addEventListener('click', () => {
@@ -247,17 +277,35 @@
             status.textContent = samplingMode ? 'Sampling mode ON' : 'Sampling mode OFF';
         });
 
+        function updateWordCount() {
+            const completedWords = dataset.length;
+            const totalWords = wordBank.length;
+            const percentage = ((completedWords / totalWords) * 100).toFixed(2);
+            wordCountDisplay.textContent = `Progress: ${completedWords}/${totalWords} (${percentage}%)`;
+        }
+
         // Initialize word bank and prompt
         fetch('data/wordbank.json')
             .then(response => response.json())
             .then(data => {
                 wordBank = data;
                 prompt.textContent = wordBank[currentWordIndex];
+                updateWordCount();
             })
             .catch(error => {
                 console.error('Error loading word bank:', error);
                 prompt.textContent = 'Error loading word bank';
             });
+
+        // Prevent zooming on double tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', (event) => {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
     </script>
 </body>
 </html>
