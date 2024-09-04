@@ -267,7 +267,7 @@ class StrokeDataset(Dataset):
         stroke[:, :2] = np.dot(stroke[:, :2], rotation_matrix.T)
 
         # Downsample stroke
-        downsample_percent = 0.6 + 0.1 * np.random.randn() # [0.6-0.7]
+        downsample_percent = 0.6 + 0.1 * np.random.rand() # [0.6-0.7]
         stroke = downsample(stroke, downsample_percent)
         return stroke
 
