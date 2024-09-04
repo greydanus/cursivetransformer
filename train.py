@@ -104,7 +104,7 @@ def combine_handwriting_examples(examples, space_width=0.17):
 def generate_word_combos(raw_json, desired_num_combos=10000, num_words=3):
   num_combos = comb(len(raw_json), num_words)
   print(f'For a dataset of {len(raw_json)} examples we can generate {num_combos} combinations of {num_words} examples.')
-  print(f'Generating {desired_num_combos} random (and thus possibly overlapping) combos...')
+  print(f'Generating {desired_num_combos} random combinations.')
   combo_json = []
   for i in range(desired_num_combos):
     ixs = np.random.choice(len(raw_json), size=num_words, replace=False)
@@ -377,7 +377,7 @@ def create_datasets(args):
   print(f"Number of examples in the train dataset: {len(train_examples)}")
   print(f"Number of examples in the test dataset: {len(test_examples)}")
   print(f"Max token sequence length: {args.max_seq_length}")
-  print(f"Number of unique characters in the ascii vocabulary: {len(chars)}")
+  print(f"Number of unique characters in the ascii vocabulary: {len(args.alphabet)}")
   print("Ascii vocabulary:")
   print(f'\t"{args.alphabet}"')
   print(f"Split up the dataset into {len(train_examples)} training examples and {len(test_examples)} test examples")
