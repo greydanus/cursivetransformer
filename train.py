@@ -681,7 +681,6 @@ class ModelConfig:
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Generate a word bank')
-
     parser.add_argument('--work_dir', type=str, default='out', help='Working directory')
     parser.add_argument('--resume', action='store_true', default=False, help='Load model from checkpoint')
     parser.add_argument('--sample_only', action='store_true', default=False, help='Only sample from the model')
@@ -707,12 +706,12 @@ if __name__ == '__main__':
     parser.add_argument('--augment', action='store_true', default=True, help='Perform augmentations')
     parser.add_argument('--ablate_cross_attention', action='store_true', default=False, help='Ablate the cross attention')
     parser.add_argument('--add_digits', action='store_true', default=True, help='Add digit words to the word bank')
+    parser.add_argument('--dataset_name', type=str, default='bigbank', help='Set this to your wandb username or team name')
 
     parser.add_argument('--wandb_project', type=str, default='synthbank_experiments', help='W&B project name')
     parser.add_argument('--wandb_entity', type=str, default='sam-greydanus', help='Set this to your wandb username or team name')
-    parser.add_argument('--run_name', type=str, default='unnamed_run', help='W&B run name')
+    parser.add_argument('--wandb_run_name', type=str, default='unnamed_run', help='W&B run name')
     parser.add_argument('--wandb_api_key', type=str, default=None, help='Weights & Biases API Key')
-    parser.add_argument('--dataset_name', type=str, default='synthbank_v2', help='Set this to your wandb username or team name')
 
     args = parser.parse_args()
 
