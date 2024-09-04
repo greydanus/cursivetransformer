@@ -692,8 +692,8 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility')
 
     parser.add_argument('--n_layer', type=int, default=4, help='Number of Transformer layers')
-    parser.add_argument('--n_embd', type=int, default=4, help='Number of embedding dimensions in self attention')
-    parser.add_argument('--n_embd2', type=int, default=4, help='Number of embedding dimensions in cross attention')
+    parser.add_argument('--n_embd', type=int, default=64, help='Number of embedding dimensions in self attention')
+    parser.add_argument('--n_embd2', type=int, default=64, help='Number of embedding dimensions in cross attention')
     parser.add_argument('--n_head', type=int, default=4, help='Number of attention heads in Transformer block')
 
     parser.add_argument('--learning_rate', type=float, default=1e-2, help='Learning rate')
