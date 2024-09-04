@@ -362,10 +362,10 @@ def create_datasets(dataset_name, augment=True, max_seq_length=1100, num_words=3
   test_set_size = min(1000, max(10, int(len(data) * 0.05))) # between 10 and 1000 examples: ideally 10% of dataset
   rp = torch.randperm(len(data)).tolist()
 
-  train_examples = generate_word_combos([data[i] for i in rp[:-test_set_size]], desired_num_combos=249000, num_words=num_words)
+  train_examples = generate_word_combos([data[i] for i in rp[:-test_set_size]], desired_num_combos=499000, num_words=num_words)
   train_examples = [train_examples[i] for i in torch.randperm(len(train_examples)).tolist()]
 
-  test_examples = generate_word_combos([data[i] for i in rp[-test_set_size:]], desired_num_combos=1000, num_words=num_words)
+  test_examples = generate_word_combos([data[i] for i in rp[-test_set_size:]], desired_num_combos=3000, num_words=num_words)
   test_examples = [test_examples[i] for i in torch.randperm(len(test_examples)).tolist()]
 
   train_strokes = [copy.deepcopy(v['points']) for v in train_examples]
