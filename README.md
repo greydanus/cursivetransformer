@@ -332,3 +332,16 @@ Given how different this dataset is, we're not merging it with any of the older 
 We added 400 samples for a total dataset size of 500. On a debugging run of the model, we saw that the model still overfits, but is beginning to generate coherent sequences after as a few as 5000 gradients steps (see screenshot below). This a very positive development; it suggests that 1000-2000 words will be sufficient for relatively high-fidelity samples.
 
 ![bigbank_.5k_5k.png](static/bigbank_.5k_5k.png)
+
+
+### Progress September 4
+
+The dataset is now at 1500 words. Overfitting had gone down, but was still present (brown line in plot below) when I decided to make a small change to the augmentation code: I randomized the downsampling rate to somewhere between 60 and 70% on a per-sample basis. This effectively decoupled the position of each letter in each sample from token index, and as a result, overfitting decreased dramatically (blue line in plot below). Meanwhile, samples went from messy and with various mis-spellings to attractive with almost no errors, even after a relatively short debugging run! This represents a massive step forwar in quality.
+
+![wandb_rdsample.png](static/wandb_rdsample.png)
+
+Here are samples generated after just 22k gradient steps:
+
+![sample_v41](static/sample_v41.png)
+
+![sample_v42](static/sample_v42.png)
