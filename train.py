@@ -356,7 +356,7 @@ class StrokeDataset(Dataset):
 
 def create_datasets(args):
   np.random.seed(args.seed) ; torch.manual_seed(args.seed)
-  data = load_and_parse_data(dataset_name)
+  data = load_and_parse_data(args.dataset_name)
 
   # partition the input data into a training and the test set
   test_set_size = min(1000, max(10, int(len(data) * 0.05))) # between 10 and 1000 examples: ideally 10% of dataset
