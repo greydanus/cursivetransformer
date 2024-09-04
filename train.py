@@ -464,25 +464,25 @@ class CausalSelfAttention(nn.Module):
 class CrossAttention(nn.Module):
     def __init__(self, config):
         super().__init__()
-        assert config.n_embd % config.n_ctx_head == 0
+        assert config.n_embd2 % config.n_ctx_head == 0
         # query projections for all heads
-        self.c_attn_q = nn.Linear(config.n_embd, config.n_embd)
+        self.c_attn_q = nn.Linear(config.n_embd2, config.n_embd2)
         # key, value projections for all heads
-        self.c_attn_kv = nn.Linear(config.n_embd, 2 * config.n_embd)
+        self.c_attn_kv = nn.Linear(config.n_embd2, 2 * config.n_embd2)
         # output projection
-        self.c_proj = nn.Linear(config.n_embd, config.n_embd)
+        self.c_proj = nn.Linear(config.n_embd2, config.n_embd2)
         self.n_ctx_head = config.n_ctx_head
-        self.n_embd = config.n_embd
+        self.n_embd2 = config.n_embd2
 
     def forward(self, x, context):
-        B, T, C = x.size() # batch size, sequence length, embedding dimensionality (n_embd)
+        B, T, C = x.size() # batch size, sequence length, embedding dimensionality (n_embd2)
         _, T_ctx, _ = context.size()
 
         # calculate query for all heads in batch and move head forward to be the batch dim
         q = self.c_attn_q(x).view(B, T, self.n_ctx_head, C // self.n_ctx_head).transpose(1, 2) # (B, nh, T, hs)
 
         # calculate key, values for all heads in batch and move head forward to be the batch dim
-        k, v = self.c_attn_kv(context).split(self.n_embd, dim=2)
+        k, v = self.c_attn_kv(context).split(self.n_embd2, dim=2)
         k = k.view(B, T_ctx, self.n_ctx_head, C // self.n_ctx_head).transpose(1, 2) # (B, nh, T_ctx, hs)
         v = v.view(B, T_ctx, self.n_ctx_head, C // self.n_ctx_head).transpose(1, 2) # (B, nh, T_ctx, hs)
 
@@ -503,7 +503,7 @@ class Block(nn.Module):
         super().__init__()
         self.ln_1 = nn.LayerNorm(config.n_embd)
         self.attn = CausalSelfAttention(config)
-        self.ln_2 = nn.LayerNorm(config.n_embd)
+        self.ln_2 = nn.LayerNorm(config.n_embd2)
         self.cross_attn = CrossAttention(config) # NEW
         self.ln_3 = nn.LayerNorm(config.n_embd) # NEW
         self.mlp = nn.ModuleDict(dict(
@@ -531,7 +531,7 @@ class Transformer(nn.Module):
         self.transformer = nn.ModuleDict(dict(
             wte = nn.Embedding(config.vocab_size, config.n_embd),
             wpe = nn.Embedding(config.block_size, config.n_embd),
-            wce = nn.Embedding(config.context_vocab_size, config.n_embd), # NEW
+            wce = nn.Embedding(config.context_vocab_size, config.n_embd2), # NEW
             wcpe = nn.Embedding(config.context_block_size, config.n_embd),
             h = nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
             ln_f = nn.LayerNorm(config.n_embd),
@@ -558,7 +558,7 @@ class Transformer(nn.Module):
 
         context_t = context.size(-1)
         context_pos = torch.arange(0, context_t, dtype=torch.long, device=device).unsqueeze(0) # shape (1, t)
-        context_emb = self.transformer.wce(context) # context embeddings of shape (b, t_ctx, n_embd)
+        context_emb = self.transformer.wce(context) # context embeddings of shape (b, t_ctx, n_embd2)
         context_pos_emb = self.transformer.wcpe(context_pos)
         c = context_emb + context_pos_emb
 
@@ -662,9 +662,6 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do
 
 ########## ARGS, LOGGING, AND TRAIN LOOP ##########
 
-def get_time_string(fmt='%m%d_%H%M'):
-    return datetime.now().strftime(fmt)
-
 @dataclass
 class ModelConfig:
     block_size: int = None # length of the input sequences of integers
@@ -681,87 +678,53 @@ class ModelConfig:
     ablate_cross_attention: bool = False
 
 
-@dataclass
-class AppConfig:
-    # system/input/output
-    work_dir: str = 'out'
-    resume: bool = False
-    sample_only: bool = False
-    num_workers: int = 1 # 4
-    max_steps: int = 30000
-    lr_decay: float = .333
-    step_lr_every: int = 20000
-    device: str = 'cuda'
-    seed: int = 3407
-
-    # sampling
-    top_k: int = -1
-
-    # model configuration
-    n_layer: int = 4
-    n_embd: int = 64
-    n_embd2: int = 64
-    n_head: int = 4
-    ablate_cross_attention: bool = False  # New flag to ablate cross-attention
-    augment: bool = True
-    max_seq_length: int = 1000
-    num_words: int = 4
-
-    # optimization
-    batch_size: int = 32
-    learning_rate: float = 1e-2
-    weight_decay: float = 1e-4
-
-    # wandb parameters
-    wandb_project: str = "synthbank_experiments"
-    wandb_entity: str = 'sam-greydanus'  # Set this to your wandb username or team name
-    wandb_run_name: str = f"{get_time_string()}_cursive_transformer"
-    wandb_api_key: str = ''
-
-    # dataset and augmentations
-    dataset_name: str = None
-
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Generate a word bank')
-    parser.add_argument('--wandb_entity', type=str, default='sam-greydanus', help='Set this to your wandb username or team name')
+
+    parser.add_argument('--work_dir', type=str, default='out', help='Working directory')
+    parser.add_argument('--resume', action='store_true', default=False, help='Load model from checkpoint')
+    parser.add_argument('--sample_only', action='store_true', default=False, help='Only sample from the model')
+    parser.add_argument('--max_steps', type=int, default=110000, help='How many steps to train for')
+    parser.add_argument('--print_every', type=int, default=100, help='Print log info after how many steps')
+    parser.add_argument('--sample_every', type=int, default=2500, help='Sample model after how many steps')
+    parser.add_argument('--lr_decay', type=float, default=0.333, help='How much to decay the learning rate')
+    parser.add_argument('--step_lr_every', type=int, default=33000, help='How often to decay the learning rate')
+    parser.add_argument('--device', type=str, default='cuda', help='This is meant to be trained on a GPU')
+    parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility')
+
+    parser.add_argument('--n_layer', type=int, default=4, help='Number of Transformer layers')
+    parser.add_argument('--n_embd', type=int, default=4, help='Number of embedding dimensions in self attention')
+    parser.add_argument('--n_embd2', type=int, default=4, help='Number of embedding dimensions in cross attention')
+    parser.add_argument('--n_head', type=int, default=4, help='Number of attention heads in Transformer block')
+
+    parser.add_argument('--learning_rate', type=float, default=1e-2, help='Learning rate')
+    parser.add_argument('--weight_decay', type=float, default=1e-4, help='Weight decay')
+    parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
+
+    parser.add_argument('--num_words', type=int, default=4, help='Number of words')
+    parser.add_argument('--max_seq_length', type=int, default=1000, help='Maximum sequence length (tokens)')
+    parser.add_argument('--augment', action='store_true', default=True, help='Perform augmentations')
+    parser.add_argument('--ablate_cross_attention', action='store_true', default=False, help='Ablate the cross attention')
+    parser.add_argument('--add_digits', action='store_true', default=True, help='Add digit words to the word bank')
+
     parser.add_argument('--wandb_project', type=str, default='synthbank_experiments', help='W&B project name')
+    parser.add_argument('--wandb_entity', type=str, default='sam-greydanus', help='Set this to your wandb username or team name')
+    parser.add_argument('--run_name', type=str, default='unnamed_run', help='W&B run name')
     parser.add_argument('--wandb_api_key', type=str, default=None, help='Weights & Biases API Key')
     parser.add_argument('--dataset_name', type=str, default='synthbank_v2', help='Set this to your wandb username or team name')
-    parser.add_argument('--max_seq_length', type=int, default=900, help='Context window size')
-    parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility')
-    cli_args = parser.parse_args()
-    
-    # Try attaching to GPU
-    DEVICE = str(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
-    print('Using:', DEVICE)
 
-
-    args = AppConfig(wandb_entity=cli_args.wandb_entity,
-                     wandb_project=cli_args.wandb_project,
-                     max_seq_length=cli_args.max_seq_length,
-                     wandb_api_key=cli_args.wandb_api_key,
-                     dataset_name=cli_args.dataset_name,
-                     seed=cli_args.seed)
+    args = parser.parse_args()
 
     if "WANDB_API_KEY" not in os.environ:
         if args.wandb_api_key is None:
             args.wandb_api_key = getpass.getpass("Enter your W&B API key: ")
         os.environ["WANDB_API_KEY"] = args.wandb_api_key
+    wandb.init(project=args.wandb_project, entity=args.wandb_entity, name=args.wandb_run_name, config=args)
 
-    wandb.init(
-        project=args.wandb_project,
-        entity=args.wandb_entity,
-        name=args.wandb_run_name,
-        config=args
-    )
-
-    # system inits
-    torch.manual_seed(args.seed)
+    torch.manual_seed(args.seed)  # system inits
     torch.cuda.manual_seed_all(args.seed)
     os.makedirs(args.work_dir, exist_ok=True)
-    # writer = SummaryWriter(log_dir=args.work_dir)
 
     # init datasets
     train_dataset, test_dataset = create_datasets(args.dataset_name, augment=args.augment, max_seq_length=args.max_seq_length, 
@@ -773,14 +736,10 @@ if __name__ == '__main__':
     print(f"Dataset determined that: {vocab_size=}, {block_size=}")
 
     # init model
-    config = ModelConfig(vocab_size=vocab_size,
-                         block_size=block_size,
-                         context_block_size=context_block_size,
-                         context_vocab_size=context_vocab_size,
-                         n_layer=args.n_layer, n_head=args.n_head,
-                         n_embd=args.n_embd, n_embd2=args.n_embd2,
-                         ablate_cross_attention=args.ablate_cross_attention,
-                         n_ctx_head=args.n_head,)
+    config = ModelConfig(vocab_size=vocab_size, block_size=block_size, context_block_size=context_block_size,
+                         context_vocab_size=context_vocab_size, n_layer=args.n_layer, n_head=args.n_head,
+                         n_embd=args.n_embd, n_embd2=args.n_embd2, ablate_cross_attention=args.ablate_cross_attention,
+                         n_ctx_head=args.n_head)
     model = Transformer(config)
     model.to(args.device)
     print(f"Model #params: {sum(p.numel() for p in model.parameters())}")
@@ -788,8 +747,7 @@ if __name__ == '__main__':
         print("resuming from existing model in the workdir")
         model.load_state_dict(torch.load(os.path.join(args.work_dir, 'model.pt')))
     if args.sample_only:
-        # save_samples(num=50)
-        print('This functionality is temporarily commented out')
+        print('This functionality is temporarily missing.')
         sys.exit()
 
     # init optimizer and batch loader
@@ -798,13 +756,8 @@ if __name__ == '__main__':
     batch_loader = InfiniteDataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True, num_workers=args.num_workers)
 
     wandb.config.update({
-        "n_layer": config.n_layer,
-        "n_head": config.n_head,
-        "n_embd": config.n_embd,
-        "learning_rate": args.learning_rate,
-        "weight_decay": args.weight_decay,
-        "batch_size": args.batch_size,
-        "ablate_cross_attention": args.ablate_cross_attention,
+        "n_layer": config.n_layer, "n_head": config.n_head, "n_embd": config.n_embd, "learning_rate": args.learning_rate,
+        "weight_decay": args.weight_decay, "batch_size": args.batch_size, "ablate_cross_attention": args.ablate_cross_attention,
     })
 
 
@@ -836,11 +789,11 @@ if __name__ == '__main__':
         t1 = time.time()
 
         # logging
-        if step % 100 == 0:
+        if step % args.print_every == 0:
             print(f"step {step} | loss {loss.item():.4f} | step time {(t1-t0)*1000:.2f}ms | lr {scheduler.get_last_lr()[0]:.6f}")
 
         # evaluate the model
-        if step > 0 and step % 2500 == 0:
+        if step > 0 and step % args.sample_every == 0:
             train_loss = evaluate(model, train_dataset, batch_size=100, max_batches=10)
             test_loss  = evaluate(model, test_dataset,  batch_size=100, max_batches=10)
             wandb.log({"train_loss": train_loss, "test_loss": test_loss, "step": step })
@@ -854,7 +807,7 @@ if __name__ == '__main__':
                 best_loss = test_loss
 
         # sample from the model
-        if step > 0 and step % 2500 == 0:
+        if step > 0 and step % args.sample_every == 0:
             save_samples(model, test_dataset, num=6, do_sample=True)
             save_samples(model, test_dataset, num=6, do_sample=False)
             save_samples(model, train_dataset, num=3, do_sample=True)
