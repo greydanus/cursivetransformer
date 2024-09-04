@@ -354,18 +354,18 @@ class StrokeDataset(Dataset):
         return x, c, y
 
 
-def create_datasets(dataset_name, augment=True, max_seq_length=1100, num_words=3):
-  np.random.seed(0) ; torch.manual_seed(0)
+def create_datasets(args):
+  np.random.seed(args.seed) ; torch.manual_seed(args.seed)
   data = load_and_parse_data(dataset_name)
 
   # partition the input data into a training and the test set
   test_set_size = min(1000, max(10, int(len(data) * 0.05))) # between 10 and 1000 examples: ideally 10% of dataset
   rp = torch.randperm(len(data)).tolist()
 
-  train_examples = generate_word_combos([data[i] for i in rp[:-test_set_size]], desired_num_combos=499000, num_words=num_words)
+  train_examples = generate_word_combos([data[i] for i in rp[:-test_set_size]], desired_num_combos=args.train_size, num_words=args.num_words)
   train_examples = [train_examples[i] for i in torch.randperm(len(train_examples)).tolist()]
 
-  test_examples = generate_word_combos([data[i] for i in rp[-test_set_size:]], desired_num_combos=3000, num_words=num_words)
+  test_examples = generate_word_combos([data[i] for i in rp[-test_set_size:]], desired_num_combos=args.test_size, num_words=args.num_words)
   test_examples = [test_examples[i] for i in torch.randperm(len(test_examples)).tolist()]
 
   train_strokes = [copy.deepcopy(v['points']) for v in train_examples]
@@ -374,18 +374,17 @@ def create_datasets(dataset_name, augment=True, max_seq_length=1100, num_words=3
   test_strokes = [copy.deepcopy(v['points']) for v in test_examples]
   test_texts = [copy.deepcopy(v['metadata']['asciiSequence']) for v in test_examples]
 
-  chars = " enaitoshrdx.vpukbgfcymzw1lqj804I92637OTAS5N)EHR\"\'(BCQLMWYU,ZF!DXV?KPGJ"
   print(f"Number of examples in the train dataset: {len(train_examples)}")
   print(f"Number of examples in the test dataset: {len(test_examples)}")
-  print(f"Max token sequence length: {max_seq_length}")
+  print(f"Max token sequence length: {args.max_seq_length}")
   print(f"Number of unique characters in the ascii vocabulary: {len(chars)}")
   print("Ascii vocabulary:")
-  print(f'\t"{chars}"')
+  print(f'\t"{args.alphabet}"')
   print(f"Split up the dataset into {len(train_examples)} training examples and {len(test_examples)} test examples")
 
   # wrap in dataset objects
-  train_dataset = StrokeDataset(train_strokes, train_texts, chars, max_seq_length, name='train', augment=augment)
-  test_dataset = StrokeDataset(test_strokes, test_texts, chars, max_seq_length, name='test', augment=augment)
+  train_dataset = StrokeDataset(train_strokes, train_texts, args.alphabet, args.max_seq_length, name='train', augment=args.augment)
+  test_dataset = StrokeDataset(test_strokes, test_texts, args.alphabet, args.max_seq_length, name='test', augment=args.augment)
   return train_dataset, test_dataset
 
 
@@ -701,11 +700,15 @@ if __name__ == '__main__':
     parser.add_argument('--weight_decay', type=float, default=1e-4, help='Weight decay')
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
 
+    parser.add_argument('--train_size', type=int, default=497000, help='Number of train examples')
+    parser.add_argument('--test_size', type=int, default=3000, help='Number of test examples')
     parser.add_argument('--num_words', type=int, default=4, help='Number of words')
     parser.add_argument('--max_seq_length', type=int, default=1000, help='Maximum sequence length (tokens)')
     parser.add_argument('--augment', action='store_true', default=True, help='Perform augmentations')
     parser.add_argument('--ablate_cross_attention', action='store_true', default=False, help='Ablate the cross attention')
     parser.add_argument('--add_digits', action='store_true', default=True, help='Add digit words to the word bank')
+    parser.add_argument('--alphabet', type=str, default=" enaitoshrdx.vpukbgfcymzw1lqj804I92637OTAS5N)EHR\"\'(BCQLMWYU,ZF!DXV?KPGJ",
+                            help='All the characters that this model will be able to draw')
     parser.add_argument('--dataset_name', type=str, default='bigbank', help='Set this to your wandb username or team name')
 
     parser.add_argument('--wandb_project', type=str, default='synthbank_experiments', help='W&B project name')
@@ -726,8 +729,7 @@ if __name__ == '__main__':
     os.makedirs(args.work_dir, exist_ok=True)
 
     # init datasets
-    train_dataset, test_dataset = create_datasets(args.dataset_name, augment=args.augment, max_seq_length=args.max_seq_length, 
-                                                    num_words=args.num_words)
+    train_dataset, test_dataset = create_datasets(args)
     vocab_size = train_dataset.get_vocab_size()
     block_size = train_dataset.get_stroke_seq_length()
     context_block_size = train_dataset.get_text_seq_length()
@@ -752,7 +754,7 @@ if __name__ == '__main__':
     # init optimizer and batch loader
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, betas=(0.9, 0.99), eps=1e-8)
     scheduler = StepLR(optimizer, step_size=args.step_lr_every, gamma=args.lr_decay)
-    batch_loader = InfiniteDataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True, num_workers=args.num_workers)
+    batch_loader = InfiniteDataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True, num_workers=4)
 
     wandb.config.update({
         "n_layer": config.n_layer, "n_head": config.n_head, "n_embd": config.n_embd, "learning_rate": args.learning_rate,
