@@ -130,13 +130,12 @@ if __name__ == '__main__':
     # init optimizer and batch loader
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, betas=(0.9, 0.99), eps=1e-8)
     scheduler = StepLR(optimizer, step_size=args.step_lr_every, gamma=args.lr_decay)
-    
     step = 0
     best_loss = None
 
     if args.resume_from_run_id or args.sample_only:
         if os.path.exists(args.local_checkpoint_path):
-            checkpoint = torch.load(args.local_checkpoint_path)
+            checkpoint = torch.load(args.local_checkpoint_path, weights_only=True)
             model.load_state_dict(checkpoint['model_state_dict'])
             print(f"Loaded model from {args.local_checkpoint_path}")
             if not args.sample_only:
@@ -149,7 +148,7 @@ if __name__ == '__main__':
             api = wandb.Api()
             artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/{args.resume_from_run_id or args.wandb_run_name}:model:latest')
             model_dir = artifact.download()
-            checkpoint = torch.load(f"{model_dir}/{args.local_checkpoint_path}")
+            checkpoint = torch.load(f"{model_dir}/{args.local_checkpoint_path}", weights_only=True)
             model.load_state_dict(checkpoint['model_state_dict'])
             if not args.sample_only:
                 optimizer.load_state_dict(checkpoint['optimizer_state_dict'])

@@ -191,25 +191,14 @@ if __name__ == '__main__':
         checkpoint = torch.load(args.local_checkpoint_path)
         model.load_state_dict(checkpoint['model_state_dict'])
         print(f"Loaded model from {args.local_checkpoint_path}")
-    else:
+    elif args.load_from_run_id:
         print("Downloading checkpoint from W&B")
         api = wandb.Api()
         artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/{args.resume_from_run_id or args.wandb_run_name}:model:latest')
         model_dir = artifact.download()
-        checkpoint = torch.load(f"{model_dir}/{args.local_checkpoint_path}")
+        checkpoint = torch.load(f"{model_dir}/{args.local_checkpoint_path}", weights_only=True)
         model.load_state_dict(checkpoint['model_state_dict'])
         save_checkpoint(model, args.local_checkpoint_path)
-
-    if os.path.exists(args.local_model_path):
-        model.load_state_dict(torch.load(args.local_model_path, weights_only=True))
-        print(f"Loaded model from {args.local_model_path}")
-    elif args.load_from_run_id:
-        print("Downloading model from W&B")
-        api = wandb.Api()
-        artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/{args.load_from_run_id}:model:latest')
-        model_dir = artifact.download()
-        model.load_state_dict(torch.load(f"{model_dir}/best_model.pt", weights_only=True))
-        torch.save(model.state_dict(), args.local_model_path)
     else:
         print("No local model or W&B run ID provided. Exiting.")
         sys.exit()
