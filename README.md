@@ -1,6 +1,6 @@
 # Cursive Transformer
 
-_Note (July 5, 2024): this repo is under active development and thus subject to rapid breaking changes._
+_Disclaimer: this repo is under active development and thus subject to rapid breaking changes._
 
 ## Quickstart
 

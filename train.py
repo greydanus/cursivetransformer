@@ -267,7 +267,7 @@ class StrokeDataset(Dataset):
         stroke[:, :2] = np.dot(stroke[:, :2], rotation_matrix.T)
 
         # Downsample stroke
-        downsample_percent = 0.6 + 0.1 * np.random.rand() # [0.6-0.7]
+        downsample_percent = 0.6 + 0.1 * np.random.rand() # sample uniformly in range [0.6-0.7]
         stroke = downsample(stroke, downsample_percent)
         return stroke
 
@@ -680,9 +680,6 @@ class ModelConfig:
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Generate a word bank')
-    parser.add_argument('--work_dir', type=str, default='out', help='Working directory')
-    parser.add_argument('--resume', action='store_true', default=False, help='Load model from checkpoint')
-    parser.add_argument('--sample_only', action='store_true', default=False, help='Only sample from the model')
     parser.add_argument('--max_steps', type=int, default=110000, help='How many steps to train for')
     parser.add_argument('--print_every', type=int, default=100, help='Print log info after how many steps')
     parser.add_argument('--sample_every', type=int, default=2500, help='Sample model after how many steps')
@@ -716,6 +713,10 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_run_name', type=str, default='unnamed_run', help='W&B run name')
     parser.add_argument('--wandb_api_key', type=str, default=None, help='Weights & Biases API Key')
 
+    parser.add_argument('--resume', action='store_true', default=False, help='Load model from checkpoint')
+    parser.add_argument('--sample_only', action='store_true', default=False, help='Only sample from the model')
+    parser.add_argument('--local_model_path', type=str, default='best_model.pt', help='Path to local model file')
+
     args = parser.parse_args()
 
     if "WANDB_API_KEY" not in os.environ:
@@ -726,7 +727,6 @@ if __name__ == '__main__':
 
     torch.manual_seed(args.seed)  # system inits
     torch.cuda.manual_seed_all(args.seed)
-    os.makedirs(args.work_dir, exist_ok=True)
 
     # init datasets
     train_dataset, test_dataset = create_datasets(args)
@@ -744,11 +744,19 @@ if __name__ == '__main__':
     model = Transformer(config)
     model.to(args.device)
     print(f"Model #params: {sum(p.numel() for p in model.parameters())}")
-    if args.resume or args.sample_only: # note: if we sample-only then we also assume we are resuming
-        print("resuming from existing model in the workdir")
-        model.load_state_dict(torch.load(os.path.join(args.work_dir, 'model.pt')))
+    if args.resume or args.sample_only:
+        if os.path.exists(args.local_model_path):
+            model.load_state_dict(torch.load(args.local_model_path))
+            print(f"Loaded model from {args.local_model_path}")
+        else:
+            print("Downloading model from W&B")
+            artifact = wandb.use_artifact(f'{args.wandb_entity}/{args.wandb_project}/best_model:latest')
+            model_dir = artifact.download()
+            model.load_state_dict(torch.load(f"{model_dir}/best_model.pt"))
+            torch.save(model.state_dict(), args.local_model_path)
     if args.sample_only:
-        print('This functionality is temporarily missing.')
+        save_samples(model, test_dataset, num=6, do_sample=True)
+        save_samples(model, test_dataset, num=6, do_sample=False)
         sys.exit()
 
     # init optimizer and batch loader
@@ -757,9 +765,14 @@ if __name__ == '__main__':
     batch_loader = InfiniteDataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True, num_workers=4)
 
     wandb.config.update({
-        "n_layer": config.n_layer, "n_head": config.n_head, "n_embd": config.n_embd, "learning_rate": args.learning_rate,
-        "weight_decay": args.weight_decay, "batch_size": args.batch_size, "ablate_cross_attention": args.ablate_cross_attention,
+        "n_layer": config.n_layer, "n_head": config.n_head, "n_embd": config.n_embd,
+        "learning_rate": args.learning_rate, "weight_decay": args.weight_decay,
+        "batch_size": args.batch_size, "ablate_cross_attention": args.ablate_cross_attention,
     })
+
+    # model saving stuff
+    wandb.watch(model, log="all", log_freq=args.sample_every, log_graph=False)
+
 
 
     ########## ARGS, LOGGING, AND TRAIN LOOP ##########
@@ -799,13 +812,11 @@ if __name__ == '__main__':
             test_loss  = evaluate(model, test_dataset,  batch_size=100, max_batches=10)
             wandb.log({"train_loss": train_loss, "test_loss": test_loss, "step": step })
             print(f"step {step} train loss: {train_loss:.4f} test loss: {test_loss:.4f}")
-            # save the model to disk if it has improved
-            if best_loss is None or test_loss < best_loss:
-                out_path = os.path.join(args.work_dir, "model.pt")
-                print(f"Test loss {test_loss:.4f} is the best so far, saving model to {out_path}")
-                torch.save(model.state_dict(), out_path)
-                #wandb.save(out_path)
+
+            if best_loss is None or test_loss < best_loss:  # save the model to W&B if it has improved
                 best_loss = test_loss
+                wandb.log({"best_model": model.state_dict()}, step=step)
+
 
         # sample from the model
         if step > 0 and step % args.sample_every == 0:
