@@ -1,13 +1,9 @@
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
-import os, sys, time, math, io, copy, json, pickle, glob, functools, zipfile, argparse, getpass
+import os, sys, time, argparse, getpass
 import numpy as np
-from scipy.ndimage import rotate
-from datetime import datetime
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
 from dataclasses import dataclass
-from math import comb
 
 import wandb
 import torch
@@ -15,6 +11,36 @@ import torch.nn as nn
 from torch.nn import functional as F
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
+
+from .model import Transformer
+from .data import create_datasets
+
+def plot_strokes(stroke, title, fig=None, ax=None):
+    """Plot a single stroke"""
+    if fig is None or ax is None:
+        fig, ax = plt.subplots(figsize=(12, 2), dpi=150)
+
+    # Separate strokes based on pen lifts
+    strokes = []
+    current_stroke = []
+    for point in stroke:
+        if point[2] == 1:  # Pen is down
+            current_stroke.append(point)
+        else:  # Pen is up
+            if current_stroke:
+                strokes.append(current_stroke)
+                current_stroke = []
+    if current_stroke:
+        strokes.append(current_stroke)
+
+    # Plot each stroke
+    for stroke in strokes:
+        x, y = zip(*[(p[0], 1 - p[1]) for p in stroke])  # Invert y-axis
+        ax.plot(x, y, 'b-', linewidth=1.3)
+
+    ax.set_aspect('equal') ; ax.set_title(title)
+    if fig is None: plt.show()
+    return fig, ax
 
 
 @torch.no_grad()
@@ -52,7 +78,7 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
 
 def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do_sample=False):
     """ samples from the model and plots the decoded strokes """
-    model_device = list(model.parameters())[0].device # hacky
+    model_device = next(model.parameters()).device
 
     stroke_seq, context = [], []
     for i in range(num):
@@ -113,9 +139,9 @@ if __name__ == '__main__':
     parser.add_argument('--n_embd2', type=int, default=64, help='Number of embedding dimensions in cross attention')
     parser.add_argument('--n_head', type=int, default=4, help='Number of attention heads in Transformer block')
 
-    parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
-    parser.add_argument('--train_size', type=int, default=497000, help='Number of train examples')
-    parser.add_argument('--test_size', type=int, default=3000, help='Number of test examples')
+    # parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
+    parser.add_argument('--train_size', type=int, default=9000, help='Number of train examples')
+    parser.add_argument('--test_size', type=int, default=1000, help='Number of test examples')
     parser.add_argument('--num_words', type=int, default=4, help='Number of words')
     parser.add_argument('--max_seq_length', type=int, default=1000, help='Maximum sequence length (tokens)')
     parser.add_argument('--augment', action='store_true', default=True, help='Perform augmentations')
@@ -129,8 +155,7 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_entity', type=str, default='sam-greydanus', help='Set this to your wandb username or team name')
     parser.add_argument('--wandb_run_name', type=str, default='unnamed_run', help='W&B run name')
     parser.add_argument('--wandb_api_key', type=str, default=None, help='Weights & Biases API Key')
-
-    parser.add_argument('--resume', action='store_true', default=False, help='Load model from checkpoint')
+    
     parser.add_argument('--local_model_path', type=str, default='best_model.pt', help='Path to local model file')
 
     args = parser.parse_args()
@@ -139,8 +164,6 @@ if __name__ == '__main__':
         if args.wandb_api_key is None:
             args.wandb_api_key = getpass.getpass("Enter your W&B API key: ")
         os.environ["WANDB_API_KEY"] = args.wandb_api_key
-    if not args.sample_only:
-        wandb.init(project=args.wandb_project, entity=args.wandb_entity, name=args.wandb_run_name, config=args)
 
     torch.manual_seed(args.seed)  # system inits
     torch.cuda.manual_seed_all(args.seed)
@@ -161,93 +184,18 @@ if __name__ == '__main__':
     model = Transformer(config)
     model.to(args.device)
     print(f"Model #params: {sum(p.numel() for p in model.parameters())}")
-    if args.resume or args.sample_only:
-        if os.path.exists(args.local_model_path):
-            model.load_state_dict(torch.load(args.local_model_path))
-            print(f"Loaded model from {args.local_model_path}")
-        else:
-            print("Downloading model from W&B")
-            artifact = wandb.use_artifact(f'{args.wandb_entity}/{args.wandb_project}/best_model:latest')
-            model_dir = artifact.download()
-            model.load_state_dict(torch.load(f"{model_dir}/best_model.pt"))
-            torch.save(model.state_dict(), args.local_model_path)
-    if args.sample_only:
-        save_samples(model, test_dataset, num=6, do_sample=True)
-        save_samples(model, test_dataset, num=6, do_sample=False)
-        sys.exit()
 
-    # init optimizer and batch loader
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, betas=(0.9, 0.99), eps=1e-8)
-    scheduler = StepLR(optimizer, step_size=args.step_lr_every, gamma=args.lr_decay)
-    batch_loader = InfiniteDataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True, num_workers=4)
+    if os.path.exists(args.local_model_path):
+        model.load_state_dict(torch.load(args.local_model_path))
+        print(f"Loaded model from {args.local_model_path}")
+    else:
+        print("Downloading model from W&B")
+        api = wandb.Api()
+        artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/{args.wandb_run_name}:model:latest')
+        model_dir = artifact.download()
+        model.load_state_dict(torch.load(f"{model_dir}/best_model.pt"))
+        torch.save(model.state_dict(), args.local_model_path)
 
-    wandb.config.update({
-        "n_layer": config.n_layer, "n_head": config.n_head, "n_embd": config.n_embd,
-        "learning_rate": args.learning_rate, "weight_decay": args.weight_decay,
-        "batch_size": args.batch_size, "ablate_cross_attention": args.ablate_cross_attention,
-    })
-
-    # model saving stuff
-    wandb.watch(model, log="all", log_freq=args.sample_every, log_graph=False)
-
-
-
-    ########## ARGS, LOGGING, AND TRAIN LOOP ##########
-
-    # training loop
-    best_loss = None
-    step = 0
-    while True:
-
-        t0 = time.time()
-
-        # get the next batch, ship to device, and unpack it to input and target
-        batch = batch_loader.next()
-        batch = [t.to(args.device) for t in batch]
-        X, C, Y = batch
-
-        # feed into the model
-        logits, loss = model(X, C, Y)
-
-        # calculate the gradient, update the weights
-        model.zero_grad(set_to_none=True) ; loss.backward()
-        optimizer.step() ; scheduler.step()
-        wandb.log({"train_loss_step": loss.item(), "step": step})
-
-        # wait for all CUDA work on the GPU to finish then calculate iteration time taken
-        if args.device.startswith('cuda'):
-            torch.cuda.synchronize()
-        t1 = time.time()
-
-        # logging
-        if step % args.print_every == 0:
-            print(f"step {step} | loss {loss.item():.4f} | step time {(t1-t0)*1000:.2f}ms | lr {scheduler.get_last_lr()[0]:.6f}")
-
-        # evaluate the model
-        if step > 0 and step % args.sample_every == 0:
-            train_loss = evaluate(model, train_dataset, batch_size=100, max_batches=10)
-            test_loss  = evaluate(model, test_dataset,  batch_size=100, max_batches=10)
-            wandb.log({"train_loss": train_loss, "test_loss": test_loss, "step": step })
-            print(f"step {step} train loss: {train_loss:.4f} test loss: {test_loss:.4f}")
-
-            if best_loss is None or test_loss < best_loss:  # save the model to W&B if it has improved
-                best_loss = test_loss
-                torch.save(model.state_dict(), args.local_model_path)
-                artifact = wandb.Artifact('best_model', type='model')
-                artifact.add_file(args.local_model_path)
-                wandb.log_artifact(artifact)
-
-
-        # sample from the model
-        if step > 0 and step % args.sample_every == 0:
-            save_samples(model, test_dataset, num=6, do_sample=True)
-            save_samples(model, test_dataset, num=6, do_sample=False)
-            save_samples(model, train_dataset, num=3, do_sample=True)
-            save_samples(model, train_dataset, num=3, do_sample=False)
-
-        step += 1
-        # termination conditions
-        if args.max_steps >= 0 and step >= args.max_steps:
-            break
-
-    wandb.finish()
+    save_samples(model, test_dataset, num=6, do_sample=True)
+    save_samples(model, test_dataset, num=6, do_sample=False)
+    sys.exit()
