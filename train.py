@@ -126,7 +126,7 @@ if __name__ == '__main__':
     model = Transformer(config)
     model.to(args.device)
     print(f"Model #params: {sum(p.numel() for p in model.parameters())}")
-    if args.resume or args.sample_only:
+    if args.resume_from_run_id or args.sample_only:
         if os.path.exists(args.local_model_path):
             model.load_state_dict(torch.load(args.local_model_path))
             print(f"Loaded model from {args.local_model_path}")
