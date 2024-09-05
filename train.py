@@ -10,9 +10,9 @@ from torch.optim.lr_scheduler import StepLR
 
 import wandb
 
-from .model import Transformer
-from .sample import save_samples
-from .data import InfiniteDataLoader, create_datasets
+from model import Transformer
+from sample import save_samples
+from data import InfiniteDataLoader, create_datasets
 
 
 @torch.inference_mode()

@@ -12,8 +12,8 @@ from torch.nn import functional as F
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 
-from .model import Transformer
-from .data import create_datasets
+from model import Transformer
+from data import create_datasets
 
 def plot_strokes(stroke, title, fig=None, ax=None):
     """Plot a single stroke"""
@@ -155,7 +155,7 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_entity', type=str, default='sam-greydanus', help='Set this to your wandb username or team name')
     parser.add_argument('--wandb_run_name', type=str, default='unnamed_run', help='W&B run name')
     parser.add_argument('--wandb_api_key', type=str, default=None, help='Weights & Biases API Key')
-    
+
     parser.add_argument('--local_model_path', type=str, default='best_model.pt', help='Path to local model file')
 
     args = parser.parse_args()
