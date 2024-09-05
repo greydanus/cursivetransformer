@@ -13,7 +13,7 @@ from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 
 from model import Transformer
-from data import create_datasets
+from data import create_datasets, offsets_to_strokes
 
 def plot_strokes(stroke, title, fig=None, ax=None):
     """Plot a single stroke"""
