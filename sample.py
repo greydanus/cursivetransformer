@@ -76,7 +76,7 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
     return idx
 
 
-def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do_sample=False):
+def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do_sample=False, log_wandb=True):
     """ samples from the model and plots the decoded strokes """
     model_device = next(model.parameters()).device
 
@@ -103,7 +103,8 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do
         fig, ax = plot_strokes(point_samp, f'Sample {i+1}: "{decoded_ascii}"') #plt.axis('off')
         tag = 'sample' if do_sample else 'topk'
         fig.savefig(f"{dataset.name}_{tag}_{i+1}.png")
-        wandb.log({f"{dataset.name}_{tag}_{i+1}": wandb.Image(f"{dataset.name}_{tag}_{i+1}.png")})
+        if log_wandb:
+            wandb.log({f"{dataset.name}_{tag}_{i+1}": wandb.Image(f"{dataset.name}_{tag}_{i+1}.png")})
         plt.close(fig)
         print(f"Saved {dataset.name}_{tag}_{i+1}.png")
 
