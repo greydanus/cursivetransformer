@@ -157,7 +157,7 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_api_key', type=str, default=None, help='Weights & Biases API Key')
 
     parser.add_argument('--local_model_path', type=str, default='best_model.pt', help='Path to local model file')
-    parser.add_argument('--resume_from_run_id', type=str, default=None, help='Resume from a specific W&B run ID')
+    parser.add_argument('--load_from_run_id', type=str, default=None, help='Resume from a specific W&B run ID')
 
     args = parser.parse_args()
 
@@ -189,10 +189,10 @@ if __name__ == '__main__':
     if os.path.exists(args.local_model_path):
         model.load_state_dict(torch.load(args.local_model_path, weights_only=True))
         print(f"Loaded model from {args.local_model_path}")
-    elif args.resume_from_run_id:
+    elif args.load_from_run_id:
         print("Downloading model from W&B")
         api = wandb.Api()
-        artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/{args.resume_from_run_id}:model:latest')
+        artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/{args.load_from_run_id}:model:latest')
         model_dir = artifact.download()
         model.load_state_dict(torch.load(f"{model_dir}/best_model.pt", weights_only=True))
         torch.save(model.state_dict(), args.local_model_path)
