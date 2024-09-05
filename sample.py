@@ -12,7 +12,7 @@ from torch.nn import functional as F
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 
-from model import Transformer
+from model import Transformer, save_checkpoint
 from data import create_datasets, offsets_to_strokes
 from train import save_checkpoint
 

@@ -12,7 +12,7 @@ from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 from torch.optim.lr_scheduler import StepLR
 
-from model import Transformer
+from model import Transformer, save_checkpoint
 from sample import save_samples
 from data import InfiniteDataLoader, create_datasets
 
@@ -50,18 +50,6 @@ class ModelConfig:
     n_head: int = 4
     n_ctx_head: int = 4 # number of heads for cross-attention
     ablate_cross_attention: bool = False
-
-def save_checkpoint(model, path, optimizer=None, scheduler=None, step=None, best_loss=None):
-    checkpoint = {'model_state_dict': model.state_dict()}
-    if optimizer is not None:
-        checkpoint['optimizer_state_dict'] = optimizer.state_dict()
-    if scheduler is not None:
-        checkpoint['scheduler_state_dict'] = scheduler.state_dict()
-    if step is not None:
-        checkpoint['step'] = step
-    if best_loss is not None:
-        checkpoint['best_loss'] = best_loss
-    torch.save(checkpoint, path)
 
 
 if __name__ == '__main__':

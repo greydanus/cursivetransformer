@@ -5,6 +5,19 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
+def save_checkpoint(model, path, optimizer=None, scheduler=None, step=None, best_loss=None):
+    checkpoint = {'model_state_dict': model.state_dict()}
+    if optimizer is not None:
+        checkpoint['optimizer_state_dict'] = optimizer.state_dict()
+    if scheduler is not None:
+        checkpoint['scheduler_state_dict'] = scheduler.state_dict()
+    if step is not None:
+        checkpoint['step'] = step
+    if best_loss is not None:
+        checkpoint['best_loss'] = best_loss
+    torch.save(checkpoint, path)
+    
+
 class NewGELU(nn.Module):
     """
     Implementation of the GELU activation function currently in Google BERT repo (identical to OpenAI GPT).
