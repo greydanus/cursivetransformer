@@ -178,8 +178,6 @@ if __name__ == '__main__':
     ########## ARGS, LOGGING, AND TRAIN LOOP ##########
 
     # training loop
-    best_loss = None
-    step = 0
     while True:
 
         t0 = time.time()
