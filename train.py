@@ -56,7 +56,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate a word bank')
     parser.add_argument('--max_steps', type=int, default=110000, help='How many steps to train for')
     parser.add_argument('--print_every', type=int, default=100, help='Print log info after how many steps')
-    parser.add_argument('--sample_every', type=int, default=2500, help='Sample model after how many steps')
+    parser.add_argument('--log_every', type=int, default=2500, help='Sample model after how many steps')
     parser.add_argument('--lr_decay', type=float, default=0.333, help='How much to decay the learning rate')
     parser.add_argument('--step_lr_every', type=int, default=33000, help='How often to decay the learning rate')
     parser.add_argument('--device', type=str, default='cuda', help='This is meant to be trained on a GPU')
@@ -183,7 +183,7 @@ if __name__ == '__main__':
             print(f"step {step} | loss {loss.item():.4f} | step time {(t1-t0)*1000:.2f}ms | lr {scheduler.get_last_lr()[0]:.6f}")
 
         # evaluate the model
-        if step > 0 and step % args.sample_every == 0:
+        if step > 0 and step % args.log_every == 0:
             train_loss = evaluate(model, train_dataset, batch_size=100, max_batches=10)
             test_loss  = evaluate(model, test_dataset,  batch_size=100, max_batches=10)
             wandb.log({"train_loss": train_loss, "test_loss": test_loss, "step": step })
@@ -199,7 +199,7 @@ if __name__ == '__main__':
 
 
         # sample from the model
-        if step > 0 and step % args.sample_every == 0:
+        if step > 0 and step % args.log_every == 0:
             save_samples(model, test_dataset, num=6, do_sample=True)
             save_samples(model, test_dataset, num=6, do_sample=False)
             save_samples(model, train_dataset, num=3, do_sample=True)
