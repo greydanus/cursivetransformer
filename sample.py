@@ -197,7 +197,7 @@ if __name__ == '__main__':
         api = wandb.Api()
         artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/{args.resume_from_run_id or args.wandb_run_name}:model:latest')
         model_dir = artifact.download()
-        checkpoint = torch.load(f"{model_dir}/{args.local_checkpoint_path}}")
+        checkpoint = torch.load(f"{model_dir}/{args.local_checkpoint_path}")
         model.load_state_dict(checkpoint['model_state_dict'])
         save_checkpoint(model, args.local_checkpoint_path)
 
