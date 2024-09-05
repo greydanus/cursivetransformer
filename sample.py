@@ -201,6 +201,6 @@ if __name__ == '__main__':
         print("No local model or W&B run ID provided. Exiting.")
         sys.exit()
 
-    save_samples(model, test_dataset, num=6, do_sample=True)
-    save_samples(model, test_dataset, num=6, do_sample=False)
+    save_samples(model, test_dataset, num=6, do_sample=True, log_wandb=False)
+    save_samples(model, test_dataset, num=6, do_sample=False, log_wandb=False)
     sys.exit()
