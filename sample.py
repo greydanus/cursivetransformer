@@ -188,7 +188,7 @@ if __name__ == '__main__':
     print(f"Model #params: {sum(p.numel() for p in model.parameters())}")
 
     if os.path.exists(args.local_checkpoint_path):
-        checkpoint = torch.load(args.local_checkpoint_path)
+        checkpoint = torch.load(args.local_checkpoint_path, weights_only=True)
         model.load_state_dict(checkpoint['model_state_dict'])
         print(f"Loaded model from {args.local_checkpoint_path}")
     elif args.load_from_run_id:
