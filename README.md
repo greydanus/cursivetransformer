@@ -347,3 +347,8 @@ Here are samples generated after just 22k gradient steps:
 ![sample_v42](static/sample_v42.png)
 
 ![sample_v43](static/sample_v43.png)
+
+
+### Progress September 5
+
+Added model saving IO. A full checkpoint is now saved to W&B. This checkpoint can be downloaded and used to resume the run (including loading optimizer state and learning rate scheduler) or for generating samples.
