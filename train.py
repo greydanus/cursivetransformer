@@ -198,7 +198,7 @@ if __name__ == '__main__':
 
             if best_loss is None or test_loss < best_loss:  # save the model to W&B if it has improved
                 best_loss = test_loss
-                print(f"Test loss {test_loss:.4f} is the best so far, saving model to {out_path}")
+                print(f"Test loss {test_loss:.4f} is the best so far, saving model to {args.local_model_path}")
                 torch.save(model.state_dict(), args.local_model_path)
                 artifact = wandb.Artifact('best_model', type='model')
                 artifact.add_file(args.local_model_path)
