@@ -1,21 +1,14 @@
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
-import os, sys, time, math, io, copy, json, pickle, glob, functools, zipfile, argparse, getpass
-import numpy as np
-from scipy.ndimage import rotate
-from datetime import datetime
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-from dataclasses import dataclass
-from math import comb
-
-import wandb
+import os, sys, time, argparse, getpass
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 from torch.optim.lr_scheduler import StepLR
+
+import wandb
 
 from .model import Transformer
 from .sample import save_samples
