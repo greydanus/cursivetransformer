@@ -723,7 +723,8 @@ if __name__ == '__main__':
         if args.wandb_api_key is None:
             args.wandb_api_key = getpass.getpass("Enter your W&B API key: ")
         os.environ["WANDB_API_KEY"] = args.wandb_api_key
-    wandb.init(project=args.wandb_project, entity=args.wandb_entity, name=args.wandb_run_name, config=args)
+    if not args.sample_only:
+        wandb.init(project=args.wandb_project, entity=args.wandb_entity, name=args.wandb_run_name, config=args)
 
     torch.manual_seed(args.seed)  # system inits
     torch.cuda.manual_seed_all(args.seed)
@@ -815,7 +816,10 @@ if __name__ == '__main__':
 
             if best_loss is None or test_loss < best_loss:  # save the model to W&B if it has improved
                 best_loss = test_loss
-                wandb.log({"best_model": model.state_dict()}, step=step)
+                torch.save(model.state_dict(), args.local_model_path)
+                artifact = wandb.Artifact('best_model', type='model')
+                artifact.add_file(args.local_model_path)
+                wandb.log_artifact(artifact)
 
 
         # sample from the model
