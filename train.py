@@ -1,14 +1,15 @@
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
 import os, sys, time, argparse, getpass
+from dataclasses import dataclass
+import wandb
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 from torch.optim.lr_scheduler import StepLR
-
-import wandb
 
 from model import Transformer
 from sample import save_samples
