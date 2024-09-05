@@ -14,7 +14,6 @@ from torch.utils.data.dataloader import DataLoader
 
 from model import Transformer, save_checkpoint
 from data import create_datasets, offsets_to_strokes
-from train import save_checkpoint
 
 def plot_strokes(stroke, title, fig=None, ax=None):
     """Plot a single stroke"""
