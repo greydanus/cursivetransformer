@@ -1,6 +1,7 @@
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
 import os, sys, time, argparse, getpass
+from typing import Optional
 from dataclasses import dataclass
 import wandb
 
@@ -53,7 +54,7 @@ class ModelConfig:
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Generate a word bank')
+    parser = argparse.ArgumentParser(description='Train a cursivetransformer model')
     parser.add_argument('--max_steps', type=int, default=110000, help='How many steps to train for')
     parser.add_argument('--print_every', type=int, default=100, help='Print log info after how many steps')
     parser.add_argument('--log_every', type=int, default=2500, help='Sample model after how many steps')
@@ -87,7 +88,7 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_run_name', type=str, default='unnamed_run', help='W&B run name')
     parser.add_argument('--wandb_api_key', type=str, default=None, help='Weights & Biases API Key')
 
-    parser.add_argument('--resume', action='store_true', default=False, help='Load model from checkpoint')
+    parser.add_argument('--resume_from_run_id', type=str, default=None, help='Resume from a specific W&B run ID')
     parser.add_argument('--sample_only', action='store_true', default=False, help='Only sample from the model')
     parser.add_argument('--local_model_path', type=str, default='best_model.pt', help='Path to local model file')
 
@@ -98,7 +99,13 @@ if __name__ == '__main__':
             args.wandb_api_key = getpass.getpass("Enter your W&B API key: ")
         os.environ["WANDB_API_KEY"] = args.wandb_api_key
     if not args.sample_only:
-        wandb.init(project=args.wandb_project, entity=args.wandb_entity, name=args.wandb_run_name, config=args)
+        wandb_init_args = {"project": args.wandb_project, "entity": args.wandb_entity, "config": args}
+        if args.resume_from_run_id:
+            wandb_init_args["id"] = args.resume_from_run_id
+            wandb_init_args["resume"] = "must"
+        else:
+            wandb_init_args["name"] = args.wandb_run_name
+        wandb.init(**wandb_init_args)
 
     torch.manual_seed(args.seed)  # system inits
     torch.cuda.manual_seed_all(args.seed)
@@ -126,7 +133,7 @@ if __name__ == '__main__':
         else:
             print("Downloading model from W&B")
             api = wandb.Api()
-            artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/{args.wandb_run_name}:model:latest')
+            artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/{args.resume_from_run_id or args.wandb_run_name}:model:latest')
             model_dir = artifact.download()
             model.load_state_dict(torch.load(f"{model_dir}/best_model.pt"))
             torch.save(model.state_dict(), args.local_model_path)
@@ -147,7 +154,7 @@ if __name__ == '__main__':
     })
 
     # model saving stuff
-    wandb.watch(model, log="all", log_freq=args.sample_every, log_graph=False)
+    wandb.watch(model, log="all", log_freq=args.log_every, log_graph=False)
 
 
 
