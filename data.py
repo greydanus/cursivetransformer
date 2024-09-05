@@ -1,6 +1,6 @@
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
-import os, sys, json, pickle, zipfile, functools
+import os, sys, json, pickle, zipfile, functools, copy
 import numpy as np
 from math import comb
 
