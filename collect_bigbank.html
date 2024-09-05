@@ -407,6 +407,9 @@
                         onMouseMove={draw}
                         onMouseUp={endDrawing}
                         onMouseOut={endDrawing}
+                        onTouchStart={startDrawing}
+                        onTouchMove={draw}
+                        onTouchEnd={endDrawing}
                         style={{ border: '1px solid #CBD5E0', cursor: 'crosshair', marginBottom: '16px', maxWidth: '100%' }}
                     />
 
