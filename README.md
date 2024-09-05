@@ -345,3 +345,5 @@ Here are samples generated after just 22k gradient steps:
 ![sample_v41](static/sample_v41.png)
 
 ![sample_v42](static/sample_v42.png)
+
+![sample_v43](static/sample_v43.png)
