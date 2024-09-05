@@ -128,14 +128,14 @@ if __name__ == '__main__':
     print(f"Model #params: {sum(p.numel() for p in model.parameters())}")
     if args.resume_from_run_id or args.sample_only:
         if os.path.exists(args.local_model_path):
-            model.load_state_dict(torch.load(args.local_model_path))
+            model.load_state_dict(torch.load(args.local_model_path, weights_only=True))
             print(f"Loaded model from {args.local_model_path}")
         else:
             print("Downloading model from W&B")
             api = wandb.Api()
             artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/{args.resume_from_run_id or args.wandb_run_name}:model:latest')
             model_dir = artifact.download()
-            model.load_state_dict(torch.load(f"{model_dir}/best_model.pt"))
+            model.load_state_dict(torch.load(f"{model_dir}/best_model.pt", weights_only=True))
             torch.save(model.state_dict(), args.local_model_path)
     if args.sample_only:
         save_samples(model, test_dataset, num=6, do_sample=True)
