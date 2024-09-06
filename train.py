@@ -146,7 +146,27 @@ if __name__ == '__main__':
         else:
             print("Downloading checkpoint from W&B")
             api = wandb.Api()
-            artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/best_checkpoint:{args.resume_from_run_id}:latest')
+            # artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/best_checkpoint:{args.resume_from_run_id}:latest')
+
+
+            artifact_string = f'{args.wandb_entity}/{args.wandb_project}/best_checkpoint:{args.resume_from_run_id}:latest'
+            print(f"Attempting to download artifact: {artifact_string}")
+            try:
+                artifact = api.artifact(artifact_string)
+                model_dir = artifact.download()
+                print(f"Successfully downloaded artifact to {model_dir}")
+            except wandb.errors.CommError as e:
+                print(f"Error downloading artifact: {e}")
+                print("Available artifacts for this run:")
+                run = api.run(f"{args.wandb_entity}/{args.wandb_project}/{args.resume_from_run_id}")
+                for artifact in run.logged_artifacts():
+                    print(f"  {artifact.type}:{artifact.name}")
+
+
+
+
+
+
             model_dir = artifact.download()
             checkpoint = torch.load(f"{model_dir}/{args.local_checkpoint_path}", weights_only=True)
             model.load_state_dict(checkpoint['model_state_dict'])
