@@ -104,10 +104,9 @@
             const [currentIndex, setCurrentIndex] = React.useState(0);
             const [displayIndex, setDisplayIndex] = React.useState(0);
 
-            const canvasRef = useRef(null);
-            const containerRef = useRef(null);
-            const lastPointRef = useRef(null);
-            const lastSampledPointRef = useRef(null);
+            const canvasRef = React.useRef(null);
+            const lastPointRef = React.useRef(null);
+            const lastSampledPointRef = React.useRef(null);
 
             const drawStrokes = React.useCallback(() => {
                 const canvas = canvasRef.current;
