@@ -146,38 +146,10 @@ if __name__ == '__main__':
         else:
             print("Downloading checkpoint from W&B")
             api = wandb.Api()
-            
-
+            # artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/model:best_checkpoint:latest', type='model')
             run = api.run(f"{args.wandb_entity}/{args.wandb_project}/{args.resume_from_run_id}")
+            artifact = run.use_artifact('model:best_checkpoint:latest', type='model')
 
-            # Get the latest best_checkpoint artifact
-            latest_checkpoint = None
-            for artifact in run.logged_artifacts():
-                if artifact.type == 'model' and artifact.name.startswith('best_checkpoint'):
-                    if not latest_checkpoint or artifact.version > latest_checkpoint.version:
-                        latest_checkpoint = artifact
-
-            if latest_checkpoint:
-                print(f"Downloading latest artifact: {latest_checkpoint.name}")
-                model_dir = latest_checkpoint.download()
-                
-                # Find the .pt file in the downloaded directory
-                checkpoint_file = next(
-                    (os.path.join(root, file) 
-                     for root, _, files in os.walk(model_dir) 
-                     for file in files if file.endswith('.pt')),
-                    None
-                )
-                
-                if checkpoint_file:
-                    print(f"Loading checkpoint from: {checkpoint_file}")
-                    checkpoint = torch.load(checkpoint_file, weights_only=True)
-                    # Load your model with the checkpoint here
-                    # model.load_state_dict(checkpoint)
-                else:
-                    print("No .pt file found in the artifact")
-            else:
-                print("No 'best_checkpoint' artifact found for this run")
 
 
             artifact_dir = artifact.download()
@@ -208,6 +180,40 @@ if __name__ == '__main__':
     wandb.watch(model, log="all", log_freq=args.log_every, log_graph=False)
 
 
+
+
+            # run = api.run(f"{args.wandb_entity}/{args.wandb_project}/{args.resume_from_run_id}")
+
+            # # Get the latest best_checkpoint artifact
+            # latest_checkpoint = None
+            # for artifact in run.logged_artifacts():
+            #     if artifact.type == 'model' and artifact.name.startswith('best_checkpoint'):
+            #         if not latest_checkpoint or artifact.version > latest_checkpoint.version:
+            #             latest_checkpoint = artifact
+
+            # if latest_checkpoint:
+            #     print(f"Downloading latest artifact: {latest_checkpoint.name}")
+            #     model_dir = latest_checkpoint.download()
+                
+            #     # Find the .pt file in the downloaded directory
+            #     checkpoint_file = next(
+            #         (os.path.join(root, file) 
+            #          for root, _, files in os.walk(model_dir) 
+            #          for file in files if file.endswith('.pt')),
+            #         None
+            #     )
+                
+            #     if checkpoint_file:
+            #         print(f"Loading checkpoint from: {checkpoint_file}")
+            #         checkpoint = torch.load(checkpoint_file, weights_only=True)
+            #         # Load your model with the checkpoint here
+            #         # model.load_state_dict(checkpoint)
+            #     else:
+            #         print("No .pt file found in the artifact")
+            # else:
+            #     print("No 'best_checkpoint' artifact found for this run")
+
+                
 
     ########## ARGS, LOGGING, AND TRAIN LOOP ##########
 
