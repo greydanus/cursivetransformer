@@ -11,7 +11,7 @@ def get_latest_checkpoint_artifact(args, verbose=True):
     run = wandb.Api().run(f"{args.wandb_entity}/{args.wandb_project}/{args.load_from_run_id}")
 
     if verbose:
-        print(f"Finiding latest checkpoint for W&B run id {args.load_from_run_id}")
+        print(f"Finding latest checkpoint for W&B run id {args.load_from_run_id}")
     latest_artifact = None
     get_version = lambda artifact: -1 if artifact is None else int(artifact.name.split(':v')[-1])
     for artifact in run.logged_artifacts():
