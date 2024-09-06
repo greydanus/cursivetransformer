@@ -168,11 +168,28 @@
                 drawStrokes();
             }, [drawStrokes]);
 
-            const startDrawing = (e) => {
+            const getCoordinates = (e) => {
                 const canvas = canvasRef.current;
                 const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                if (e.type.includes('mouse')) {
+                    return [
+                        (e.clientX - rect.left) * scaleX,
+                        (e.clientY - rect.top) * scaleY
+                    ];
+                } else { // Touch event
+                    const touch = e.touches[0] || e.changedTouches[0];
+                    return [
+                        (touch.clientX - rect.left) * scaleX,
+                        (touch.clientY - rect.top) * scaleY
+                    ];
+                }
+            };
+
+            const startDrawing = (e) => {
+                e.preventDefault();
+                const [x, y] = getCoordinates(e);
                 setCurrentStroke([[x, y, 1]]);
                 lastPointRef.current = [x, y];
                 lastSampledPointRef.current = [x, y];
