@@ -12,7 +12,7 @@ from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 from torch.optim.lr_scheduler import StepLR
 
-from model import Transformer, save_checkpoint
+from model import Transformer, save_checkpoint, get_latest_checkpoint_artifact
 from sample import save_samples
 from data import InfiniteDataLoader, create_datasets
 
@@ -144,22 +144,8 @@ if __name__ == '__main__':
                 step = checkpoint['step']
                 best_loss = checkpoint['best_loss']
         else:
-            print("Downloading checkpoint from W&B")
-            api = wandb.Api()
-            run = api.run(f"{args.wandb_entity}/{args.wandb_project}/{args.load_from_run_id}")
-
-
-            latest_artifact = None
-            get_version = lambda artifact: -1 if artifact is None else int(artifact.name.split(':v')[-1])
-            for artifact in run.logged_artifacts():
-                print(f"  {artifact.type}:{artifact.name}")
-                if artifact.type == 'model' and (get_version(artifact) > get_version(latest_artifact)):
-                    latest_artifact = artifact
-
-            print(f"Selected:  {latest_artifact.type}:{latest_artifact.name}")
-
-
-            artifact_dir = latest_artifact.download()
+            artifact = get_latest_checkpoint_artifact(args)
+            artifact_dir = artifact.download()
             checkpoint = torch.load(os.path.join(artifact_dir, "best_checkpoint.pt"), weights_only=True)
             model.load_state_dict(checkpoint['model_state_dict'])
             

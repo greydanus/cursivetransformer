@@ -12,7 +12,7 @@ from torch.nn import functional as F
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 
-from model import Transformer, save_checkpoint
+from model import Transformer, save_checkpoint, get_latest_checkpoint_artifact
 from data import create_datasets, offsets_to_strokes
 
 def plot_strokes(stroke, title, fig=None, ax=None):
@@ -192,10 +192,7 @@ if __name__ == '__main__':
         model.load_state_dict(checkpoint['model_state_dict'])
         print(f"Loaded model from {args.local_checkpoint_path}")
     elif args.load_from_run_id:
-        print("Downloading checkpoint from W&B")
-        api = wandb.Api()
-        run = api.run(f"{args.wandb_entity}/{args.wandb_project}/{args.load_from_run_id}")
-        artifact = run.use_artifact('model:best_checkpoint:latest', type='model')
+        artifact = get_latest_checkpoint_artifact(args)
         artifact_dir = artifact.download()
         checkpoint = torch.load(os.path.join(artifact_dir, "best_checkpoint.pt"), weights_only=True)
         model.load_state_dict(checkpoint['model_state_dict'])
