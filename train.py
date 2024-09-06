@@ -146,54 +146,19 @@ if __name__ == '__main__':
         else:
             print("Downloading checkpoint from W&B")
             api = wandb.Api()
-            # artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/best_checkpoint:{args.resume_from_run_id}:latest')
-
-
-
-
-            api = wandb.Api()
-            runs = api.runs(f"{args.wandb_entity}/{args.wandb_project}")
-
-            print("Available runs:")
-            for run in runs:
-                print(f"ID: {run.id}, Name: {run.name}")
-
-            run_id = args.resume_from_run_id
-
-            run = api.run(f"{args.wandb_entity}/{args.wandb_project}/{run_id}")  # or run_name
-
-            print(f"Selected run: {run.name} (ID: {run.id})")
-            print("Available artifacts for this run:")
-            for artifact in run.logged_artifacts():
-                print(f"  {artifact.type}:{artifact.name}")
-
-            checkpoint_artifact = None
-            for artifact in run.logged_artifacts():
-                if artifact.type == 'model' and artifact.name.startswith('best_checkpoint'):
-                    checkpoint_artifact = artifact
-                    break
-
-            if checkpoint_artifact:
-                print(f"Downloading artifact: {checkpoint_artifact.name}")
-                model_dir = checkpoint_artifact.download()
-                print(f"Downloaded to {model_dir}")
-            else:
-                print("No 'best_checkpoint' artifact found for this run")
-
-
-
-
-
-
-            model_dir = artifact.download()
-            checkpoint = torch.load(f"{model_dir}/{args.local_checkpoint_path}", weights_only=True)
+            run = api.run(f"{args.wandb_entity}/{args.wandb_project}/{args.resume_from_run_id}")
+            artifact = run.use_artifact('model:best_checkpoint:latest', type='model')
+            artifact_dir = artifact.download()
+            checkpoint = torch.load(os.path.join(artifact_dir, "best_checkpoint.pt"), weights_only=True)
             model.load_state_dict(checkpoint['model_state_dict'])
+            
             if not args.sample_only:
                 optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
                 scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-                step = checkpoint['step']
-                best_loss = checkpoint['best_loss']
+                step, best_loss = checkpoint['step'], checkpoint['best_loss']
+            
             save_checkpoint(model, args.local_checkpoint_path, optimizer, scheduler, step, best_loss)
+
     if args.sample_only:
         save_samples(model, test_dataset, num=6, do_sample=True)
         save_samples(model, test_dataset, num=6, do_sample=False)
