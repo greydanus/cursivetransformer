@@ -88,7 +88,7 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_run_name', type=str, default='unnamed_run', help='W&B run name')
     parser.add_argument('--wandb_api_key', type=str, default=None, help='Weights & Biases API Key')
 
-    parser.add_argument('--resume_from_run_id', type=str, default=None, help='Resume from a specific W&B run ID')
+    parser.add_argument('--load_from_run_id', type=str, default=None, help='Load from a specific W&B run ID')
     parser.add_argument('--sample_only', action='store_true', default=False, help='Only sample from the model')
     parser.add_argument('--local_checkpoint_path', type=str, default='best_checkpoint.pt', help='Path to local model file')
 
@@ -100,8 +100,8 @@ if __name__ == '__main__':
         os.environ["WANDB_API_KEY"] = args.wandb_api_key
     if not args.sample_only:
         wandb_init_args = {"project": args.wandb_project, "entity": args.wandb_entity, "config": args}
-        if args.resume_from_run_id:
-            wandb_init_args["id"] = args.resume_from_run_id
+        if args.load_from_run_id:
+            wandb_init_args["id"] = args.load_from_run_id
             wandb_init_args["resume"] = "must"
         else:
             wandb_init_args["name"] = args.wandb_run_name
@@ -133,7 +133,7 @@ if __name__ == '__main__':
     step = 0
     best_loss = None
 
-    if args.resume_from_run_id or args.sample_only:
+    if args.load_from_run_id or args.sample_only:
         if os.path.exists(args.local_checkpoint_path):
             checkpoint = torch.load(args.local_checkpoint_path, weights_only=True)
             model.load_state_dict(checkpoint['model_state_dict'])
@@ -146,12 +146,8 @@ if __name__ == '__main__':
         else:
             print("Downloading checkpoint from W&B")
             api = wandb.Api()
-            # artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/model:best_checkpoint:latest', type='model')
-            run = api.run(f"{args.wandb_entity}/{args.wandb_project}/{args.resume_from_run_id}")
+            run = api.run(f"{args.wandb_entity}/{args.wandb_project}/{args.load_from_run_id}")
             artifact = run.use_artifact('model:best_checkpoint:latest', type='model')
-
-
-
             artifact_dir = artifact.download()
             checkpoint = torch.load(os.path.join(artifact_dir, "best_checkpoint.pt"), weights_only=True)
             model.load_state_dict(checkpoint['model_state_dict'])
@@ -179,41 +175,6 @@ if __name__ == '__main__':
     # model saving stuff
     wandb.watch(model, log="all", log_freq=args.log_every, log_graph=False)
 
-
-
-
-            # run = api.run(f"{args.wandb_entity}/{args.wandb_project}/{args.resume_from_run_id}")
-
-            # # Get the latest best_checkpoint artifact
-            # latest_checkpoint = None
-            # for artifact in run.logged_artifacts():
-            #     if artifact.type == 'model' and artifact.name.startswith('best_checkpoint'):
-            #         if not latest_checkpoint or artifact.version > latest_checkpoint.version:
-            #             latest_checkpoint = artifact
-
-            # if latest_checkpoint:
-            #     print(f"Downloading latest artifact: {latest_checkpoint.name}")
-            #     model_dir = latest_checkpoint.download()
-                
-            #     # Find the .pt file in the downloaded directory
-            #     checkpoint_file = next(
-            #         (os.path.join(root, file) 
-            #          for root, _, files in os.walk(model_dir) 
-            #          for file in files if file.endswith('.pt')),
-            #         None
-            #     )
-                
-            #     if checkpoint_file:
-            #         print(f"Loading checkpoint from: {checkpoint_file}")
-            #         checkpoint = torch.load(checkpoint_file, weights_only=True)
-            #         # Load your model with the checkpoint here
-            #         # model.load_state_dict(checkpoint)
-            #     else:
-            #         print("No .pt file found in the artifact")
-            # else:
-            #     print("No 'best_checkpoint' artifact found for this run")
-
-                
 
     ########## ARGS, LOGGING, AND TRAIN LOOP ##########
 
