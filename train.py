@@ -149,18 +149,36 @@ if __name__ == '__main__':
             # artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/best_checkpoint:{args.resume_from_run_id}:latest')
 
 
-            artifact_string = f'{args.wandb_entity}/{args.wandb_project}/best_checkpoint:{args.resume_from_run_id}:latest'
-            print(f"Attempting to download artifact: {artifact_string}")
-            try:
-                artifact = api.artifact(artifact_string)
-                model_dir = artifact.download()
-                print(f"Successfully downloaded artifact to {model_dir}")
-            except wandb.errors.CommError as e:
-                print(f"Error downloading artifact: {e}")
-                print("Available artifacts for this run:")
-                run = api.run(f"{args.wandb_entity}/{args.wandb_project}/{args.resume_from_run_id}")
-                for artifact in run.logged_artifacts():
-                    print(f"  {artifact.type}:{artifact.name}")
+
+
+            api = wandb.Api()
+            runs = api.runs(f"{args.wandb_entity}/{args.wandb_project}")
+
+            print("Available runs:")
+            for run in runs:
+                print(f"ID: {run.id}, Name: {run.name}")
+
+            run_id = args.resume_from_run_id
+
+            run = api.run(f"{args.wandb_entity}/{args.wandb_project}/{run_id}")  # or run_name
+
+            print(f"Selected run: {run.name} (ID: {run.id})")
+            print("Available artifacts for this run:")
+            for artifact in run.logged_artifacts():
+                print(f"  {artifact.type}:{artifact.name}")
+
+            checkpoint_artifact = None
+            for artifact in run.logged_artifacts():
+                if artifact.type == 'model' and artifact.name.startswith('best_checkpoint'):
+                    checkpoint_artifact = artifact
+                    break
+
+            if checkpoint_artifact:
+                print(f"Downloading artifact: {checkpoint_artifact.name}")
+                model_dir = checkpoint_artifact.download()
+                print(f"Downloaded to {model_dir}")
+            else:
+                print("No 'best_checkpoint' artifact found for this run")
 
 
 
