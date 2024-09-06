@@ -146,8 +146,7 @@ if __name__ == '__main__':
         else:
             print("Downloading checkpoint from W&B")
             api = wandb.Api()
-            artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/model:{args.resume_from_run_id or args.wandb_run_name}:latest')
-            # artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/{args.resume_from_run_id or args.wandb_run_name}:model:latest')
+            artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/best_checkpoint:{args.resume_from_run_id}:latest')
             model_dir = artifact.download()
             checkpoint = torch.load(f"{model_dir}/{args.local_checkpoint_path}", weights_only=True)
             model.load_state_dict(checkpoint['model_state_dict'])
