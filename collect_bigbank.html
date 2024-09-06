@@ -104,9 +104,10 @@
             const [currentIndex, setCurrentIndex] = React.useState(0);
             const [displayIndex, setDisplayIndex] = React.useState(0);
 
-            const canvasRef = React.useRef(null);
-            const lastPointRef = React.useRef(null);
-            const lastSampledPointRef = React.useRef(null);
+            const canvasRef = useRef(null);
+            const containerRef = useRef(null);
+            const lastPointRef = useRef(null);
+            const lastSampledPointRef = useRef(null);
 
             const drawStrokes = React.useCallback(() => {
                 const canvas = canvasRef.current;
@@ -198,11 +199,11 @@
 
             const draw = (e) => {
                 if (!isDrawing) return;
+                e.preventDefault();
+                const [x, y] = getCoordinates(e);
+                
                 const canvas = canvasRef.current;
                 const ctx = canvas.getContext('2d');
-                const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
                 
                 ctx.strokeStyle = '#2F4F4F';
                 ctx.lineWidth = 2;
@@ -232,6 +233,21 @@
                 lastPointRef.current = null;
                 lastSampledPointRef.current = null;
             };
+
+            useEffect(() => {
+                const container = containerRef.current;
+                if (container) {
+                    const preventScroll = (e) => {
+                        if (isDrawing) {
+                            e.preventDefault();
+                        }
+                    };
+                    container.addEventListener('touchmove', preventScroll, { passive: false });
+                    return () => {
+                        container.removeEventListener('touchmove', preventScroll);
+                    };
+                }
+            }, [isDrawing]); 
 
             const generateEntry = () => {
                 if (!author.trim()) {
@@ -380,7 +396,7 @@
 
 
             return (
-                <div className="container">
+                <div ref={containerRef} className="container" style={{ touchAction: 'none' }}>
                     <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>Handwriting Stroke Capture</h2>
                     <p style={{ fontSize: '14px', color: '#4B5563', marginBottom: '16px' }}>
                         Instructions: Upload an image, trace the writing, enter author and ASCII sequence, then add to dataset. Export when finished.
@@ -427,7 +443,13 @@
                         onTouchStart={startDrawing}
                         onTouchMove={draw}
                         onTouchEnd={endDrawing}
-                        style={{ border: '1px solid #CBD5E0', cursor: 'crosshair', marginBottom: '16px', maxWidth: '100%' }}
+                        style={{ 
+                            border: '1px solid #CBD5E0', 
+                            cursor: 'crosshair', 
+                            marginBottom: '16px', 
+                            maxWidth: '100%',
+                            touchAction: 'none'
+                        }}
                     />
 
                     <div style={{ marginBottom: '16px' }}>
