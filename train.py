@@ -153,9 +153,9 @@ if __name__ == '__main__':
             get_version = lambda artifact: int(artifact.name.split(':v')[-1])
             for artifact in run.logged_artifacts():
                 print(f"  {artifact.type}:{artifact.name}")
-                if artifact.type == 'model' and if (latest_artifact is None | get_version(artifact) > get_version(latest_artifact)):
+                if artifact.type == 'model' and if ((latest_artifact is None) | (get_version(artifact) > get_version(latest_artifact)) ):
                     latest_artifact = artifact
-                    
+
             print(f"Selected:  {latest_artifact.type}:{latest_artifact.name}")
 
 
