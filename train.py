@@ -137,7 +137,7 @@ if __name__ == '__main__':
         if os.path.exists(args.local_checkpoint_path):
             checkpoint = torch.load(args.local_checkpoint_path, weights_only=True)
             model.load_state_dict(checkpoint['model_state_dict'])
-            print(f"Loaded model from {args.local_checkpoint_path}")
+            print(f"Loaded model from local path: {args.local_checkpoint_path}")
             if not args.sample_only:
                 optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
                 scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
@@ -152,7 +152,8 @@ if __name__ == '__main__':
             if not args.sample_only:
                 optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
                 scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-                step, best_loss = checkpoint['step'], checkpoint['best_loss']
+                step = checkpoint['step'] + 1
+                best_loss = checkpoint['best_loss']
             
             save_checkpoint(model, args.local_checkpoint_path, optimizer, scheduler, step, best_loss)
 
