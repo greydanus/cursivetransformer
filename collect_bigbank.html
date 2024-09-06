@@ -395,7 +395,7 @@
 
 
             return (
-                <div ref={containerRef} className="container" style={{ touchAction: 'none' }}>
+                <div className="container">
                     <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>Handwriting Stroke Capture</h2>
                     <p style={{ fontSize: '14px', color: '#4B5563', marginBottom: '16px' }}>
                         Instructions: Upload an image, trace the writing, enter author and ASCII sequence, then add to dataset. Export when finished.
@@ -442,13 +442,7 @@
                         onTouchStart={startDrawing}
                         onTouchMove={draw}
                         onTouchEnd={endDrawing}
-                        style={{ 
-                            border: '1px solid #CBD5E0', 
-                            cursor: 'crosshair', 
-                            marginBottom: '16px', 
-                            maxWidth: '100%',
-                            touchAction: 'none'
-                        }}
+                        style={{ border: '1px solid #CBD5E0', cursor: 'crosshair', marginBottom: '16px', maxWidth: '100%' }}
                     />
 
                     <div style={{ marginBottom: '16px' }}>
