@@ -81,12 +81,12 @@ if __name__ == '__main__':
     parser.add_argument('--add_digits', action='store_true', default=True, help='Add digit words to the word bank')
     parser.add_argument('--alphabet', type=str, default=" enaitoshrdx.vpukbgfcymzw1lqj804I92637OTAS5N)EHR\"\'(BCQLMWYU,ZF!DXV?KPGJ",
                             help='All the characters that this model will be able to draw')
-    parser.add_argument('--dataset_name', type=str, default='bigbank', help='Set this to your wandb username or team name')
+    parser.add_argument('--dataset_name', type=str, default='zachbigbank', help='Set this to your wandb username or team name')
 
-    parser.add_argument('--wandb_project', type=str, default='synthbank_experiments', help='W&B project name')
-    parser.add_argument('--wandb_entity', type=str, default='sam-greydanus', help='Set this to your wandb username or team name')
-    parser.add_argument('--wandb_run_name', type=str, default='unnamed_run', help='W&B run name')
-    parser.add_argument('--wandb_api_key', type=str, default=None, help='Weights & Biases API Key')
+    parser.add_argument('--wandb_project', type=str, default='cursivetransformer', help='W&B project name')
+    parser.add_argument('--wandb_entity', type=str, default='zwimpee', help='Set this to your wandb username or team name')
+    parser.add_argument('--wandb_run_name', type=str, default='test_20240911_zachbigbank_v1', help='W&B run name')
+    parser.add_argument('--wandb_api_key', type=str, default='e56bbe426145e5983e72a933299daca195ebb6a7', help='Weights & Biases API Key')
 
     parser.add_argument('--resume_from_run_id', type=str, default=None, help='Resume from a specific W&B run ID')
     parser.add_argument('--sample_only', action='store_true', default=False, help='Only sample from the model')
