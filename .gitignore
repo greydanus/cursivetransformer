@@ -26,6 +26,7 @@ __pycache__
 !data/bigbank.json.zip
 !data/zach*.json.zip
 !data/wordbank.json
+!data/zachbigbank_v2
 
 /examples*
 /deprecated*
