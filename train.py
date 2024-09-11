@@ -85,7 +85,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--wandb_project', type=str, default='cursivetransformer', help='W&B project name')
     parser.add_argument('--wandb_entity', type=str, default='zwimpee', help='Set this to your wandb username or team name')
-    parser.add_argument('--wandb_run_name', type=str, default='test_20240911_zachbigbank_v1', help='W&B run name')
+    parser.add_argument('--wandb_run_name', type=str, default='test_20240911_zachbigbank_v2', help='W&B run name')
     parser.add_argument('--wandb_api_key', type=str, default='e56bbe426145e5983e72a933299daca195ebb6a7', help='Weights & Biases API Key')
 
     parser.add_argument('--resume_from_run_id', type=str, default=None, help='Resume from a specific W&B run ID')
