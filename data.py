@@ -185,7 +185,7 @@ class StrokeDataset(Dataset):
         self.strokes = strokes  # List of Nx3 arrays, each representing a cursive sentence
         self.texts = texts  # List of corresponding text strings
         self.args = args
-        self.chars = args.alphabet  # String of all possible characters
+        self.alphabet = args.alphabet  # String of all possible characters
         self.augment = args.augment
 
         self.theta_bins = np.linspace(-np.pi, np.pi, 151)  # 100 bins for theta
@@ -206,7 +206,7 @@ class StrokeDataset(Dataset):
         self.END_TOKEN = sum(self.feature_sizes) + 1
 
         # Character tokenization
-        self.stoi = {ch:i+1 for i,ch in enumerate(chars)}
+        self.stoi = {ch:i+1 for i,ch in enumerate(self.alphabet)}
         self.itos = {i:s for s,i in self.stoi.items()}
         self.char_PAD_TOKEN = 0
 
@@ -239,7 +239,7 @@ class StrokeDataset(Dataset):
         return sum(self.feature_sizes) + 2  # +2 for PAD and END tokens
 
     def get_char_vocab_size(self):
-        return len(self.chars) + 1  # +1 for PAD token
+        return len(self.alphabet) + 1  # +1 for PAD token
 
     def get_stroke_seq_length(self):
         return self.max_seq_length
