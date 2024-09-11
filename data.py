@@ -180,12 +180,13 @@ def downsample(arr, fraction):
 
 
 class StrokeDataset(Dataset):
-    def __init__(self, strokes, texts, chars, max_seq_length=1100, max_text_length=50, name='', augment=False):
+    def __init__(self, strokes, texts, args, max_text_length=50, name=''):
         self.name = name
         self.strokes = strokes  # List of Nx3 arrays, each representing a cursive sentence
         self.texts = texts  # List of corresponding text strings
-        self.chars = chars  # String of all possible characters
-        self.augment = augment
+        self.args = args
+        self.chars = args.alphabet  # String of all possible characters
+        self.augment = args.augment
 
         self.theta_bins = np.linspace(-np.pi, np.pi, 151)  # 100 bins for theta
 
@@ -209,7 +210,7 @@ class StrokeDataset(Dataset):
         self.itos = {i:s for s,i in self.stoi.items()}
         self.char_PAD_TOKEN = 0
 
-        self.max_seq_length = max_seq_length
+        self.max_seq_length = args.max_seq_length
         self.max_text_length = max_text_length
 
     def augment_stroke(self, stroke):
@@ -226,8 +227,8 @@ class StrokeDataset(Dataset):
             [np.sin(rad), np.cos(rad)]])
         stroke[:, :2] = np.dot(stroke[:, :2], rotation_matrix.T)
 
-        # Downsample stroke
-        downsample_percent = 0.6 + 0.1 * np.random.rand() # sample uniformly in range [0.6-0.7]
+        # Downsample stroke: uniformly as defined by downsample_mean and downsample_spread
+        downsample_percent = self.args.downsample_mean + self.args.downsample_width * (np.random.rand()-.5)
         stroke = downsample(stroke, downsample_percent)
         return stroke
 
@@ -343,8 +344,8 @@ def create_datasets(args):
   print(f"Split up the dataset into {len(train_examples)} training examples and {len(test_examples)} test examples")
 
   # wrap in dataset objects
-  train_dataset = StrokeDataset(train_strokes, train_texts, args.alphabet, args.max_seq_length, name='train', augment=args.augment)
-  test_dataset = StrokeDataset(test_strokes, test_texts, args.alphabet, args.max_seq_length, name='test', augment=args.augment)
+  train_dataset = StrokeDataset(train_strokes, train_texts, args, name='train')
+  test_dataset = StrokeDataset(test_strokes, test_texts, args, name='test')
   return train_dataset, test_dataset
 
 
