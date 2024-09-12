@@ -12,8 +12,7 @@ from torch.nn import functional as F
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from model import Transformer, save_checkpoint, get_latest_checkpoint_artifact
+from model import Transformer
 from data import create_datasets, offsets_to_strokes
 
 def plot_strokes(stroke, title, fig=None, ax=None):
@@ -160,7 +159,7 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_run_name', type=str, default='unnamed_run', help='W&B run name')
     parser.add_argument('--wandb_api_key', type=str, default=None, help='Weights & Biases API Key')
 
-    parser.add_argument('--local_checkpoint_path', type=str, default='best_checkpoint.pt', help='Path to local model file')
+    parser.add_argument('--local_model_path', type=str, default='best_model.pt', help='Path to local model file')
     parser.add_argument('--load_from_run_id', type=str, default=None, help='Resume from a specific W&B run ID')
 
     args = parser.parse_args()
@@ -190,16 +189,16 @@ if __name__ == '__main__':
     model.to(args.device)
     print(f"Model #params: {sum(p.numel() for p in model.parameters())}")
 
-    if os.path.exists(args.local_checkpoint_path):
-        checkpoint = torch.load(args.local_checkpoint_path, weights_only=True)
-        model.load_state_dict(checkpoint['model_state_dict'])
-        print(f"Loaded model from {args.local_checkpoint_path}")
+    if os.path.exists(args.local_model_path):
+        model.load_state_dict(torch.load(args.local_model_path, weights_only=True))
+        print(f"Loaded model from {args.local_model_path}")
     elif args.load_from_run_id:
-        artifact = get_latest_checkpoint_artifact(args)
-        artifact_dir = artifact.download()
-        checkpoint = torch.load(os.path.join(artifact_dir, "best_checkpoint.pt"), weights_only=True)
-        model.load_state_dict(checkpoint['model_state_dict'])
-        save_checkpoint(model, args.local_checkpoint_path)
+        print("Downloading model from W&B")
+        api = wandb.Api()
+        artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/{args.load_from_run_id}:model:latest')
+        model_dir = artifact.download()
+        model.load_state_dict(torch.load(f"{model_dir}/best_model.pt", weights_only=True))
+        torch.save(model.state_dict(), args.local_model_path)
     else:
         print("No local model or W&B run ID provided. Exiting.")
         sys.exit()

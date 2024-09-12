@@ -5,38 +5,6 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
-import wandb
-
-def get_latest_checkpoint_artifact(args, verbose=True):
-    run = wandb.Api().run(f"{args.wandb_entity}/{args.wandb_project}/{args.load_from_run_id}")
-
-    if verbose:
-        print(f"Finding latest checkpoint for W&B run id {args.load_from_run_id}")
-    latest_artifact = None
-    get_version = lambda artifact: -1 if artifact is None else int(artifact.name.split(':v')[-1])
-    for artifact in run.logged_artifacts():
-        if verbose:
-            print(f"  {artifact.type}:{artifact.name}")
-        if artifact.type == 'model' and (get_version(artifact) > get_version(latest_artifact)):
-            latest_artifact = artifact
-    if verbose:
-        print(f"Selected:  {latest_artifact.type}:{latest_artifact.name}")
-    return latest_artifact
-
-
-def save_checkpoint(model, path, optimizer=None, scheduler=None, step=None, best_loss=None):
-    checkpoint = {'model_state_dict': model.state_dict()}
-    if optimizer is not None:
-        checkpoint['optimizer_state_dict'] = optimizer.state_dict()
-    if scheduler is not None:
-        checkpoint['scheduler_state_dict'] = scheduler.state_dict()
-    if step is not None:
-        checkpoint['step'] = step
-    if best_loss is not None:
-        checkpoint['best_loss'] = best_loss
-    torch.save(checkpoint, path)
-    
-
 class NewGELU(nn.Module):
     """
     Implementation of the GELU activation function currently in Google BERT repo (identical to OpenAI GPT).

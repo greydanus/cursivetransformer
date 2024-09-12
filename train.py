@@ -12,7 +12,6 @@ from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 from torch.optim.lr_scheduler import StepLR
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from model import Transformer, save_checkpoint, get_latest_checkpoint_artifact
 from sample import save_samples
 from data import InfiniteDataLoader, create_datasets
@@ -84,16 +83,16 @@ if __name__ == '__main__':
     parser.add_argument('--add_digits', action='store_true', default=True, help='Add digit words to the word bank')
     parser.add_argument('--alphabet', type=str, default=" enaitoshrdx.vpukbgfcymzw1lqj804I92637OTAS5N)EHR\"\'(BCQLMWYU,ZF!DXV?KPGJ",
                             help='All the characters that this model will be able to draw')
-    parser.add_argument('--dataset_name', type=str, default='bigbank', help='Set this to your wandb username or team name')
+    parser.add_argument('--dataset_name', type=str, default='zachbigbank', help='Set this to your wandb username or team name')
 
     parser.add_argument('--wandb_project', type=str, default='cursivetransformer', help='W&B project name')
     parser.add_argument('--wandb_entity', type=str, default='zwimpee', help='Set this to your wandb username or team name')
     parser.add_argument('--wandb_run_name', type=str, default='test_20240911_zachbigbank_v2', help='W&B run name')
     parser.add_argument('--wandb_api_key', type=str, default='e56bbe426145e5983e72a933299daca195ebb6a7', help='Weights & Biases API Key')
 
-    parser.add_argument('--load_from_run_id', type=str, default=None, help='Load from a specific W&B run ID')
+    parser.add_argument('--resume_from_run_id', type=str, default=None, help='Resume from a specific W&B run ID')
     parser.add_argument('--sample_only', action='store_true', default=False, help='Only sample from the model')
-    parser.add_argument('--local_checkpoint_path', type=str, default='best_checkpoint.pt', help='Path to local model file')
+    parser.add_argument('--local_model_path', type=str, default='best_model.pt', help='Path to local model file')
 
     args = parser.parse_args()
 
@@ -103,8 +102,8 @@ if __name__ == '__main__':
         os.environ["WANDB_API_KEY"] = args.wandb_api_key
     if not args.sample_only:
         wandb_init_args = {"project": args.wandb_project, "entity": args.wandb_entity, "config": args}
-        if args.load_from_run_id:
-            wandb_init_args["id"] = args.load_from_run_id
+        if args.resume_from_run_id:
+            wandb_init_args["id"] = args.resume_from_run_id
             wandb_init_args["resume"] = "must"
         else:
             wandb_init_args["name"] = args.wandb_run_name
@@ -129,42 +128,25 @@ if __name__ == '__main__':
     model = Transformer(config)
     model.to(args.device)
     print(f"Model #params: {sum(p.numel() for p in model.parameters())}")
-
-    # init optimizer and batch loader
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, betas=(0.9, 0.99), eps=1e-8)
-    scheduler = StepLR(optimizer, step_size=args.step_lr_every, gamma=args.lr_decay)
-    step = 0
-    best_loss = None
-
-    if args.load_from_run_id or args.sample_only:
-        if os.path.exists(args.local_checkpoint_path):
-            checkpoint = torch.load(args.local_checkpoint_path, weights_only=True)
-            model.load_state_dict(checkpoint['model_state_dict'])
-            print(f"Loaded model from local path: {args.local_checkpoint_path}")
-            if not args.sample_only:
-                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-                scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-                step = checkpoint['step']
-                best_loss = checkpoint['best_loss']
+    if args.resume_from_run_id or args.sample_only:
+        if os.path.exists(args.local_model_path):
+            model.load_state_dict(torch.load(args.local_model_path, weights_only=True))
+            print(f"Loaded model from {args.local_model_path}")
         else:
-            artifact = get_latest_checkpoint_artifact(args)
-            artifact_dir = artifact.download()
-            checkpoint = torch.load(os.path.join(artifact_dir, "best_checkpoint.pt"), weights_only=True)
-            model.load_state_dict(checkpoint['model_state_dict'])
-            
-            if not args.sample_only:
-                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-                scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-                step = checkpoint['step'] + 1
-                best_loss = checkpoint['best_loss']
-            
-            save_checkpoint(model, args.local_checkpoint_path, optimizer, scheduler, step, best_loss)
-
+            print("Downloading model from W&B")
+            api = wandb.Api()
+            artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/{args.resume_from_run_id or args.wandb_run_name}:model:latest')
+            model_dir = artifact.download()
+            model.load_state_dict(torch.load(f"{model_dir}/best_model.pt", weights_only=True))
+            torch.save(model.state_dict(), args.local_model_path)
     if args.sample_only:
         save_samples(model, test_dataset, num=6, do_sample=True)
         save_samples(model, test_dataset, num=6, do_sample=False)
         sys.exit()
 
+    # init optimizer and batch loader
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, betas=(0.9, 0.99), eps=1e-8)
+    scheduler = StepLR(optimizer, step_size=args.step_lr_every, gamma=args.lr_decay)
     batch_loader = InfiniteDataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True, num_workers=4)
 
     wandb.config.update({
@@ -177,9 +159,12 @@ if __name__ == '__main__':
     wandb.watch(model, log="all", log_freq=args.log_every, log_graph=False)
 
 
+
     ########## ARGS, LOGGING, AND TRAIN LOOP ##########
 
     # training loop
+    best_loss = None
+    step = 0
     while True:
 
         t0 = time.time()
@@ -221,10 +206,10 @@ if __name__ == '__main__':
 
             if best_loss is None or test_loss < best_loss:  # save the model to W&B if it has improved
                 best_loss = test_loss
-                print(f"Test loss {test_loss:.4f} is the best so far, saving checkpoint to {args.local_checkpoint_path}")
-                save_checkpoint(model, args.local_checkpoint_path, optimizer, scheduler, step, best_loss)
-                artifact = wandb.Artifact('best_checkpoint', type='model')
-                artifact.add_file(args.local_checkpoint_path)
+                print(f"Test loss {test_loss:.4f} is the best so far, saving model to {args.local_model_path}")
+                torch.save(model.state_dict(), args.local_model_path)
+                artifact = wandb.Artifact('best_model', type='model')
+                artifact.add_file(args.local_model_path)
                 wandb.log_artifact(artifact)
 
 
