@@ -352,3 +352,15 @@ Here are samples generated after just 22k gradient steps:
 ### Progress September 5
 
 Added model saving IO. A full checkpoint is now saved to W&B. This checkpoint can be downloaded and used to resume the run (including loading optimizer state and learning rate scheduler) or for generating samples.
+
+
+### Progress September 11
+
+Having steadily added 100 new words for the past several days, we are now up to 1900 words. This increased dataset diversity proved useful in a 110k step run today; this run was resumed after the A100 was dropped by Colab about halfway through, and the resume was smooth. We are now getting good enough samples that it is time to improve our sampling code.
+
+![sample_v44](static/sample_v44.png)
+
+![sample_v44](static/sample_v44.png)
+
+![sample_v44](static/sample_v44.png)
+
