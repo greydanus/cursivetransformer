@@ -12,9 +12,9 @@ from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 from torch.optim.lr_scheduler import StepLR
 
-from model import Transformer, save_checkpoint, get_latest_checkpoint_artifact
-from sample import save_samples
-from data import InfiniteDataLoader, create_datasets
+from .model import Transformer, save_checkpoint, get_latest_checkpoint_artifact
+from .sample import save_samples
+from .data import InfiniteDataLoader, create_datasets
 
 
 @torch.inference_mode()
