@@ -12,8 +12,8 @@ from torch.nn import functional as F
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 
-from .model import Transformer, save_checkpoint, get_latest_checkpoint_artifact
-from .data import create_datasets, offsets_to_strokes
+from cursivetransformer.model import Transformer, save_checkpoint, get_latest_checkpoint_artifact
+from cursivetransformer.data import create_datasets, offsets_to_strokes
 
 def plot_strokes(stroke, title, fig=None, ax=None):
     """Plot a single stroke"""
