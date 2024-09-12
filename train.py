@@ -53,6 +53,7 @@ class ModelConfig:
 
 
 if __name__ == '__main__':
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
     parser = argparse.ArgumentParser(description='Train a cursivetransformer model')
     parser.add_argument('--max_steps', type=int, default=110000, help='How many steps to train for')

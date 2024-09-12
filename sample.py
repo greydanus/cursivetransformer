@@ -130,6 +130,7 @@ class ModelConfig:
 
 
 if __name__ == '__main__':
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
     parser = argparse.ArgumentParser(description='Generate a word bank')
     parser.add_argument('--device', type=str, default='cuda', help='This is meant to be trained on a GPU')
