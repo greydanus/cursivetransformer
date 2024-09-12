@@ -147,6 +147,8 @@ if __name__ == '__main__':
     parser.add_argument('--max_seq_length', type=int, default=1000, help='Maximum sequence length (tokens)')
     parser.add_argument('--augment', action='store_true', default=True, help='Perform augmentations')
     parser.add_argument('--ablate_cross_attention', action='store_true', default=False, help='Ablate the cross attention')
+    parser.add_argument('--downsample_mean', type=float, default=0.65, help='Mean amount to downsample stroke points (0.65=65%)')
+    parser.add_argument('--downsample_width', type=float, default=0.1, help='Width of the uniform distribution (0.1=10%)')
     parser.add_argument('--add_digits', action='store_true', default=True, help='Add digit words to the word bank')
     parser.add_argument('--alphabet', type=str, default=" enaitoshrdx.vpukbgfcymzw1lqj804I92637OTAS5N)EHR\"\'(BCQLMWYU,ZF!DXV?KPGJ",
                             help='All the characters that this model will be able to draw')
