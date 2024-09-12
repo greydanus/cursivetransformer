@@ -12,6 +12,7 @@ from torch.nn import functional as F
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 
+sys.path.append('.')
 from model import Transformer, save_checkpoint, get_latest_checkpoint_artifact
 from data import create_datasets, offsets_to_strokes
 
