@@ -10,10 +10,9 @@ import torch.nn as nn
 from torch.nn import functional as F
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
-from torch.optim.lr_scheduler import StepLR
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from model import Transformer, save_checkpoint, get_latest_checkpoint_artifact
+from model import get_checkpoint
 from sample import save_samples
 from data import InfiniteDataLoader, create_datasets
 
@@ -37,20 +36,6 @@ def evaluate(model, dataset, batch_size=15, max_batches=None):
 
 ########## ARGS, LOGGING, AND TRAIN LOOP ##########
 
-@dataclass
-class ModelConfig:
-    block_size: int = None # length of the input sequences of integers
-    context_block_size: int = None
-    vocab_size: int = None # the input integers are in range [0 .. vocab_size -1]
-    context_vocab_size: int = None # size of the context vocabulary (ASCII characters)
-    context_length: int = None # maximum length of the context sequence
-    # parameters below control the sizes of each model slightly differently
-    n_layer: int = 4
-    n_embd: int = 64
-    n_embd2: int = 64
-    n_head: int = 4
-    n_ctx_head: int = 4 # number of heads for cross-attention
-    ablate_cross_attention: bool = False
 
 
 if __name__ == '__main__':
@@ -67,7 +52,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_layer', type=int, default=4, help='Number of Transformer layers')
     parser.add_argument('--n_embd', type=int, default=64, help='Number of embedding dimensions in self attention')
     parser.add_argument('--n_embd2', type=int, default=64, help='Number of embedding dimensions in cross attention')
-    parser.add_argument('--n_head', type=int, default=4, help='Number of attention heads in Transformer block')
+    parser.add_argument('--n_ctx_head', type=int, default=4, help='Number of attention heads in Transformer block')
 
     parser.add_argument('--learning_rate', type=float, default=1e-2, help='Learning rate')
     parser.add_argument('--weight_decay', type=float, default=1e-4, help='Weight decay')
@@ -113,52 +98,14 @@ if __name__ == '__main__':
     torch.manual_seed(args.seed)  # system inits
     torch.cuda.manual_seed_all(args.seed)
 
-    # init datasets
-    train_dataset, test_dataset = create_datasets(args)
+    train_dataset, test_dataset = create_datasets(args)  # init datasets
     vocab_size = train_dataset.get_vocab_size()
     block_size = train_dataset.get_stroke_seq_length()
     context_block_size = train_dataset.get_text_seq_length()
     context_vocab_size = train_dataset.get_char_vocab_size()
     print(f"Dataset determined that: {vocab_size=}, {block_size=}")
 
-    # init model
-    config = ModelConfig(vocab_size=vocab_size, block_size=block_size, context_block_size=context_block_size,
-                         context_vocab_size=context_vocab_size, n_layer=args.n_layer, n_head=args.n_head,
-                         n_embd=args.n_embd, n_embd2=args.n_embd2, ablate_cross_attention=args.ablate_cross_attention,
-                         n_ctx_head=args.n_head)
-    model = Transformer(config)
-    model.to(args.device)
-    print(f"Model #params: {sum(p.numel() for p in model.parameters())}")
-
-    # init optimizer and batch loader
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, betas=(0.9, 0.99), eps=1e-8)
-    scheduler = StepLR(optimizer, step_size=args.step_lr_every, gamma=args.lr_decay)
-    step = 0
-    best_loss = None
-
-    if args.load_from_run_id or args.sample_only:
-        if os.path.exists(args.local_checkpoint_path):
-            checkpoint = torch.load(args.local_checkpoint_path, weights_only=True)
-            model.load_state_dict(checkpoint['model_state_dict'])
-            print(f"Loaded model from local path: {args.local_checkpoint_path}")
-            if not args.sample_only:
-                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-                scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-                step = checkpoint['step']
-                best_loss = checkpoint['best_loss']
-        else:
-            artifact = get_latest_checkpoint_artifact(args)
-            artifact_dir = artifact.download()
-            checkpoint = torch.load(os.path.join(artifact_dir, "best_checkpoint.pt"), weights_only=True)
-            model.load_state_dict(checkpoint['model_state_dict'])
-            
-            if not args.sample_only:
-                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-                scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-                step = checkpoint['step'] + 1
-                best_loss = checkpoint['best_loss']
-            
-            save_checkpoint(model, args.local_checkpoint_path, optimizer, scheduler, step, best_loss)
+    model, optimizer, scheduler, step, best_loss = get_checkpoint(args)
 
     if args.sample_only:
         save_samples(model, test_dataset, num=6, do_sample=True)
@@ -173,8 +120,7 @@ if __name__ == '__main__':
         "batch_size": args.batch_size, "ablate_cross_attention": args.ablate_cross_attention,
     })
 
-    # model saving stuff
-    wandb.watch(model, log="all", log_freq=args.log_every, log_graph=False)
+    wandb.watch(model, log="all", log_freq=args.log_every, log_graph=False)  # model saving stuff
 
 
     ########## ARGS, LOGGING, AND TRAIN LOOP ##########
@@ -235,3 +181,4 @@ if __name__ == '__main__':
             break
 
     wandb.finish()
+

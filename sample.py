@@ -13,8 +13,9 @@ from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from model import Transformer, save_checkpoint, get_latest_checkpoint_artifact
+from model import Transformer, get_model
 from data import create_datasets, offsets_to_strokes
+
 
 def plot_strokes(stroke, title, fig=None, ax=None):
     """Plot a single stroke"""
@@ -114,21 +115,6 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do
 
 ########## ARGS, LOGGING, AND TRAIN LOOP ##########
 
-@dataclass
-class ModelConfig:
-    block_size: int = None # length of the input sequences of integers
-    context_block_size: int = None
-    vocab_size: int = None # the input integers are in range [0 .. vocab_size -1]
-    context_vocab_size: int = None # size of the context vocabulary (ASCII characters)
-    context_length: int = None # maximum length of the context sequence
-    # parameters below control the sizes of each model slightly differently
-    n_layer: int = 4
-    n_embd: int = 64
-    n_embd2: int = 64
-    n_head: int = 4
-    n_ctx_head: int = 4 # number of heads for cross-attention
-    ablate_cross_attention: bool = False
-
 
 if __name__ == '__main__':
 
@@ -139,9 +125,8 @@ if __name__ == '__main__':
     parser.add_argument('--n_layer', type=int, default=4, help='Number of Transformer layers')
     parser.add_argument('--n_embd', type=int, default=64, help='Number of embedding dimensions in self attention')
     parser.add_argument('--n_embd2', type=int, default=64, help='Number of embedding dimensions in cross attention')
-    parser.add_argument('--n_head', type=int, default=4, help='Number of attention heads in Transformer block')
+    parser.add_argument('--n_ctx_head', type=int, default=4, help='Number of attention heads in Transformer block')
 
-    # parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
     parser.add_argument('--train_size', type=int, default=9000, help='Number of train examples')
     parser.add_argument('--test_size', type=int, default=1000, help='Number of test examples')
     parser.add_argument('--num_words', type=int, default=4, help='Number of words')
@@ -173,37 +158,16 @@ if __name__ == '__main__':
     torch.manual_seed(args.seed)  # system inits
     torch.cuda.manual_seed_all(args.seed)
 
-    # init datasets
-    train_dataset, test_dataset = create_datasets(args)
-    vocab_size = train_dataset.get_vocab_size()
-    block_size = train_dataset.get_stroke_seq_length()
-    context_block_size = train_dataset.get_text_seq_length()
-    context_vocab_size = train_dataset.get_char_vocab_size()
+    train_dataset, test_dataset = create_datasets(args)  # init datasets
+    args.block_size = train_dataset.get_stroke_seq_length()
+    args.context_block_size = train_dataset.get_text_seq_length()
+    args.vocab_size = train_dataset.get_vocab_size()
+    args.context_vocab_size = train_dataset.get_char_vocab_size()
     print(f"Dataset determined that: {vocab_size=}, {block_size=}")
 
-    # init model
-    config = ModelConfig(vocab_size=vocab_size, block_size=block_size, context_block_size=context_block_size,
-                         context_vocab_size=context_vocab_size, n_layer=args.n_layer, n_head=args.n_head,
-                         n_embd=args.n_embd, n_embd2=args.n_embd2, ablate_cross_attention=args.ablate_cross_attention,
-                         n_ctx_head=args.n_head)
-    model = Transformer(config)
-    model.to(args.device)
-    print(f"Model #params: {sum(p.numel() for p in model.parameters())}")
-
-    if os.path.exists(args.local_checkpoint_path):
-        checkpoint = torch.load(args.local_checkpoint_path, weights_only=True)
-        model.load_state_dict(checkpoint['model_state_dict'])
-        print(f"Loaded model from {args.local_checkpoint_path}")
-    elif args.load_from_run_id:
-        artifact = get_latest_checkpoint_artifact(args)
-        artifact_dir = artifact.download()
-        checkpoint = torch.load(os.path.join(artifact_dir, "best_checkpoint.pt"), weights_only=True)
-        model.load_state_dict(checkpoint['model_state_dict'])
-        save_checkpoint(model, args.local_checkpoint_path)
-    else:
-        print("No local model or W&B run ID provided. Exiting.")
-        sys.exit()
+    model, optimizer, scheduler, step, best_loss = get_checkpoint(args)
 
     save_samples(model, test_dataset, num=6, do_sample=True, log_wandb=False)
     save_samples(model, test_dataset, num=6, do_sample=False, log_wandb=False)
     sys.exit()
+

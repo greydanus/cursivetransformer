@@ -4,8 +4,53 @@ import math
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+# from torch.optim.lr_scheduler import StepLR
 
 import wandb
+
+
+
+########## MODEL I/O ##########
+
+def get_checkpoint(args):
+    model = Transformer(config)
+    model.to(args.device)
+    print(f"Model #params: {sum(p.numel() for p in model.parameters())}")
+
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, betas=(0.9, 0.99), eps=1e-8)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.step_lr_every, gamma=args.lr_decay)
+    step = 0
+    best_loss = None
+
+    if args.load_from_run_id or args.sample_only:
+        if os.path.exists(args.local_checkpoint_path):
+            checkpoint = torch.load(args.local_checkpoint_path, weights_only=True)
+            model.load_state_dict(checkpoint['model_state_dict'])
+            print(f"Loaded model from local path: {args.local_checkpoint_path}")
+            if not args.sample_only:
+                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+                step = checkpoint['step']
+                best_loss = checkpoint['best_loss']
+        elif args.load_from_run_id:
+            artifact = get_latest_checkpoint_artifact(args)
+            artifact_dir = artifact.download()
+            checkpoint = torch.load(os.path.join(artifact_dir, "best_checkpoint.pt"), weights_only=True)
+            model.load_state_dict(checkpoint['model_state_dict'])
+            
+            if not args.sample_only:
+                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+                step = checkpoint['step'] + 1
+                best_loss = checkpoint['best_loss']
+            
+            save_checkpoint(model, args.local_checkpoint_path, optimizer, scheduler, step, best_loss)
+        else:
+            print("No local model or W&B run ID provided. Exiting.")
+            sys.exit()
+
+    return model, optimizer, scheduler, step, best_loss
+
 
 def get_latest_checkpoint_artifact(args, verbose=True):
     run = wandb.Api().run(f"{args.wandb_entity}/{args.wandb_project}/{args.load_from_run_id}")
@@ -35,7 +80,10 @@ def save_checkpoint(model, path, optimizer=None, scheduler=None, step=None, best
     if best_loss is not None:
         checkpoint['best_loss'] = best_loss
     torch.save(checkpoint, path)
-    
+
+
+########## MAIN MODEL DEFINITION ##########
+
 
 class NewGELU(nn.Module):
     """
