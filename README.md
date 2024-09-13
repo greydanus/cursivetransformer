@@ -360,9 +360,9 @@ Having steadily added 100 new words for the past several days, we are now up to 
 
 ![sample_v44](static/sample_v44.png)
 
-![sample_v44](static/sample_v44.png)
+![sample_v45](static/sample_v45.png)
 
-![sample_v44](static/sample_v44.png)
+![sample_v46](static/sample_v46.png)
 
 
 ### Progress September 12
