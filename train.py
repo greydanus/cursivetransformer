@@ -113,13 +113,7 @@ if __name__ == '__main__':
         sys.exit()
 
     batch_loader = InfiniteDataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True, num_workers=4)
-
-    wandb.config.update({
-        "n_layer": config.n_layer, "n_head": config.n_head, "n_embd": config.n_embd,
-        "learning_rate": args.learning_rate, "weight_decay": args.weight_decay,
-        "batch_size": args.batch_size, "ablate_cross_attention": args.ablate_cross_attention,
-    })
-
+    
     wandb.watch(model, log="all", log_freq=args.log_every, log_graph=False)  # model saving stuff
 
 
