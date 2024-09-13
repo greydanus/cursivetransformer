@@ -8,12 +8,16 @@ import torch
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 ########## LOADING DATA AND COMBINING WORDS ##########
 
 @functools.lru_cache(maxsize=5)
 def load_and_parse_data(dataset_name):
-    file_path = f'./data/{dataset_name}.json.zip'
+    file_path = f'{CURRENT_DIR}/data/{dataset_name}.json.zip'
+    print('Trying to load dataset file from {file_path}')
+    
     with zipfile.ZipFile(file_path, 'r') as zip_ref:
         json_filename = zip_ref.namelist()[0]
         with zip_ref.open(json_filename) as file:
