@@ -2,6 +2,17 @@
 
 Sam Greydanus & Zach Wimpee
 
+## Zach's questions for Sam
+
+- Are we still applying the causal mask? If so, are we applying it to the cross attention layers or only the self-attention?
+  - If so, can you show me in the code where the mask is being applied? I couldn't find it last time I looked for it, and I just want to make sure we are being thorough with this detail since it is super important imo (not AS important as the tokenization schema)
+
+## Zacj's TODOs
+
+- [ ] Continue validating the accuracy of the latex math w.r.t. the actual codebase, which will be treated as ground truth
+- [ ] Get an answer from Sam about the attention mask
+- [ ] Assuming we ARE doing causal masking, add it to the content below, making sure to specify which attention blocks it is being applied to (self-attention, cross-attention, or both)
+
 ## Abstract
 
 *To be completed.*
@@ -215,9 +226,21 @@ $$
 
 *To be completed.*
 
+- TODO: Fill this out using `README.md`
+
 ## Conclusion
 
 *To be completed.*
+
+- TODO: Start filling this out using the `README.md`
+
+### Notes, thoughts, and Observations
+
+- Our approach highlights the importance of tokenization in being able to apply the transformer architecture to a particular problem.
+- The potential application of this approach to areas such as robotics is intriguing, and warrants additional exploration in future works.
+- The slight-modification to the classicial binary cross-entropy loss function (which captures the higher-order nature of what we are considering to be a 'token`) is also a significant point worth highlighting.
+
+
 
 ## References
 
