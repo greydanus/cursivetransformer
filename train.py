@@ -12,7 +12,7 @@ from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from model import get_checkpoint
+from model import get_checkpoint, save_checkpoint
 from sample import save_samples
 from data import InfiniteDataLoader, create_datasets
 
@@ -113,7 +113,7 @@ if __name__ == '__main__':
         sys.exit()
 
     batch_loader = InfiniteDataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True, num_workers=4)
-    
+
     wandb.watch(model, log="all", log_freq=args.log_every, log_graph=False)  # model saving stuff
 
 
