@@ -364,3 +364,9 @@ Having steadily added 100 new words for the past several days, we are now up to 
 
 ![sample_v44](static/sample_v44.png)
 
+
+### Progress September 12
+
+Today we refactored the repo so as to make it easy to load a pretrained model in Colab, along with the relevant config/args, and hack around with sampling. Importantly, the args are now handled by a `get_all_args` function which sets default args and initializes an object containing those args which derives from either an argparse argument that accepts CLI args (for scripts) or from an object that is compatable with Colabs and other interactive notebooks.
+
+All this was necessary so that in just a few lines we can load and sample from the pretrained model. Now that this is possible, we can set about modifying the sampling code so as to generate user-prompted sequences of ascii characters
