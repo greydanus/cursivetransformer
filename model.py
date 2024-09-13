@@ -1,10 +1,11 @@
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
 import math, os, argparse
+from types import SimpleNamespace
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
-# from torch.optim.lr_scheduler import StepLR
 
 import wandb
 

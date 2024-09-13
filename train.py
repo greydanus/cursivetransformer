@@ -3,7 +3,6 @@
 import os, sys, time, getpass
 from typing import Optional
 from dataclasses import dataclass
-from types import SimpleNamespace
 
 import wandb
 
