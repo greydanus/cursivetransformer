@@ -13,7 +13,7 @@ import wandb
 ########## MODEL I/O ##########
 
 def get_checkpoint(args):
-    model = Transformer(config)
+    model = Transformer(args)
     model.to(args.device)
     print(f"Model #params: {sum(p.numel() for p in model.parameters())}")
 
@@ -50,6 +50,7 @@ def get_checkpoint(args):
             sys.exit()
 
     return model, optimizer, scheduler, step, best_loss
+
 
 
 def get_latest_checkpoint_artifact(args, verbose=True):
