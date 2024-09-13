@@ -1,6 +1,6 @@
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
-import os, sys, time, argparse, getpass
+import os, sys, time, getpass
 from typing import Optional
 from dataclasses import dataclass
 from types import SimpleNamespace

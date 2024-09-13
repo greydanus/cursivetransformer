@@ -1,6 +1,6 @@
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
-import os, sys, time, argparse, getpass
+import os, sys, time, getpass
 import numpy as np
 import matplotlib.pyplot as plt
 from dataclasses import dataclass
