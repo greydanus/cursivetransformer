@@ -16,8 +16,8 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 @functools.lru_cache(maxsize=5)
 def load_and_parse_data(dataset_name):
     file_path = f'{CURRENT_DIR}/data/{dataset_name}.json.zip'
-    print('Trying to load dataset file from {file_path}')
-    
+    print(f'Trying to load dataset file from {file_path}')
+
     with zipfile.ZipFile(file_path, 'r') as zip_ref:
         json_filename = zip_ref.namelist()[0]
         with zip_ref.open(json_filename) as file:
