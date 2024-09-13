@@ -99,10 +99,10 @@ if __name__ == '__main__':
     torch.cuda.manual_seed_all(args.seed)
 
     train_dataset, test_dataset = create_datasets(args)  # init datasets
-    vocab_size = train_dataset.get_vocab_size()
-    block_size = train_dataset.get_stroke_seq_length()
-    context_block_size = train_dataset.get_text_seq_length()
-    context_vocab_size = train_dataset.get_char_vocab_size()
+    args.vocab_size = train_dataset.get_vocab_size()
+    args.block_size = train_dataset.get_stroke_seq_length()
+    args.context_block_size = train_dataset.get_text_seq_length()
+    args.context_vocab_size = train_dataset.get_char_vocab_size()
     print(f"Dataset determined that: {args.vocab_size=}, {args.block_size=}")
 
     model, optimizer, scheduler, step, best_loss = get_checkpoint(args)
