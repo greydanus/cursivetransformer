@@ -40,7 +40,7 @@ def get_all_args(use_argparse=True):
         'alphabet': (" enaitoshrdx.vpukbgfcymzw1lqj804I92637OTAS5N)EHR\"\'(BCQLMWYU,ZF!DXV?KPGJ", str, 
                         'All the characters that this model will be able to draw'),
         'dataset_name': ('bigbank', str, 'Set this to your wandb username or team name'),
-        'wandb_project': ('synthbank_experiments', str, 'W&B project name'),
+        'wandb_project': ('bigbank_experiments', str, 'W&B project name'),
         'wandb_entity': ('sam-greydanus', str, 'Set this to your wandb username or team name'),
         'wandb_run_name': ('unnamed_run', str, 'W&B run name'),
         'wandb_api_key': (None, str, 'Weights & Biases API Key'),
