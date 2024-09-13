@@ -149,6 +149,7 @@ if __name__ == '__main__':
     parser.add_argument('--load_from_run_id', type=str, default=None, help='Resume from a specific W&B run ID')
 
     args = parser.parse_args()
+    args.sample_only = True
 
     if "WANDB_API_KEY" not in os.environ:
         if args.wandb_api_key is None:
