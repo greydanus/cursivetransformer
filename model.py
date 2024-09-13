@@ -1,6 +1,6 @@
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
-import math
+import math, os
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -23,7 +23,7 @@ def get_checkpoint(args):
     else:
         optimizer = None
         scheduler = None
-        
+
     step = 0
     best_loss = None
 
