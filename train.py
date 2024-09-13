@@ -3,6 +3,8 @@
 import os, sys, time, argparse, getpass
 from typing import Optional
 from dataclasses import dataclass
+from types import SimpleNamespace
+
 import wandb
 
 import torch
@@ -12,7 +14,7 @@ from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from model import get_checkpoint, save_checkpoint
+from model import get_checkpoint, save_checkpoint, get_all_args
 from sample import save_samples
 from data import InfiniteDataLoader, create_datasets
 
@@ -40,47 +42,7 @@ def evaluate(model, dataset, batch_size=15, max_batches=None):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Train a cursivetransformer model')
-    parser.add_argument('--max_steps', type=int, default=110000, help='How many steps to train for')
-    parser.add_argument('--print_every', type=int, default=100, help='Print log info after how many steps')
-    parser.add_argument('--log_every', type=int, default=2500, help='Sample model after how many steps')
-    parser.add_argument('--lr_decay', type=float, default=0.333, help='How much to decay the learning rate')
-    parser.add_argument('--step_lr_every', type=int, default=33000, help='How often to decay the learning rate')
-    parser.add_argument('--device', type=str, default='cuda', help='This is meant to be trained on a GPU')
-    parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility')
-
-    parser.add_argument('--n_layer', type=int, default=4, help='Number of Transformer layers')
-    parser.add_argument('--n_embd', type=int, default=64, help='Number of embedding dimensions in self attention')
-    parser.add_argument('--n_embd2', type=int, default=64, help='Number of embedding dimensions in cross attention')
-    parser.add_argument('--n_ctx_head', type=int, default=4, help='Number of attention heads in Transformer block')
-
-    parser.add_argument('--learning_rate', type=float, default=1e-2, help='Learning rate')
-    parser.add_argument('--weight_decay', type=float, default=1e-4, help='Weight decay')
-    parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
-
-    parser.add_argument('--train_size', type=int, default=497000, help='Number of train examples')
-    parser.add_argument('--test_size', type=int, default=3000, help='Number of test examples')
-    parser.add_argument('--num_words', type=int, default=4, help='Number of words')
-    parser.add_argument('--max_seq_length', type=int, default=1000, help='Maximum sequence length (tokens)')
-    parser.add_argument('--augment', action='store_true', default=True, help='Perform augmentations')
-    parser.add_argument('--ablate_cross_attention', action='store_true', default=False, help='Ablate the cross attention')
-    parser.add_argument('--downsample_mean', type=float, default=0.65, help='Mean amount to downsample stroke points (0.65=65%)')
-    parser.add_argument('--downsample_width', type=float, default=0.1, help='Width of the uniform distribution (0.1=10%)')
-    parser.add_argument('--add_digits', action='store_true', default=True, help='Add digit words to the word bank')
-    parser.add_argument('--alphabet', type=str, default=" enaitoshrdx.vpukbgfcymzw1lqj804I92637OTAS5N)EHR\"\'(BCQLMWYU,ZF!DXV?KPGJ",
-                            help='All the characters that this model will be able to draw')
-    parser.add_argument('--dataset_name', type=str, default='bigbank', help='Set this to your wandb username or team name')
-
-    parser.add_argument('--wandb_project', type=str, default='synthbank_experiments', help='W&B project name')
-    parser.add_argument('--wandb_entity', type=str, default='sam-greydanus', help='Set this to your wandb username or team name')
-    parser.add_argument('--wandb_run_name', type=str, default='unnamed_run', help='W&B run name')
-    parser.add_argument('--wandb_api_key', type=str, default=None, help='Weights & Biases API Key')
-
-    parser.add_argument('--load_from_run_id', type=str, default=None, help='Load from a specific W&B run ID')
-    parser.add_argument('--sample_only', action='store_true', default=False, help='Only sample from the model')
-    parser.add_argument('--local_checkpoint_path', type=str, default='best_checkpoint.pt', help='Path to local model file')
-
-    args = parser.parse_args()
+    args = get_all_args()
 
     if "WANDB_API_KEY" not in os.environ:
         if args.wandb_api_key is None:

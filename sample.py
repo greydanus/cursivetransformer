@@ -13,7 +13,7 @@ from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from model import Transformer, get_checkpoint
+from model import Transformer, get_checkpoint, get_all_args
 from data import create_datasets, offsets_to_strokes
 
 
@@ -118,37 +118,7 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Generate a word bank')
-    parser.add_argument('--device', type=str, default='cuda', help='This is meant to be trained on a GPU')
-    parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility')
-
-    parser.add_argument('--n_layer', type=int, default=4, help='Number of Transformer layers')
-    parser.add_argument('--n_embd', type=int, default=64, help='Number of embedding dimensions in self attention')
-    parser.add_argument('--n_embd2', type=int, default=64, help='Number of embedding dimensions in cross attention')
-    parser.add_argument('--n_ctx_head', type=int, default=4, help='Number of attention heads in Transformer block')
-
-    parser.add_argument('--train_size', type=int, default=9000, help='Number of train examples')
-    parser.add_argument('--test_size', type=int, default=1000, help='Number of test examples')
-    parser.add_argument('--num_words', type=int, default=4, help='Number of words')
-    parser.add_argument('--max_seq_length', type=int, default=1000, help='Maximum sequence length (tokens)')
-    parser.add_argument('--augment', action='store_true', default=True, help='Perform augmentations')
-    parser.add_argument('--ablate_cross_attention', action='store_true', default=False, help='Ablate the cross attention')
-    parser.add_argument('--downsample_mean', type=float, default=0.65, help='Mean amount to downsample stroke points (0.65=65%)')
-    parser.add_argument('--downsample_width', type=float, default=0.1, help='Width of the uniform distribution (0.1=10%)')
-    parser.add_argument('--add_digits', action='store_true', default=True, help='Add digit words to the word bank')
-    parser.add_argument('--alphabet', type=str, default=" enaitoshrdx.vpukbgfcymzw1lqj804I92637OTAS5N)EHR\"\'(BCQLMWYU,ZF!DXV?KPGJ",
-                            help='All the characters that this model will be able to draw')
-    parser.add_argument('--dataset_name', type=str, default='bigbank', help='Set this to your wandb username or team name')
-
-    parser.add_argument('--wandb_project', type=str, default='synthbank_experiments', help='W&B project name')
-    parser.add_argument('--wandb_entity', type=str, default='sam-greydanus', help='Set this to your wandb username or team name')
-    parser.add_argument('--wandb_run_name', type=str, default='unnamed_run', help='W&B run name')
-    parser.add_argument('--wandb_api_key', type=str, default=None, help='Weights & Biases API Key')
-
-    parser.add_argument('--local_checkpoint_path', type=str, default='best_checkpoint.pt', help='Path to local model file')
-    parser.add_argument('--load_from_run_id', type=str, default=None, help='Resume from a specific W&B run ID')
-
-    args = parser.parse_args()
+    args = get_all_args()
     args.sample_only = True
 
     if "WANDB_API_KEY" not in os.environ:
