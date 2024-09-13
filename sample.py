@@ -13,7 +13,7 @@ from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from model import Transformer, get_model
+from model import Transformer, get_checkpoint
 from data import create_datasets, offsets_to_strokes
 
 
