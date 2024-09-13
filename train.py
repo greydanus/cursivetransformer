@@ -103,7 +103,7 @@ if __name__ == '__main__':
     block_size = train_dataset.get_stroke_seq_length()
     context_block_size = train_dataset.get_text_seq_length()
     context_vocab_size = train_dataset.get_char_vocab_size()
-    print(f"Dataset determined that: {vocab_size=}, {block_size=}")
+    print(f"Dataset determined that: {args.vocab_size=}, {args.block_size=}")
 
     model, optimizer, scheduler, step, best_loss = get_checkpoint(args)
 
