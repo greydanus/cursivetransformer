@@ -282,13 +282,25 @@ class StrokeDataset(Dataset):
 
         return np.column_stack([r, theta, pen])
 
-    def encode_text(self, text):
-        return torch.tensor([self.stoi.get(ch, self.char_PAD_TOKEN) for ch in text], dtype=torch.long)
+    def encode_text(self, text, do_padding=True):
+        encoded_text = torch.tensor([self.stoi.get(ch, self.char_PAD_TOKEN) for ch in text], dtype=torch.long)
+        if do_padding:
+            c = torch.full((self.max_text_length,), self.char_PAD_TOKEN, dtype=torch.long)
+            text_len = min(len(encoded_text), self.max_text_length)
+            c[:text_len] = encoded_text[:text_len]
+        return encoded_text
 
-    def decode_text(self, ix):
+    def decode_text(self, ix, has_padding=True):
         if isinstance(ix, torch.Tensor):
             ix = ix.cpu().numpy()
-        return ''.join([self.itos.get(i, '') for i in ix if i != self.char_PAD_TOKEN])
+        
+        if has_padding:
+            try:
+                first_pad = np.where(ix == self.char_PAD_TOKEN)[0][0]
+                ix = ix[:first_pad]
+            except IndexError:
+                pass
+        return ''.join([self.itos.get(i, '') for i in ix])
 
     def __getitem__(self, idx):
         stroke = self.strokes[idx]
@@ -312,10 +324,6 @@ class StrokeDataset(Dataset):
 
         # Encode text (context) and pad to max_text_length of 30
         encoded_text = self.encode_text(text)
-        c = torch.full((self.max_text_length,), self.char_PAD_TOKEN, dtype=torch.long)
-        text_len = min(len(encoded_text), self.max_text_length)
-        c[:text_len] = encoded_text[:text_len]
-
         return x, c, y
 
 
