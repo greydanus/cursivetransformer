@@ -114,7 +114,7 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do
 
 
 def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
-                         top_k=None, temperature=1.0, num_steps=950, n_words=4):
+                         top_k=None, temperature=1.0, num_steps=950, n_words=3):
     '''Warmup sequence assumes we're using tokenization scheme from git commit 4eef841a55496f9ad444336530caca63b0a3cc23'''
     SEED_TOKENS = torch.tensor([377,   0, 371,  21, 361,  41, 355,  38, 350,  34, 353,  36, 359,  15,
         414,  30, 408,  21, 414,  30, 429,  31, 447,  30, 310,  28, 376,  28,
@@ -132,7 +132,7 @@ def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
 
     def count_words(text):
       return len(text.split(' '))
-    assert count_words(ascii_context) == n_words, f"Expected {n_words} words, got {count_words(ascii_context)}"
+    assert count_words(ascii_context) == n_words+1, f"Expected {n_words+1} words, got {count_words(ascii_context)}"
 
     context = dataset.encode_text(ascii_context).unsqueeze(0).to(model_device)
     X_init = SEED_TOKENS.unsqueeze(0).to(model_device)
