@@ -113,6 +113,41 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do
     print('-'*80)
 
 
+def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
+                         top_k=None, temperature=1.0, num_steps=950, n_words=4):
+    '''Warmup sequence assumes we're using tokenization scheme from git commit 4eef841a55496f9ad444336530caca63b0a3cc23'''
+    SEED_TOKENS = torch.tensor([377,   0, 371,  21, 361,  41, 355,  38, 350,  34, 353,  36, 359,  15,
+        414,  30, 408,  21, 414,  30, 429,  31, 447,  30, 310,  28, 376,  28,
+        381,  28, 372,  30, 366,  23, 357,  34, 353,  36, 355,  39, 402,  23,
+        418,  30, 418,  30, 428,  12, 353,  24, 350,  34, 359,  30, 376,  28,
+        415,  30, 418,  30, 414,  30, 372,  25, 356,  27, 354,  31, 353,  36,
+        364,  31, 418,  30, 418,  30, 418,  30, 353,  36, 348,  22, 357,  34,
+        366,  34, 407,  31, 418,  30, 422,  32, 376,  28, 361,  34, 377, 151,
+        376, 232], dtype=torch.int64)
+    SEED_CHARS = 'snn'
+  
+    model_device = next(model.parameters()).device
+    warmup_steps = len(SEED_TOKENS)
+    ascii_context = f'{SEED_CHARS} {text}'
+
+    def count_words(text):
+      return len(text.split(' '))
+    assert count_words(ascii_context) == n_words, f"Expected {n_words} words, got {count_words(ascii_context)}"
+
+    context = dataset.encode_text(ascii_context).unsqueeze(0).to(model_device)
+    X_init = SEED_TOKENS.unsqueeze(0).to(model_device)
+    
+    steps = num_steps - X_init.size(1)
+    X_samp = generate(model, X_init, context, steps, temperature=temperature, 
+                      top_k=top_k, do_sample=do_sample).to('cpu')
+    
+    stroke_seq = X_samp[0].detach().cpu().numpy()[len(SEED_TOKENS):]
+    offset_samp = dataset.decode_stroke(stroke_seq)
+    point_samp = offsets_to_strokes(offset_samp)
+
+    return point_samp
+
+
 ########## ARGS, LOGGING, AND TRAIN LOOP ##########
 
 
