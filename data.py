@@ -288,7 +288,9 @@ class StrokeDataset(Dataset):
             c = torch.full((self.max_text_length,), self.char_PAD_TOKEN, dtype=torch.long)
             text_len = min(len(encoded_text), self.max_text_length)
             c[:text_len] = encoded_text[:text_len]
-        return encoded_text
+        else:
+            c = encoded_text
+        return c
 
     def decode_text(self, ix, has_padding=True):
         if isinstance(ix, torch.Tensor):
@@ -323,7 +325,7 @@ class StrokeDataset(Dataset):
         y[seq_len] = self.END_TOKEN
 
         # Encode text (context) and pad to max_text_length of 30
-        encoded_text = self.encode_text(text)
+        c = self.encode_text(text)
         return x, c, y
 
 
