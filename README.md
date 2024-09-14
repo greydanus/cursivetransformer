@@ -373,7 +373,23 @@ Having steadily added 100 new words for the past several days, we are now up to 
 
 ![sample_v44](static/sample_v44.png)
 
-![sample_v44](static/sample_v44.png)
+![sample_v45](static/sample_v45.png)
 
-![sample_v44](static/sample_v44.png)
+![sample_v46](static/sample_v46.png)
 
+
+### Progress September 12
+
+Today we refactored the repo so as to make it easy to load a pretrained model in Colab, along with the relevant config/args, and hack around with sampling. Importantly, the args are now handled by a `get_all_args` function which sets default args and initializes an object containing those args which derives from either an argparse argument that accepts CLI args (for scripts) or from an object that is compatable with Colabs and other interactive notebooks.
+
+All this was necessary so that in just a few lines we can load and sample from the pretrained model. Now that this is possible, we can set about modifying the sampling code so as to generate user-prompted sequences of ascii characters
+
+### Progress September 13
+
+Today, with some additional changes to the sampling code, we were able to start generating custom sequences in cursive. Right now, they are limited to three words, but soon we will add support for sequences of arbitrary length. Here are a couple fun generations:
+
+![sample_v47](static/sample_v47.png)
+
+![sample_v48](static/sample_v48.png)
+
+![sample_v49](static/sample_v49.png)

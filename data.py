@@ -8,12 +8,16 @@ import torch
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 ########## LOADING DATA AND COMBINING WORDS ##########
 
 @functools.lru_cache(maxsize=5)
 def load_and_parse_data(dataset_name):
-    file_path = f'./data/{dataset_name}.json.zip'
+    file_path = f'{CURRENT_DIR}/data/{dataset_name}.json.zip'
+    print(f'Trying to load dataset file from {file_path}')
+
     with zipfile.ZipFile(file_path, 'r') as zip_ref:
         json_filename = zip_ref.namelist()[0]
         with zip_ref.open(json_filename) as file:
@@ -278,13 +282,27 @@ class StrokeDataset(Dataset):
 
         return np.column_stack([r, theta, pen])
 
-    def encode_text(self, text):
-        return torch.tensor([self.stoi.get(ch, self.char_PAD_TOKEN) for ch in text], dtype=torch.long)
+    def encode_text(self, text, do_padding=True):
+        encoded_text = torch.tensor([self.stoi.get(ch, self.char_PAD_TOKEN) for ch in text], dtype=torch.long)
+        if do_padding:
+            c = torch.full((self.max_text_length,), self.char_PAD_TOKEN, dtype=torch.long)
+            text_len = min(len(encoded_text), self.max_text_length)
+            c[:text_len] = encoded_text[:text_len]
+        else:
+            c = encoded_text
+        return c
 
-    def decode_text(self, ix):
+    def decode_text(self, ix, has_padding=True):
         if isinstance(ix, torch.Tensor):
             ix = ix.cpu().numpy()
-        return ''.join([self.itos.get(i, '') for i in ix if i != self.char_PAD_TOKEN])
+        
+        if has_padding:
+            try:
+                first_pad = np.where(ix == self.char_PAD_TOKEN)[0][0]
+                ix = ix[:first_pad]
+            except IndexError:
+                pass
+        return ''.join([self.itos.get(i, '') for i in ix])
 
     def __getitem__(self, idx):
         stroke = self.strokes[idx]
@@ -307,11 +325,7 @@ class StrokeDataset(Dataset):
         y[seq_len] = self.END_TOKEN
 
         # Encode text (context) and pad to max_text_length of 30
-        encoded_text = self.encode_text(text)
-        c = torch.full((self.max_text_length,), self.char_PAD_TOKEN, dtype=torch.long)
-        text_len = min(len(encoded_text), self.max_text_length)
-        c[:text_len] = encoded_text[:text_len]
-
+        c = self.encode_text(text)
         return x, c, y
 
 

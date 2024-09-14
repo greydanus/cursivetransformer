@@ -1,6 +1,6 @@
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
-import os, sys, time, argparse, getpass
+import os, sys, time, getpass
 import numpy as np
 import matplotlib.pyplot as plt
 from dataclasses import dataclass
@@ -12,8 +12,10 @@ from torch.nn import functional as F
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 
-from model import Transformer
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from model import Transformer, get_checkpoint, get_all_args
 from data import create_datasets, offsets_to_strokes
+
 
 def plot_strokes(stroke, title, fig=None, ax=None):
     """Plot a single stroke"""
@@ -111,58 +113,48 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do
     print('-'*80)
 
 
-########## ARGS, LOGGING, AND TRAIN LOOP ##########
+def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
+                         top_k=None, temperature=1.0, num_steps=950, n_words=3):
+    '''Warmup sequence assumes we're using tokenization scheme from git commit 4eef841a55496f9ad444336530caca63b0a3cc23'''
+    SEED_TOKENS = torch.tensor([377,   0, 371,  21, 361,  41, 355,  38, 350,  34, 353,  36, 359,  15,
+        414,  30, 408,  21, 414,  30, 429,  31, 447,  30, 310,  28, 376,  28,
+        381,  28, 372,  30, 366,  23, 357,  34, 353,  36, 355,  39, 402,  23,
+        418,  30, 418,  30, 428,  12, 353,  24, 350,  34, 359,  30, 376,  28,
+        415,  30, 418,  30, 414,  30, 372,  25, 356,  27, 354,  31, 353,  36,
+        364,  31, 418,  30, 418,  30, 418,  30, 353,  36, 348,  22, 357,  34,
+        366,  34, 407,  31, 418,  30, 422,  32, 376,  28, 361,  34, 377, 151,
+        376, 232], dtype=torch.int64)
+    SEED_CHARS = 'snn'
+  
+    model_device = next(model.parameters()).device
+    warmup_steps = len(SEED_TOKENS)
+    ascii_context = f'{SEED_CHARS} {text}'
 
-@dataclass
-class ModelConfig:
-    block_size: int = None # length of the input sequences of integers
-    context_block_size: int = None
-    vocab_size: int = None # the input integers are in range [0 .. vocab_size -1]
-    context_vocab_size: int = None # size of the context vocabulary (ASCII characters)
-    context_length: int = None # maximum length of the context sequence
-    # parameters below control the sizes of each model slightly differently
-    n_layer: int = 4
-    n_embd: int = 64
-    n_embd2: int = 64
-    n_head: int = 4
-    n_ctx_head: int = 4 # number of heads for cross-attention
-    ablate_cross_attention: bool = False
+    def count_words(text):
+      return len(text.split(' '))
+    assert count_words(ascii_context) == n_words+1, f"Expected {n_words+1} words, got {count_words(ascii_context)}"
+
+    context = dataset.encode_text(ascii_context).unsqueeze(0).to(model_device)
+    X_init = SEED_TOKENS.unsqueeze(0).to(model_device)
+    
+    steps = num_steps - X_init.size(1)
+    X_samp = generate(model, X_init, context, steps, temperature=temperature, 
+                      top_k=top_k, do_sample=do_sample).to('cpu')
+    
+    stroke_seq = X_samp[0].detach().cpu().numpy()[len(SEED_TOKENS):]
+    offset_samp = dataset.decode_stroke(stroke_seq)
+    point_samp = offsets_to_strokes(offset_samp)
+
+    return point_samp
+
+
+########## ARGS, LOGGING, AND TRAIN LOOP ##########
 
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Generate a word bank')
-    parser.add_argument('--device', type=str, default='cuda', help='This is meant to be trained on a GPU')
-    parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility')
-
-    parser.add_argument('--n_layer', type=int, default=4, help='Number of Transformer layers')
-    parser.add_argument('--n_embd', type=int, default=64, help='Number of embedding dimensions in self attention')
-    parser.add_argument('--n_embd2', type=int, default=64, help='Number of embedding dimensions in cross attention')
-    parser.add_argument('--n_head', type=int, default=4, help='Number of attention heads in Transformer block')
-
-    # parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
-    parser.add_argument('--train_size', type=int, default=9000, help='Number of train examples')
-    parser.add_argument('--test_size', type=int, default=1000, help='Number of test examples')
-    parser.add_argument('--num_words', type=int, default=4, help='Number of words')
-    parser.add_argument('--max_seq_length', type=int, default=1000, help='Maximum sequence length (tokens)')
-    parser.add_argument('--augment', action='store_true', default=True, help='Perform augmentations')
-    parser.add_argument('--ablate_cross_attention', action='store_true', default=False, help='Ablate the cross attention')
-    parser.add_argument('--downsample_mean', type=float, default=0.65, help='Mean amount to downsample stroke points (0.65=65%)')
-    parser.add_argument('--downsample_width', type=float, default=0.1, help='Width of the uniform distribution (0.1=10%)')
-    parser.add_argument('--add_digits', action='store_true', default=True, help='Add digit words to the word bank')
-    parser.add_argument('--alphabet', type=str, default=" enaitoshrdx.vpukbgfcymzw1lqj804I92637OTAS5N)EHR\"\'(BCQLMWYU,ZF!DXV?KPGJ",
-                            help='All the characters that this model will be able to draw')
-    parser.add_argument('--dataset_name', type=str, default='bigbank', help='Set this to your wandb username or team name')
-
-    parser.add_argument('--wandb_project', type=str, default='synthbank_experiments', help='W&B project name')
-    parser.add_argument('--wandb_entity', type=str, default='sam-greydanus', help='Set this to your wandb username or team name')
-    parser.add_argument('--wandb_run_name', type=str, default='unnamed_run', help='W&B run name')
-    parser.add_argument('--wandb_api_key', type=str, default=None, help='Weights & Biases API Key')
-
-    parser.add_argument('--local_model_path', type=str, default='best_model.pt', help='Path to local model file')
-    parser.add_argument('--load_from_run_id', type=str, default=None, help='Resume from a specific W&B run ID')
-
-    args = parser.parse_args()
+    args = get_all_args()
+    args.sample_only = True
 
     if "WANDB_API_KEY" not in os.environ:
         if args.wandb_api_key is None:
@@ -172,37 +164,16 @@ if __name__ == '__main__':
     torch.manual_seed(args.seed)  # system inits
     torch.cuda.manual_seed_all(args.seed)
 
-    # init datasets
-    train_dataset, test_dataset = create_datasets(args)
-    vocab_size = train_dataset.get_vocab_size()
-    block_size = train_dataset.get_stroke_seq_length()
-    context_block_size = train_dataset.get_text_seq_length()
-    context_vocab_size = train_dataset.get_char_vocab_size()
-    print(f"Dataset determined that: {vocab_size=}, {block_size=}")
+    train_dataset, test_dataset = create_datasets(args)  # init datasets
+    args.block_size = train_dataset.get_stroke_seq_length()
+    args.context_block_size = train_dataset.get_text_seq_length()
+    args.vocab_size = train_dataset.get_vocab_size()
+    args.context_vocab_size = train_dataset.get_char_vocab_size()
+    print(f"Dataset determined that: {args.vocab_size=}, {args.block_size=}")
 
-    # init model
-    config = ModelConfig(vocab_size=vocab_size, block_size=block_size, context_block_size=context_block_size,
-                         context_vocab_size=context_vocab_size, n_layer=args.n_layer, n_head=args.n_head,
-                         n_embd=args.n_embd, n_embd2=args.n_embd2, ablate_cross_attention=args.ablate_cross_attention,
-                         n_ctx_head=args.n_head)
-    model = Transformer(config)
-    model.to(args.device)
-    print(f"Model #params: {sum(p.numel() for p in model.parameters())}")
-
-    if os.path.exists(args.local_model_path):
-        model.load_state_dict(torch.load(args.local_model_path, weights_only=True))
-        print(f"Loaded model from {args.local_model_path}")
-    elif args.load_from_run_id:
-        print("Downloading model from W&B")
-        api = wandb.Api()
-        artifact = api.artifact(f'{args.wandb_entity}/{args.wandb_project}/{args.load_from_run_id}:model:latest')
-        model_dir = artifact.download()
-        model.load_state_dict(torch.load(f"{model_dir}/best_model.pt", weights_only=True))
-        torch.save(model.state_dict(), args.local_model_path)
-    else:
-        print("No local model or W&B run ID provided. Exiting.")
-        sys.exit()
+    model, optimizer, scheduler, step, best_loss = get_checkpoint(args)
 
     save_samples(model, test_dataset, num=6, do_sample=True, log_wandb=False)
     save_samples(model, test_dataset, num=6, do_sample=False, log_wandb=False)
     sys.exit()
+
