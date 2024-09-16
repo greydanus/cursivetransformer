@@ -49,7 +49,7 @@ if __name__ == '__main__':
         os.environ["WANDB_API_KEY"] = args.wandb_api_key
     if not args.sample_only:
         wandb_init_args = {"project": args.wandb_project, "entity": args.wandb_entity, "config": args}
-        if args.resume_from_run_id:
+        if args.load_from_run_id:
             wandb_init_args["id"] = args.resume_from_run_id
             wandb_init_args["resume"] = "must"
         else:
