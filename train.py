@@ -50,7 +50,7 @@ if __name__ == '__main__':
     if not args.sample_only:
         wandb_init_args = {"project": args.wandb_project, "entity": args.wandb_entity, "config": args}
         if args.load_from_run_id:
-            wandb_init_args["id"] = args.resume_from_run_id
+            wandb_init_args["id"] = args.load_from_run_id
             wandb_init_args["resume"] = "must"
         else:
             wandb_init_args["name"] = args.wandb_run_name
@@ -73,9 +73,6 @@ if __name__ == '__main__':
         save_samples(model, test_dataset, num=6, do_sample=False)
         sys.exit()
 
-    # init optimizer and batch loader
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, betas=(0.9, 0.99), eps=1e-8)
-    scheduler = StepLR(optimizer, step_size=args.step_lr_every, gamma=args.lr_decay)
     batch_loader = InfiniteDataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True, num_workers=4)
 
     wandb.watch(model, log="all", log_freq=args.log_every, log_graph=False)  # model saving stuff
@@ -84,8 +81,6 @@ if __name__ == '__main__':
     ########## ARGS, LOGGING, AND TRAIN LOOP ##########
 
     # training loop
-    best_loss = None
-    step = 0
     while True:
 
         t0 = time.time()
@@ -94,12 +89,6 @@ if __name__ == '__main__':
         batch = batch_loader.next()
         batch = [t.to(args.device) for t in batch]
         X, C, Y = batch
-        
-        # Add this sanity check
-        if X.max() >= vocab_size or Y.max() >= vocab_size:
-            print(f"Warning: Token indices out of range. X max: {X.max()}, Y max: {Y.max()}, Vocab size: {vocab_size}")
-            X = torch.clamp(X, 0, vocab_size - 1)
-            Y = torch.clamp(Y, 0, vocab_size - 1)
 
         # feed into the model
         logits, loss = model(X, C, Y)
@@ -127,10 +116,10 @@ if __name__ == '__main__':
 
             if best_loss is None or test_loss < best_loss:  # save the model to W&B if it has improved
                 best_loss = test_loss
-                print(f"Test loss {test_loss:.4f} is the best so far, saving model to {args.local_model_path}")
-                torch.save(model.state_dict(), args.local_model_path)
-                artifact = wandb.Artifact('best_model', type='model')
-                artifact.add_file(args.local_model_path)
+                print(f"Test loss {test_loss:.4f} is the best so far, saving checkpoint to {args.local_checkpoint_path}")
+                save_checkpoint(model, args.local_checkpoint_path, optimizer, scheduler, step, best_loss)
+                artifact = wandb.Artifact('best_checkpoint', type='model')
+                artifact.add_file(args.local_checkpoint_path)
                 wandb.log_artifact(artifact)
 
 
@@ -147,4 +136,3 @@ if __name__ == '__main__':
             break
 
     wandb.finish()
-
