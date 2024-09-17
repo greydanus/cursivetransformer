@@ -275,7 +275,7 @@ class Transformer(nn.Module):
     def get_block_size(self):
         return self.block_size
 
-    def forward(self, idx, context, targets=None):
+    def forward(self, idx, context, targets=None, **kwargs):
         device = idx.device
         b, t = idx.size()
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
@@ -304,5 +304,8 @@ class Transformer(nn.Module):
         loss = None
         if targets is not None:
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
+        
+        if kwargs.get('return_loss', False):
+            return loss
 
         return logits, loss
