@@ -185,7 +185,7 @@ class StrokeDataset(Dataset):
         stroke = random_rotate(stroke, angle_range=(-.08, .08))
 
         downsample_percent = self.args.downsample_mean + self.args.downsample_width * (np.random.rand()-.5)
-        stroke = random_downsample(stroke, downsample_percent)
+        stroke = downsample(stroke, downsample_percent)
         return stroke
 
     def __len__(self):
