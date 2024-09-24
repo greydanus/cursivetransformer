@@ -1,3 +1,5 @@
+# Sam Greydanus | 2024
+
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
 import os, sys, json, pickle, zipfile, functools, copy
@@ -22,6 +24,7 @@ def load_and_parse_data(dataset_name):
         json_filename = zip_ref.namelist()[0]
         with zip_ref.open(json_filename) as file:
             data = json.load(file)
+
     for item in data:
         strokes = np.array(item['points'])
         strokes[:, 0] *= item['metadata']['aspectRatio']
@@ -72,54 +75,8 @@ def generate_word_combos(raw_json, desired_num_combos=10000, num_words=3):
   combo_json = []
   for i in range(desired_num_combos):
     ixs = np.random.choice(len(raw_json), size=num_words, replace=False)
-    words_to_merge = [raw_json[i] for i in ixs]
-    combo_json.append( combine_handwriting_examples(words_to_merge) )
-  return combo_json
-
-    
-def combine_handwriting_examples(examples, space_width=0.17):
-    assert len(set(ex['metadata']['author'] for ex in examples)) == 1, "All examples must have the same author"
-
-    combined_metadata = {
-        'author': examples[0]['metadata']['author'],
-        'asciiSequence': ' '.join(ex['metadata']['asciiSequence'] for ex in examples),
-        'pointCount': sum(ex['metadata']['pointCount'] for ex in examples),
-        'strokeCount': sum(ex['metadata']['strokeCount'] for ex in examples),
-        'aspectRatio': examples[0]['metadata']['aspectRatio']
-    }
-
-    combined_points, current_x_offset, total_width = [], 0, 0
-
-    for i, example in enumerate(examples):
-        points = example['points']
-        word_width = np.max(points[:, 0]) - np.min(points[:, 0])
-        total_width += word_width
-
-        normalized_points = points.copy()
-        normalized_points[:, 0] -= np.min(points[:, 0])
-        normalized_points[:, 0] += current_x_offset
-
-        combined_points.append(normalized_points)
-        current_x_offset += word_width
-
-        if i < len(examples) - 1:
-            combined_points.append(np.array([[current_x_offset + space_width, normalized_points[-1, 1], 0]]))
-            current_x_offset += space_width
-            total_width += space_width
-            combined_metadata['pointCount'] += 1
-
-    combined_points = np.vstack(combined_points)
-    return {'metadata': combined_metadata, 'points': combined_points}
-
-def generate_word_combos(raw_json, desired_num_combos=10000, num_words=3):
-  num_combos = comb(len(raw_json), num_words)
-  print(f'For a dataset of {len(raw_json)} examples we can generate {num_combos} combinations of {num_words} examples.')
-  print(f'Generating {desired_num_combos} {num_words}-word examples.')
-  combo_json = []
-  for i in range(desired_num_combos):
-    ixs = np.random.choice(len(raw_json), size=num_words, replace=False)
-    words_to_merge = [raw_json[i] for i in ixs]
-    combo_json.append( combine_handwriting_examples(words_to_merge) )
+    examples_to_merge = [raw_json[i] for i in ixs]
+    combo_json.append( combine_handwriting_examples(examples_to_merge) )
   return combo_json
 
 
@@ -139,27 +96,33 @@ def reconstruct_offsets(polar_data):
     return np.column_stack((dx, dy, polar_data[:, 2]))
 
 def strokes_to_offsets(points):
-    # Calculate differences (dx, dy), not considering pen_down
+    # Calculate pen offsets (dx, dy)
     offsets = np.zeros_like(points)
     offsets[1:, 0:2] = np.diff(points[:, 0:2], axis=0)  # Compute dx, dy
     offsets[:, 2] = points[:, 2]  # Copy pen_down directly
-    decompose_offsets(offsets)
     return decompose_offsets(offsets)
 
 def offsets_to_strokes(offsets_dec):
-    # Calculate cumulative sums to get absolute positions
+    # Calculate cumulative sums over (dx, dt) to get absolute pen positions
     offsets = reconstruct_offsets(offsets_dec)
 
-    absolute_coords = np.cumsum(offsets[:, :2], axis=0)
+    absolute_coords = np.cumsum(offsets[:, :2], axis=0)  # just over (dx, dy) dimensions
     stroke_data = np.hstack((absolute_coords, offsets[:, 2:3]))
     return stroke_data
 
-def horizontal_shear(stroke, shear_range=(-0.4, 0.4)):
+def random_horizontal_shear(stroke, shear_range=(-0.4, 0.4)):
     shear_factor = np.random.uniform(*shear_range)
-    shear_matrix = np.array([
-        [1, shear_factor],
-        [0, 1]])
+    shear_matrix = np.array([[1, shear_factor], [0, 1]])
     stroke[:, :2] = np.dot(stroke[:, :2], shear_matrix.T)
+    return stroke
+
+def random_rotate(stroke, angle_range=(-.08, .08)):
+    angle = np.random.uniform(*angle_range)
+    rad = np.deg2rad(angle)
+    rotation_matrix = np.array([
+        [np.cos(rad), -np.sin(rad)],
+        [np.sin(rad), np.cos(rad)]])
+    stroke[:, :2] = np.dot(stroke[:, :2], rotation_matrix.T)
     return stroke
 
 def downsample(arr, fraction):
@@ -185,22 +148,23 @@ def downsample(arr, fraction):
 
 class StrokeDataset(Dataset):
     def __init__(self, strokes, texts, args, max_text_length=50, name=''):
-        self.name = name
         self.strokes = strokes  # List of Nx3 arrays, each representing a cursive sentence
-        self.texts = texts  # List of corresponding text strings
+        self.texts = texts      # List of corresponding text strings
         self.args = args
         self.alphabet = args.alphabet  # String of all possible characters
         self.augment = args.augment
+        self.max_seq_length = args.max_seq_length
+        self.max_text_length = max_text_length
+        self.name = name
 
-        self.theta_bins = np.linspace(-np.pi, np.pi, 151)  # 100 bins for theta
+        self.theta_bins = np.linspace(-np.pi, np.pi, 180)
 
         r_bins_pen_down = np.concatenate([
-            np.asarray([0]),
-            np.linspace(0.0001, 0.050, 50),  # Close around 0.01, 30 bins
-            np.geomspace(0.051, 2.25, 101)[:-1]  # 150 exponential bins
-        ])
+                            np.asarray([0]),
+                            np.linspace(0.0001, 0.060, 30),
+                            np.geomspace(0.06001, 0.75, 69) ]) # 100 discrete radii
         r_bins_pen_up = r_bins_pen_down + max(r_bins_pen_down) + 1  # Offset for pen-up states
-        self.r_bins = np.concatenate([r_bins_pen_down, r_bins_pen_up])
+        self.r_bins = np.concatenate([r_bins_pen_down, r_bins_pen_up])  # 200 bins for: {radii x pen up/down}
 
         self.feature_sizes = [len(self.r_bins), len(self.theta_bins)]
         self.cumulative_sizes = np.cumsum([0] + self.feature_sizes)
@@ -214,26 +178,14 @@ class StrokeDataset(Dataset):
         self.itos = {i:s for s,i in self.stoi.items()}
         self.char_PAD_TOKEN = 0
 
-        self.max_seq_length = args.max_seq_length
-        self.max_text_length = max_text_length
-
     def augment_stroke(self, stroke):
+        stroke = random_horizontal_shear(stroke, shear_range=(-0.45, 0.15)) # Horizontal shear
+        stroke[:, 0:1] *= np.random.uniform(0.9, 1.1)
+        stroke[:, 1:2] *= np.random.uniform(0.9, 1.1)
+        stroke = random_rotate(stroke, angle_range=(-.08, .08))
 
-        stroke = horizontal_shear(stroke, shear_range=(-0.45, 0.15)) # Horizontal shear
-
-        stroke[:, 0:1] *= np.random.uniform(0.95, 1.05)
-        stroke[:, 1:2] *= np.random.uniform(0.95, 1.05)
-
-        angle = np.random.uniform(-.08, .08) # Random rotation
-        rad = np.deg2rad(angle)
-        rotation_matrix = np.array([
-            [np.cos(rad), -np.sin(rad)],
-            [np.sin(rad), np.cos(rad)]])
-        stroke[:, :2] = np.dot(stroke[:, :2], rotation_matrix.T)
-
-        # Downsample stroke: uniformly as defined by downsample_mean and downsample_spread
         downsample_percent = self.args.downsample_mean + self.args.downsample_width * (np.random.rand()-.5)
-        stroke = downsample(stroke, downsample_percent)
+        stroke = random_downsample(stroke, downsample_percent)
         return stroke
 
     def __len__(self):
@@ -292,17 +244,13 @@ class StrokeDataset(Dataset):
             c = encoded_text
         return c
 
-    def decode_text(self, ix, has_padding=True):
+    def decode_text(self, ix):
         if isinstance(ix, torch.Tensor):
             ix = ix.cpu().numpy()
         
-        if has_padding:
-            try:
-                first_pad = np.where(ix == self.char_PAD_TOKEN)[0][0]
-                ix = ix[:first_pad]
-            except IndexError:
-                pass
-        return ''.join([self.itos.get(i, '') for i in ix])
+        first_pad = np.where(ix == self.char_PAD_TOKEN)[0]
+        end_idx = first_pad[0] if len(first_pad) > 0 else len(ix)
+        return ''.join(self.itos.get(i, '') for i in ix[:end_idx])
 
     def __getitem__(self, idx):
         stroke = self.strokes[idx]
@@ -324,8 +272,7 @@ class StrokeDataset(Dataset):
         y[:seq_len] = x[1:seq_len+1]
         y[seq_len] = self.END_TOKEN
 
-        # Encode text (context) and pad to max_text_length of 30
-        c = self.encode_text(text)
+        c = self.encode_text(text)  # Encode text (context) and pad to max_text_length of 30
         return x, c, y
 
 
@@ -365,7 +312,7 @@ def create_datasets(args):
 
 class InfiniteDataLoader:
     """
-    this is really hacky and I'm not proud of it, but there doesn't seem to be
+    From Andrej Karpathy: this is really hacky and I'm not proud of it, but there doesn't seem to be
     a better way in PyTorch to just create an infinite dataloader
     """
 
@@ -377,7 +324,7 @@ class InfiniteDataLoader:
     def next(self):
         try:
             batch = next(self.data_iter)
-        except StopIteration: # this will technically only happen after 1e10 samples... (i.e. basically never)
+        except StopIteration:  # this will technically only happen after 1e10 samples... (i.e. basically never)
             self.data_iter = iter(self.train_loader)
             batch = next(self.data_iter)
         return batch

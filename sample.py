@@ -1,3 +1,5 @@
+# Sam Greydanus | 2024
+
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
 import os, sys, time, getpass
@@ -154,13 +156,6 @@ def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
 if __name__ == '__main__':
 
     args = get_all_args()
-    args.sample_only = True
-
-    if "WANDB_API_KEY" not in os.environ:
-        if args.wandb_api_key is None:
-            args.wandb_api_key = getpass.getpass("Enter your W&B API key: ")
-        os.environ["WANDB_API_KEY"] = args.wandb_api_key
-
     torch.manual_seed(args.seed)  # system inits
     torch.cuda.manual_seed_all(args.seed)
 

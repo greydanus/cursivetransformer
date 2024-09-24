@@ -1,3 +1,5 @@
+# Sam Greydanus | 2024
+
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
 import math, os, sys, argparse
@@ -23,7 +25,7 @@ def get_all_args(use_argparse=True):
         'seed': (42, int, 'Random seed for reproducibility'),
         'n_layer': (4, int, 'Number of Transformer layers'),
         'n_embd': (64, int, 'Number of embedding dimensions in self attention'),
-        'n_embd2': (64, int, 'Number of embedding dimensions in cross attention'),
+        'n_embd_context': (64, int, 'Number of embedding dimensions in cross attention'),
         'n_ctx_head': (4, int, 'Number of attention heads in Transformer block'),
         'learning_rate': (1e-2, float, 'Learning rate'),
         'weight_decay': (1e-4, float, 'Weight decay'),
@@ -45,7 +47,6 @@ def get_all_args(use_argparse=True):
         'wandb_run_name': ('unnamed_run', str, 'W&B run name'),
         'wandb_api_key': (None, str, 'Weights & Biases API Key'),
         'load_from_run_id': (None, str, 'Load from a specific W&B run ID'),
-        'sample_only': (False, 'store_true', 'Only sample from the model'),
         'local_checkpoint_path': ('best_checkpoint.pt', str, 'Path to local model file'),
     }
 
@@ -56,9 +57,15 @@ def get_all_args(use_argparse=True):
                 parser.add_argument(f'--{arg}', action=arg_type, default=default, help=help_text)
             else:
                 parser.add_argument(f'--{arg}', type=arg_type, default=default, help=help_text)
-        return parser.parse_args()
+        args = parser.parse_args()
     else:
-        return SimpleNamespace(**{k: v[0] for k, v in args_config.items()})
+        args = SimpleNamespace(**{k: v[0] for k, v in args_config.items()})
+
+    if "WANDB_API_KEY" not in os.environ:
+        if args.wandb_api_key is None:
+            args.wandb_api_key = getpass.getpass("Enter your W&B API key: ")
+        os.environ["WANDB_API_KEY"] = args.wandb_api_key
+    return args
 
 
 
@@ -194,25 +201,25 @@ class CausalSelfAttention(nn.Module):
 class CrossAttention(nn.Module):
     def __init__(self, config):
         super().__init__()
-        assert config.n_embd2 % config.n_ctx_head == 0
+        assert config.n_embd_context % config.n_ctx_head == 0
         # query projections for all heads
-        self.c_attn_q = nn.Linear(config.n_embd2, config.n_embd2)
+        self.c_attn_q = nn.Linear(config.n_embd_context, config.n_embd_context)
         # key, value projections for all heads
-        self.c_attn_kv = nn.Linear(config.n_embd2, 2 * config.n_embd2)
+        self.c_attn_kv = nn.Linear(config.n_embd_context, 2 * config.n_embd_context)
         # output projection
-        self.c_proj = nn.Linear(config.n_embd2, config.n_embd2)
+        self.c_proj = nn.Linear(config.n_embd_context, config.n_embd_context)
         self.n_ctx_head = config.n_ctx_head
-        self.n_embd2 = config.n_embd2
+        self.n_embd_context = config.n_embd_context
 
     def forward(self, x, context):
-        B, T, C = x.size() # batch size, sequence length, embedding dimensionality (n_embd2)
+        B, T, C = x.size() # batch size, sequence length, embedding dimensionality (n_embd_context)
         _, T_ctx, _ = context.size()
 
         # calculate query for all heads in batch and move head forward to be the batch dim
         q = self.c_attn_q(x).view(B, T, self.n_ctx_head, C // self.n_ctx_head).transpose(1, 2) # (B, nh, T, hs)
 
         # calculate key, values for all heads in batch and move head forward to be the batch dim
-        k, v = self.c_attn_kv(context).split(self.n_embd2, dim=2)
+        k, v = self.c_attn_kv(context).split(self.n_embd_context, dim=2)
         k = k.view(B, T_ctx, self.n_ctx_head, C // self.n_ctx_head).transpose(1, 2) # (B, nh, T_ctx, hs)
         v = v.view(B, T_ctx, self.n_ctx_head, C // self.n_ctx_head).transpose(1, 2) # (B, nh, T_ctx, hs)
 
@@ -229,13 +236,15 @@ class CrossAttention(nn.Module):
 class Block(nn.Module):
     """ an unassuming Transformer block """
 
-    def __init__(self, config):
+    def __init__(self, config, has_cross_attn=False):
         super().__init__()
+        self.has_cross_attn = has_cross_attn
         self.ln_1 = nn.LayerNorm(config.n_embd)
         self.attn = CausalSelfAttention(config)
-        self.ln_2 = nn.LayerNorm(config.n_embd2)
-        self.cross_attn = CrossAttention(config) # NEW
-        self.ln_3 = nn.LayerNorm(config.n_embd) # NEW
+        if has_cross_attn:
+            self.ln_2 = nn.LayerNorm(config.n_embd_context)
+            self.cross_attn = CrossAttention(config)
+        self.ln_3 = nn.LayerNorm(config.n_embd)
         self.mlp = nn.ModuleDict(dict(
             c_fc    = nn.Linear(config.n_embd, 4 * config.n_embd),
             c_proj  = nn.Linear(4 * config.n_embd, config.n_embd),
@@ -244,9 +253,11 @@ class Block(nn.Module):
         m = self.mlp
         self.mlpf = lambda x: m.c_proj(m.act(m.c_fc(x))) # MLP forward
 
-    def forward(self, x, context):
+    def forward(self, x, context=None):
         x = x + self.attn(self.ln_1(x))
-        x = x + self.cross_attn(self.ln_2(x), context)
+        if self.has_cross_attn:
+            assert context is not None, 'Expected context'
+            x = x + self.cross_attn(self.ln_2(x), context)
         x = x + self.mlpf(self.ln_3(x))
         return x
 
@@ -261,9 +272,10 @@ class Transformer(nn.Module):
         self.transformer = nn.ModuleDict(dict(
             wte = nn.Embedding(config.vocab_size, config.n_embd),
             wpe = nn.Embedding(config.block_size, config.n_embd),
-            wce = nn.Embedding(config.context_vocab_size, config.n_embd2), # NEW
+            wce = nn.Embedding(config.context_vocab_size, config.n_embd_context),
             wcpe = nn.Embedding(config.context_block_size, config.n_embd),
-            h = nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
+            h = nn.ModuleList([Block(config, has_cross_attn=(i==1 if self.config.ablate_cross_attention else True)) \
+                                    for i in range(config.n_layer)]),
             ln_f = nn.LayerNorm(config.n_embd),
         ))
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
@@ -288,15 +300,17 @@ class Transformer(nn.Module):
 
         context_t = context.size(-1)
         context_pos = torch.arange(0, context_t, dtype=torch.long, device=device).unsqueeze(0) # shape (1, t)
-        context_emb = self.transformer.wce(context) # context embeddings of shape (b, t_ctx, n_embd2)
+        context_emb = self.transformer.wce(context) # context embeddings of shape (b, t_ctx, n_embd_context)
         context_pos_emb = self.transformer.wcpe(context_pos)
         c = context_emb + context_pos_emb
 
-        if self.config.ablate_cross_attention:
-          c = torch.zeros_like(c)
 
         for block in self.transformer.h:
-            x = block(x, c)
+            if self.config.ablate_cross_attention and i!=1:
+                x = block(x)
+            else:
+                x = block(x, c)
+
         x = self.transformer.ln_f(x)
         logits = self.lm_head(x)
 
@@ -304,5 +318,4 @@ class Transformer(nn.Module):
         loss = None
         if targets is not None:
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
-
         return logits, loss
