@@ -35,7 +35,6 @@ def get_all_args(use_argparse=True):
         'num_words': (4, int, 'Number of words'),
         'max_seq_length': (1000, int, 'Maximum sequence length (tokens)'),
         'augment': (True, 'store_true', 'Perform augmentations'),
-        'ablate_cross_attention': (False, 'store_true', 'Ablate the cross attention'),
         'downsample_mean': (0.65, float, 'Mean amount to downsample stroke points (0.65=65%)'),
         'downsample_width': (0.1, float, 'Width of the uniform distribution (0.1=10%)'),
         'add_digits': (True, 'store_true', 'Add digit words to the word bank'),
@@ -274,8 +273,7 @@ class Transformer(nn.Module):
             wpe = nn.Embedding(config.block_size, config.n_embd),
             wce = nn.Embedding(config.context_vocab_size, config.n_embd_context),
             wcpe = nn.Embedding(config.context_block_size, config.n_embd),
-            h = nn.ModuleList([Block(config, has_cross_attn=(i==1 if self.config.ablate_cross_attention else True)) \
-                                    for i in range(config.n_layer)]),
+            h = nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
             ln_f = nn.LayerNorm(config.n_embd),
         ))
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
@@ -306,10 +304,7 @@ class Transformer(nn.Module):
 
 
         for i, block in enumerate(self.transformer.h):
-            if self.config.ablate_cross_attention and i!=1:
-                x = block(x)
-            else:
-                x = block(x, c)
+            x = block(x, c)
 
         x = self.transformer.ln_f(x)
         logits = self.lm_head(x)
