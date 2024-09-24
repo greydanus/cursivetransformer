@@ -380,3 +380,14 @@ Today, with some additional changes to the sampling code, we were able to start 
 ![sample_v48](static/sample_v48.png)
 
 ![sample_v49](static/sample_v49.png)
+
+### Progress September 24
+
+Today we cleaned up the code and made some adjustments to augmentation parameters, tokenization binning, etc. After these changes were debugged, we launched a series of runs that culminated in a 220k step run (currently in progress). Here are some samples from that run at around 75k steps:
+
+![sample_v50](static/sample_v50.png)
+
+![sample_v51](static/sample_v51.png)
+
+![sample_v52](static/sample_v52.png)
+
