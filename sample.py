@@ -166,7 +166,7 @@ if __name__ == '__main__':
     args.context_vocab_size = train_dataset.get_char_vocab_size()
     print(f"Dataset determined that: {args.vocab_size=}, {args.block_size=}")
 
-    model, optimizer, scheduler, step, best_loss = get_checkpoint(args)
+    model, optimizer, scheduler, step, best_loss = get_checkpoint(args, sample_only=True)
 
     save_samples(model, test_dataset, num=6, do_sample=True, log_wandb=False)
     save_samples(model, test_dataset, num=6, do_sample=False, log_wandb=False)

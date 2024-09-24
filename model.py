@@ -71,12 +71,12 @@ def get_all_args(use_argparse=True):
 
 ########## MODEL I/O ##########
 
-def get_checkpoint(args):
+def get_checkpoint(args, sample_only):
     model = Transformer(args)
     model.to(args.device)
     print(f"Model #params: {sum(p.numel() for p in model.parameters())}")
 
-    if not args.sample_only:
+    if not sample_only:
         optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, betas=(0.9, 0.99), eps=1e-8)
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.step_lr_every, gamma=args.lr_decay)
     else:
@@ -86,12 +86,12 @@ def get_checkpoint(args):
     step = 0
     best_loss = None
 
-    if args.load_from_run_id or args.sample_only:
+    if args.load_from_run_id or sample_only:
         if os.path.exists(args.local_checkpoint_path):
             checkpoint = torch.load(args.local_checkpoint_path, weights_only=True)
             model.load_state_dict(checkpoint['model_state_dict'])
             print(f"Loaded model from local path: {args.local_checkpoint_path}")
-            if not args.sample_only:
+            if not sample_only:
                 optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
                 scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
                 step = checkpoint['step']
@@ -102,7 +102,7 @@ def get_checkpoint(args):
             checkpoint = torch.load(os.path.join(artifact_dir, "best_checkpoint.pt"), weights_only=True)
             model.load_state_dict(checkpoint['model_state_dict'])
             
-            if not args.sample_only:
+            if not sample_only:
                 optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
                 scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
                 step = checkpoint['step'] + 1

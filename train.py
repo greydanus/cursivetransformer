@@ -62,7 +62,7 @@ if __name__ == '__main__':
     args.context_vocab_size = train_dataset.get_char_vocab_size()
     print(f"Dataset determined that: {args.vocab_size=}, {args.block_size=}")
 
-    model, optimizer, scheduler, step, best_loss = get_checkpoint(args)
+    model, optimizer, scheduler, step, best_loss = get_checkpoint(args, sample_only=False)
     batch_loader = InfiniteDataLoader(train_dataset, batch_size=args.batch_size, pin_memory=True, num_workers=4)
 
     wandb.watch(model, log="all", log_freq=args.log_every, log_graph=False)  # model saving stuff
