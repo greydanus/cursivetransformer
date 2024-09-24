@@ -157,12 +157,12 @@ class StrokeDataset(Dataset):
         self.max_text_length = max_text_length
         self.name = name
 
-        self.theta_bins = np.linspace(-np.pi, np.pi, 180)
+        self.theta_bins = np.linspace(-np.pi, np.pi, 200)
 
         r_bins_pen_down = np.concatenate([
                             np.asarray([0]),
-                            np.linspace(0.0001, 0.060, 30),
-                            np.geomspace(0.06001, 0.75, 69) ]) # 100 discrete radii
+                            np.linspace(0.0001, 0.060, 50),
+                            np.geomspace(0.06001, 0.75, 100) ]) # 100 discrete radii
         r_bins_pen_up = r_bins_pen_down + max(r_bins_pen_down) + 1  # Offset for pen-up states
         self.r_bins = np.concatenate([r_bins_pen_down, r_bins_pen_up])  # 200 bins for: {radii x pen up/down}
 
