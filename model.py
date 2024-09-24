@@ -305,7 +305,7 @@ class Transformer(nn.Module):
         c = context_emb + context_pos_emb
 
 
-        for block in self.transformer.h:
+        for i, block in enumerate(self.transformer.h):
             if self.config.ablate_cross_attention and i!=1:
                 x = block(x)
             else:
