@@ -235,7 +235,7 @@ class CrossAttention(nn.Module):
 class Block(nn.Module):
     """ an unassuming Transformer block """
 
-    def __init__(self, config, has_cross_attn=False):
+    def __init__(self, config, has_cross_attn=True):
         super().__init__()
         self.has_cross_attn = has_cross_attn
         self.ln_1 = nn.LayerNorm(config.n_embd)
@@ -301,7 +301,6 @@ class Transformer(nn.Module):
         context_emb = self.transformer.wce(context) # context embeddings of shape (b, t_ctx, n_embd_context)
         context_pos_emb = self.transformer.wcpe(context_pos)
         c = context_emb + context_pos_emb
-
 
         for i, block in enumerate(self.transformer.h):
             x = block(x, c)
