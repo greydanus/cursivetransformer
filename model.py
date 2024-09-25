@@ -16,10 +16,10 @@ import wandb
 
 def get_all_args(use_argparse=True):
     args_config = {
-        'max_steps': (156000, int, 'How many steps to train for'),
+        'max_steps': (110000, int, 'How many steps to train for'),
         'print_every': (100, int, 'Print log info after how many steps'),
         'log_every': (2500, int, 'Sample model after how many steps'),
-        'lr_decay': (0.5, float, 'How much to decay the learning rate'),
+        'lr_decay': (0.333, float, 'How much to decay the learning rate'),
         'step_lr_every': (33000, int, 'How often to decay the learning rate'),
         'device': ('cuda', str, 'This is meant to be trained on a GPU'),
         'seed': (42, int, 'Random seed for reproducibility'),
@@ -32,8 +32,8 @@ def get_all_args(use_argparse=True):
         'batch_size': (32, int, 'Batch size'),
         'train_size': (497000, int, 'Number of train examples'),
         'test_size': (3000, int, 'Number of test examples'),
-        'num_words': (4, int, 'Number of words'),
-        'max_seq_length': (1000, int, 'Maximum sequence length (tokens)'),
+        'num_words': (5, int, 'Number of words'),
+        'max_seq_length': (1500, int, 'Maximum sequence length (tokens)'),
         'augment': (True, 'store_true', 'Perform augmentations'),
         'downsample_mean': (0.65, float, 'Mean amount to downsample stroke points (0.65=65%)'),
         'downsample_width': (0.1, float, 'Width of the uniform distribution (0.1=10%)'),
