@@ -157,12 +157,12 @@ class StrokeDataset(Dataset):
         self.max_text_length = max_text_length
         self.name = name
 
-        self.theta_bins = np.linspace(-np.pi, np.pi, 200)
+        self.theta_bins = np.linspace(-np.pi, np.pi, 180)
 
         r_bins_pen_down = np.concatenate([
                             np.asarray([0]),
-                            np.linspace(0.0001, 0.060, 50),
-                            np.geomspace(0.06001, 0.75, 100) ]) # 100 discrete radii
+                            np.linspace(0.0001, 0.060, 25),
+                            np.geomspace(0.06001, 0.75, 74) ]) # 100 discrete radii
         r_bins_pen_up = r_bins_pen_down + max(r_bins_pen_down) + 1  # Offset for pen-up states
         self.r_bins = np.concatenate([r_bins_pen_down, r_bins_pen_up])  # 200 bins for: {radii x pen up/down}
 
@@ -179,7 +179,7 @@ class StrokeDataset(Dataset):
         self.char_PAD_TOKEN = 0
 
     def augment_stroke(self, stroke):
-        stroke = random_horizontal_shear(stroke, shear_range=(-0.45, 0.15)) # Horizontal shear
+        stroke = random_horizontal_shear(stroke, shear_range=(-0.30, 0.15)) # Horizontal shear
         stroke[:, 0:1] *= np.random.uniform(0.9, 1.1)
         stroke[:, 1:2] *= np.random.uniform(0.9, 1.1)
         stroke = random_rotate(stroke, angle_range=(-.08, .08))

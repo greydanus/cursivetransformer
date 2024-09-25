@@ -16,10 +16,10 @@ import wandb
 
 def get_all_args(use_argparse=True):
     args_config = {
-        'max_steps': (110000, int, 'How many steps to train for'),
+        'max_steps': (156000, int, 'How many steps to train for'),
         'print_every': (100, int, 'Print log info after how many steps'),
         'log_every': (2500, int, 'Sample model after how many steps'),
-        'lr_decay': (0.333, float, 'How much to decay the learning rate'),
+        'lr_decay': (0.5, float, 'How much to decay the learning rate'),
         'step_lr_every': (33000, int, 'How often to decay the learning rate'),
         'device': ('cuda', str, 'This is meant to be trained on a GPU'),
         'seed': (42, int, 'Random seed for reproducibility'),
