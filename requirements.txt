@@ -1,5 +1,10 @@
+datasets
+einops
+gradio
 torch
 wandb
 numpy
 scipy
 matplotlib
+transformer_lens
+git+https://github.com/callummcdougall/CircuitsVis.git#subdirectory=python
