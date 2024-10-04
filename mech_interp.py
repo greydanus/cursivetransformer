@@ -64,9 +64,7 @@ class HookedCursiveTransformer(HookedTransformer):
 
         # Projection layer if d_model_c != d_model
         if cfg.d_model_c != cfg.d_model:
-            self.context_proj = nn.Linear(cfg.d_model_c, cfg.d_model)
-        else:
-            self.context_proj = nn.Identity()
+            self.context_proj = n
 
         # Blocks
         self.blocks = nn.ModuleList([TransformerBlock(cfg, block_index=_) for _ in range(cfg.n_layers)])
@@ -447,7 +445,7 @@ def visualize_attention(model, x, c, layer_range=None, head_range=None, attn_typ
                 raise ValueError("attn_type must be 'self' or 'cross'")
 
             attn = attn_patterns[0, head].cpu().numpy()
-            im = axes[i, j].imshow(attn, cmap='viridis', aspect='auto')
+            im = axes[i, j].imshow(attn, cmap='viridis', aspect='auto', interpolation=None)
             axes[i, j].set_title(f'Layer {layer}, Head {head}')
             axes[i, j].axis('off')
 
