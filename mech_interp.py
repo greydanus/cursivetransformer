@@ -423,9 +423,6 @@ def convert_cursivetransformer_model_config(args):
     }
     return HookedCursiveTransformerConfig.from_dict(cfg_dict)
 
-# cfg = convert_cursivetransformer_model_config(args)
-# model = HookedCursiveTransformer.from_pretrained("cursivetransformer", cfg)
-
 def visualize_attention(model, x, c, layer_range=None, head_range=None, attn_type='self'):
     with torch.no_grad():
         _, cache = model.run_with_cache(x, c, return_type="both")
