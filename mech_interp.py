@@ -6,10 +6,8 @@ import torch.nn.functional as F
 from jaxtyping import Float, Int
 
 import matplotlib.pyplot as plt
-import circuitsvis as cv
-from IPython.display import display
 
-from typing import Callable, Dict, Optional, Union
+from typing import Dict, Optional, Union
 
 from .model import get_latest_checkpoint_artifact
 
@@ -18,10 +16,6 @@ from transformer_lens import (
     HookedTransformerConfig
 )
 from transformer_lens.hook_points import HookPoint
-from transformer_lens.utils import (
-    get_act_name,
-    repeat_along_head_dimension
-)
 from transformer_lens.utilities.attention import simple_attn_linear
 from transformer_lens.components import (
     Attention,
@@ -34,36 +28,6 @@ from transformer_lens.components import (
     Unembed
 )
 from transformer_lens.components.mlps.can_be_used_as_mlp import CanBeUsedAsMLP
-from transformer_lens.past_key_value_caching import HookedTransformerKeyValueCacheEntry
-
-from collections import defaultdict
-from typing import Dict, List, Optional, Tuple, Union, cast
-
-import torch
-from typing_extensions import Literal, get_args
-
-from transformer_lens.ActivationCache import ActivationCache
-from transformer_lens.HookedTransformer import HookedTransformer
-from transformer_lens.utils import is_lower_triangular, is_square
-from transformer_lens.utilities.addmm import batch_addmm
-
-# Usage example:
-# args = get_all_args(False)
-# args.sample_only = True
-# args.load_from_run_id = '6le6tujz'  # Replace with your actual run ID
-# args.wandb_entity = 'sam-greydanus'
-# args.dataset_name = 'bigbank'  # Replace with your dataset name
-# args.wandb_run_name = 'cursivetransformer_dictionary_learning'
-
-# torch.manual_seed(args.seed)
-# torch.cuda.manual_seed_all(args.seed)
-
-# train_dataset, test_dataset = create_datasets(args)
-
-# args.block_size = train_dataset.get_stroke_seq_length()
-# args.context_block_size = train_dataset.get_text_seq_length()
-# args.vocab_size = train_dataset.get_vocab_size()
-# args.context_vocab_size = train_dataset.get_char_vocab_size()
 
 
 class HookedCursiveTransformerConfig(HookedTransformerConfig):
@@ -492,86 +456,3 @@ def visualize_attention(model, x, c, layer_range=None, head_range=None, attn_typ
     plt.tight_layout()
     plt.show()
     
-# batch_size = 10
-# seq_len = 100
-# size = (batch_size, seq_len)
-# input_tensor = torch.randint(0, cfg.d_vocab, size)
-
-# random_tokens = input_tensor
-# repeated_tokens = einops.repeat(random_tokens, "batch seq_len -> batch (2 seq_len)")
-
-# # Create context tensor
-# context_seq_len = model.cfg.context_block_size
-# context_vocab_size = model.cfg.context_vocab_size
-# context_size = (batch_size, context_seq_len)
-# context_tokens = torch.zeros(context_size, dtype=torch.int)
-
-# # Call the model
-# repeated_logits = model(repeated_tokens, context_tokens)
-
-# # Compute per-token losses using the updated loss_fn
-# correct_log_probs = model.loss_fn(repeated_logits, repeated_tokens, per_token=True)
-
-# # Compute loss by position
-# loss_by_position = einops.reduce(correct_log_probs, "batch position -> position", "mean")
-
-# # Plot the loss by position
-# line(loss_by_position, xaxis="Position", yaxis="Loss", title="Loss by position on random repeated tokens")
-
-# We make a tensor to store the induction score for each head. We put it on the model's device to avoid needing to move things between the GPU and CPU, which can be slow.
-# induction_score_store = torch.zeros((model.cfg.n_layers, model.cfg.n_heads), device=model.cfg.device)
-# def induction_score_hook(
-#     pattern: Float[torch.Tensor, "batch head_index dest_pos source_pos"],
-#     hook: HookPoint,
-# ):
-#     # We take the diagonal of attention paid from each destination position to source positions seq_len-1 tokens back
-#     # (This only has entries for tokens with index>=seq_len)
-#     induction_stripe = pattern.diagonal(dim1=-2, dim2=-1, offset=1-seq_len)
-#     # Get an average score per head
-#     induction_score = einops.reduce(induction_stripe, "batch head_index position -> head_index", "mean")
-#     # Store the result.
-#     induction_score_store[hook.layer(), :] = induction_score
-    
-
-# We make a boolean filter on activation names, that's true only on attention pattern names.
-# pattern_hook_names_filter = lambda name: name.endswith("pattern")
-
-# _=model.run_with_hooks(
-#     repeated_tokens, 
-#     context_tokens,
-#     #return_type=None, # For efficiency, we don't need to calculate the logits
-#     fwd_hooks=[(
-#         pattern_hook_names_filter,
-#         induction_score_hook
-#     )]
-# )
-
-# imshow(induction_score_store, xaxis="Head", yaxis="Layer", title="Induction Score by Head")
-# induction_head_layer = 3
-# induction_head_index = 1
-# size = (1, 20)
-# input_tensor = torch.randint(0, cfg.d_vocab, size)
-
-# single_random_sequence = input_tensor
-# repeated_random_sequence = einops.repeat(single_random_sequence, "batch seq_len -> batch (2 seq_len)")
-# context_tokens = torch.zeros(len(repeated_random_sequence), dtype=torch.int).unsqueeze(0)
-# def visualize_pattern_hook(
-#     pattern: Float[torch.Tensor, "batch head_index dest_pos source_pos"],
-#     hook: HookPoint,
-# ):
-#     display(
-#         cv.attention.attention_patterns(
-#             tokens=repeated_random_sequence, 
-#             attention=pattern[0, induction_head_index, :, :][None, :, :] # Add a dummy axis, as CircuitsVis expects 3D patterns.
-#         )
-#     )
-
-# model.run_with_hooks(
-#     repeated_random_sequence, 
-#     context_tokens,
-#     #return_type=None, 
-#     fwd_hooks=[(
-#         utils.get_act_name("pattern", induction_head_layer), 
-#         visualize_pattern_hook
-#     )]
-# )
