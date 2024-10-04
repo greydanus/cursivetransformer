@@ -28,6 +28,7 @@ from transformer_lens.components import (
     Unembed
 )
 from transformer_lens.components.mlps.can_be_used_as_mlp import CanBeUsedAsMLP
+from transformer_lens.utilities.addmm import batch_addmm
 
 
 class HookedCursiveTransformerConfig(HookedTransformerConfig):
