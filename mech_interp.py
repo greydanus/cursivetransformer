@@ -11,19 +11,8 @@ from IPython.display import display
 
 from typing import Callable, Dict, Optional, Union
 
-from .model import (
-    get_all_args,
-    get_latest_checkpoint_artifact
-)
-from .data import (
-    create_datasets,
-    offsets_to_strokes
-)
-from .sample import (
-    generate,
-    generate_n_words,
-    plot_strokes
-)
+from .model import get_latest_checkpoint_artifact
+
 from transformer_lens import (
     HookedTransformer,
     HookedTransformerConfig
@@ -273,25 +262,6 @@ class HookedCursiveTransformer(HookedTransformer):
         new_state_dict["unembed.b_U"] = state_dict.get("lm_head.bias", torch.zeros(cfg.d_vocab))
 
         return new_state_dict
-
-    def loss_fn(self, logits, targets, per_token=False):
-        # Shift targets to align with logits for next-token prediction
-        targets_shifted = targets[:, 1:]  # Shift targets by one position
-        logits = logits[:, :-1, :]        # Exclude the last logit
-
-        # Reshape logits and targets for cross_entropy
-        logits_reshaped = logits.reshape(-1, logits.size(-1))            # Shape: [(batch_size * (seq_len - 1)), vocab_size]
-        targets_reshaped = targets_shifted.reshape(-1)                   # Shape: [(batch_size * (seq_len - 1))]
-
-        # Calculate the cross-entropy loss without reduction
-        loss = F.cross_entropy(logits_reshaped, targets_reshaped, ignore_index=-1, reduction='none')
-
-        if per_token:
-            return loss.view(logits.size(0), -1)  # Reshape back to [batch_size, seq_len - 1]
-        else:
-            return loss.mean()
-
-
 
 class TransformerBlock(nn.Module):
     def __init__(self, cfg: Union[Dict, HookedTransformerConfig], block_index):
