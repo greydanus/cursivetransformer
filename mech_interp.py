@@ -28,7 +28,7 @@ from transformer_lens.components import (
     Unembed
 )
 from transformer_lens.components.mlps.can_be_used_as_mlp import CanBeUsedAsMLP
-from transformer_lens.utilities.addmm import batch_addmm
+from transormer_lens.utils.addmm import batch_addmm
 
 
 class HookedCursiveTransformerConfig(HookedTransformerConfig):
@@ -64,7 +64,9 @@ class HookedCursiveTransformer(HookedTransformer):
 
         # Projection layer if d_model_c != d_model
         if cfg.d_model_c != cfg.d_model:
-            self.context_proj = n
+            self.context_proj = nn.Linear(cfg.d_model_c, cfg.d_model)
+        else:
+            self.context_proj = nn.Identity()
 
         # Blocks
         self.blocks = nn.ModuleList([TransformerBlock(cfg, block_index=_) for _ in range(cfg.n_layers)])
@@ -421,6 +423,9 @@ def convert_cursivetransformer_model_config(args):
     }
     return HookedCursiveTransformerConfig.from_dict(cfg_dict)
 
+# cfg = convert_cursivetransformer_model_config(args)
+# model = HookedCursiveTransformer.from_pretrained("cursivetransformer", cfg)
+
 def visualize_attention(model, x, c, layer_range=None, head_range=None, attn_type='self'):
     with torch.no_grad():
         _, cache = model.run_with_cache(x, c, return_type="both")
@@ -445,7 +450,7 @@ def visualize_attention(model, x, c, layer_range=None, head_range=None, attn_typ
                 raise ValueError("attn_type must be 'self' or 'cross'")
 
             attn = attn_patterns[0, head].cpu().numpy()
-            im = axes[i, j].imshow(attn, cmap='viridis', aspect='auto', interpolation=None)
+            im = axes[i, j].imshow(attn, cmap='viridis', aspect='auto')
             axes[i, j].set_title(f'Layer {layer}, Head {head}')
             axes[i, j].axis('off')
 
