@@ -450,7 +450,7 @@ def visualize_attention(model, x, c, layer_range=None, head_range=None, attn_typ
                 raise ValueError("attn_type must be 'self' or 'cross'")
 
             attn = attn_patterns[0, head].cpu().numpy()
-            im = axes[i, j].imshow(attn, cmap='viridis', aspect='auto')
+            im = axes[i, j].imshow(attn, cmap='viridis', aspect='auto', interpolation=None)
             axes[i, j].set_title(f'Layer {layer}, Head {head}')
             axes[i, j].axis('off')
 
