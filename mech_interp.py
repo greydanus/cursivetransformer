@@ -104,10 +104,10 @@ class HookedCursiveTransformer(HookedTransformer):
         if return_type == "logits":
             return logits
         elif return_type == "loss":
-            loss = self.loss_fn(logits, tokens[:, 1:], reduction='none' if per_token_loss else 'mean')
+            loss = self.loss_fn(logits, tokens[:, 1:])
             return loss if per_token_loss else loss.mean()
         elif return_type == "both":
-            loss = self.loss_fn(logits, tokens[:, 1:], reduction='none' if per_token_loss else 'mean')
+            loss = self.loss_fn(logits, tokens[:, 1:])
             return logits, loss if per_token_loss else loss.mean()
         else:
             raise ValueError(f"Invalid return_type {return_type}")
