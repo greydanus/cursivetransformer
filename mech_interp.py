@@ -83,7 +83,7 @@ class HookedCursiveTransformer(HookedTransformer):
 
         self.setup()
 
-    def forward(self, tokens, context, return_type="logits"):
+    def forward(self, tokens, context, return_type="logits", per_token_loss=False):
         B, T = tokens.shape
         B_c, T_c = context.shape
 
@@ -104,9 +104,11 @@ class HookedCursiveTransformer(HookedTransformer):
         if return_type == "logits":
             return logits
         elif return_type == "loss":
-            return self.loss_fn(logits, tokens[:, 1:])
+            loss = self.loss_fn(logits, tokens[:, 1:], reduction='none' if per_token_loss else 'mean')
+            return loss if per_token_loss else loss.mean()
         elif return_type == "both":
-            return logits, self.loss_fn(logits, tokens[:, 1:])
+            loss = self.loss_fn(logits, tokens[:, 1:], reduction='none' if per_token_loss else 'mean')
+            return logits, loss if per_token_loss else loss.mean()
         else:
             raise ValueError(f"Invalid return_type {return_type}")
 
