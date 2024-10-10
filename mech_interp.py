@@ -467,4 +467,553 @@ def visualize_attention(model, x, c, layer_range=None, head_range=None, attn_typ
 
     plt.tight_layout()
     plt.show()
+
+def generate_repeated_stroke_tokens(
+    model,
+    seq_len: int,
+    n_repeats: int,
+    batch_size: int = 1
+) -> Int[torch.Tensor, "batch_size full_seq_len"]:
+    """
+    Generates a sequence of repeated stroke tokens, alternating between θ and r tokens.
+
+    Args:
+        model: The model instance.
+        seq_len: Number of (θ, r) pairs in the initial sequence.
+        n_repeats: Number of times to repeat the sequence.
+        batch_size: Batch size.
+
+    Returns:
+        rep_tokens: Tensor of shape [batch_size, n_repeats * 2 * seq_len]
+    """
+    device = model.cfg.device
+    feature_sizes = test_dataset.feature_sizes  # [size_r_bins, size_theta_bins]
+    cumulative_sizes = test_dataset.cumulative_sizes  # cumulative indices for token types
+
+    # Get valid indices for θ and r tokens
+    theta_token_indices = torch.arange(
+        cumulative_sizes[1],
+        cumulative_sizes[2],
+        device=device
+    )
+    r_token_indices = torch.arange(
+        cumulative_sizes[0],
+        cumulative_sizes[1],
+        device=device
+    )
+
+    # Generate random θ and r tokens
+    random_theta_tokens = theta_token_indices[
+        torch.randint(
+            low=0,
+            high=feature_sizes[1],
+            size=(batch_size, seq_len),
+            device=device
+        )
+    ]
+    random_r_tokens = r_token_indices[
+        torch.randint(
+            low=0,
+            high=feature_sizes[0],
+            size=(batch_size, seq_len),
+            device=device
+        )
+    ]
+
+    # Alternate between θ and r tokens
+    stroke_tokens_half = torch.zeros(batch_size, seq_len * 2, dtype=torch.long, device=device)
+    stroke_tokens_half[:, 0::2] = random_theta_tokens
+    stroke_tokens_half[:, 1::2] = random_r_tokens
+
+    # Repeat the sequence
+    rep_tokens = stroke_tokens_half.repeat(1, n_repeats)
+
+    return rep_tokens
+
+def generate_random_ascii_context(
+    model,
+    batch_size: int = 1
+) -> Int[torch.Tensor, "batch_size context_seq_len"]:
+    """
+    Generates a random ASCII context sequence.
+
+    Args:
+        model: The model instance.
+        batch_size: Batch size.
+
+    Returns:
+        context_tokens: Tensor of shape [batch_size, context_seq_len]
+    """
+    device = model.cfg.device
+    context_seq_len = model.cfg.context_block_size
+    context_vocab_size = model.cfg.context_vocab_size
+
+    context_tokens = torch.randint(
+        low=0,
+        high=context_vocab_size - 1,  # Exclude PAD token
+        size=(batch_size, context_seq_len),
+        dtype=torch.long,
+        device=device
+    )
+
+    return context_tokens
+
+def run_and_cache_model_repeated_tokens(
+    model,
+    rep_tokens: torch.Tensor,
+    context_tokens: torch.Tensor
+) -> Tuple[torch.Tensor, torch.Tensor, ActivationCache]:
+    """
+    Runs the model on repeated tokens and caches activations.
+
+    Args:
+        model: The model instance.
+        rep_tokens: Input stroke tokens of shape [batch_size, seq_len]
+        context_tokens: Input context tokens of shape [batch_size, context_seq_len]
+
+    Returns:
+        logits: Model output logits.
+        cache: Activation cache.
+    """
+    # Shift inputs to create targets
+    inputs = rep_tokens[:, :-1]
+    targets = rep_tokens[:, 1:]
+
+    # Run model with cache
+    logits, cache = model.run_with_cache(
+        tokens=inputs,
+        context=context_tokens,
+        targets=targets,
+        return_type="both"
+    )
+
+    return logits, targets, cache
+
+# - [ ] TODO: use test_dataset.cumulative_sizes to get token index ranges for r and theta
+def sanity_check_token_pairs(rep_tokens: torch.Tensor):
+    """
+    Performs a sanity check to ensure that token pairs are correctly formed.
+
+    Args:
+        rep_tokens: Input stroke tokens of shape [batch_size, seq_len]
+    """
+    batch_size, seq_len = rep_tokens.shape
+    assert seq_len % 2 == 0, "Sequence length should be even to form (θ, r) pairs."
+
+    token_pairs = rep_tokens.view(batch_size, seq_len // 2, 2)  # Shape: [batch_size, seq_len_pairs, 2]
+    for pair in token_pairs[0]:
+        theta, r = pair.tolist()
+        # Add any specific checks for theta and r validity if applicable
+        # For example, ensure that theta and r are within expected ranges
+        # Here, we'll simply print a few pairs for manual inspection
+    print("Sample token pairs:", token_pairs[0][:5].tolist())
+
+def verify_attention_summation(cache: ActivationCache, layer: int, head: int, attn_type: str = 'self'):
+    """
+    Verifies that attention weights sum to 1 across key positions for each query.
+
+    Args:
+        cache: Activation cache.
+        layer: Layer index.
+        head: Head index.
+        attn_type: 'self' or 'cross' to specify attention type.
+    """
+    with torch.no_grad():
+        if attn_type == 'self':
+            attn = cache[f'blocks.{layer}.attn.hook_pattern'][0, head]
+        elif attn_type == 'cross':
+            attn = cache[f'blocks.{layer}.cross_attn.hook_pattern'][0, head]
+        else:
+            raise ValueError("attn_type must be 'self' or 'cross'")
+
+    attn_sum = attn.sum(dim=-1)
+    if not torch.allclose(attn_sum, torch.ones_like(attn_sum), atol=1e-5):
+        print(f"Attention weights do not sum to 1 for Layer {layer}, Head {head} ({attn_type}-Attention).")
+    else:
+        print(f"Attention weights verified for Layer {layer}, Head {head} ({attn_type}-Attention).")
+
+def compute_induction_scores(
+    rep_tokens: torch.Tensor,
+    cache: ActivationCache,
+    model: HookedCursiveTransformer
+) -> torch.Tensor:
+    """
+    Computes induction scores for all attention heads.
+
+    Args:
+        rep_tokens: Input tokens of shape [batch_size, seq_len]
+        cache: Activation cache containing attention patterns.
+        model: The transformer model.
+
+    Returns:
+        induction_scores: Tensor of shape [num_layers, num_heads]
+    """
+    num_layers = model.cfg.n_layers
+    num_heads = model.cfg.n_heads
+    induction_scores = torch.zeros(num_layers, num_heads, device=model.cfg.device)
+
+    batch_size, seq_len = rep_tokens.shape
+
+    tokens = rep_tokens[:, :-1]  # Exclude last token
+    targets = rep_tokens[:, 1:]  # Exclude first token
+
+    for layer in range(num_layers):
+        attention = cache["pattern", layer]  # Shape: [batch_size, num_heads, seq_len - 1, seq_len - 1]
+
+        for head in range(num_heads):
+            # Extract attention weights for this head
+            attn_weights = attention[:, head]  # Shape: [batch_size, seq_len - 1, seq_len - 1]
+
+            # Initialize induction score for this head
+            score_sum = 0.0
+
+            for b in range(batch_size):
+                for t in range(1, seq_len - 1):
+                    # Current token and previous tokens
+                    current_token = tokens[b, t]
+                    previous_tokens = tokens[b, :t]
+
+                    # Find positions where previous_tokens == current_token
+                    matching_positions = (previous_tokens == current_token).nonzero(as_tuple=True)[0]
+
+                    # For each matching position, check if the next token matches the target
+                    for pos in matching_positions:
+                        if targets[b, pos] == targets[b, t]:
+                            # Accumulate attention weight
+                            score_sum += attn_weights[b, t, pos].item()
+
+            # Normalize the score
+            induction_scores[layer, head] = score_sum / (batch_size * (seq_len - 2))
+
+    return induction_scores
+
+def compute_cross_attention_induction_scores(
+    model,
+    context_tokens: torch.Tensor,
+    cache: ActivationCache
+) -> torch.Tensor:
+    """
+    Computes induction-like scores for cross-attention heads.
+
+    Args:
+        model: The model instance.
+        context_tokens: Context tokens of shape [batch_size, context_seq_len]
+        cache: Activation cache.
+
+    Returns:
+        cross_induction_scores: Tensor of shape [num_layers, num_heads]
+    """
+    num_layers = model.cfg.n_layers
+    num_heads = model.cfg.n_heads
+    cross_induction_scores = torch.zeros(num_layers, num_heads, device=model.cfg.device)
+
+    batch_size, context_seq_len = context_tokens.shape
+
+    for layer in range(num_layers):
+        attn_patterns = cache["pattern", layer, "cross_attn"]  # Need to access cross-attention patterns
+        for head in range(num_heads):
+            attn = attn_patterns[0, head]  # Shape: [stroke_seq_len, context_seq_len]
+            # For this example, we might need more specific analysis based on the use case
+            # Placeholder for cross-attention induction score computation
+            cross_induction_scores[layer, head] = attn.mean().item()
+    return cross_induction_scores
+
+def plot_induction_scores(induction_scores: torch.Tensor):
+    """
+    Plots a heatmap of induction scores with categorical annotations.
+
+    Args:
+        induction_scores: Tensor of shape [num_layers, num_heads]
+    """
+    plt.figure(figsize=(12, 6))
+    induction_scores_np = induction_scores.cpu().numpy()
+
+    # Define thresholds
+    high_threshold = 0.05
+    medium_threshold = 0.02
+
+    # Create a mask for categories
+    categories = np.empty_like(induction_scores_np, dtype=str)
+    categories[induction_scores_np > high_threshold] = 'High'
+    categories[(induction_scores_np <= high_threshold) & (induction_scores_np > medium_threshold)] = 'Moderate'
+    categories[induction_scores_np <= medium_threshold] = 'Low'
+
+    # Plot heatmap
+    sns.heatmap(
+        induction_scores_np,
+        annot=induction_scores_np,
+        fmt=".3f",
+        cmap="YlGnBu",
+        xticklabels=[f"H{h}" for h in range(induction_scores.shape[1])],
+        yticklabels=[f"L{l}" for l in range(induction_scores.shape[0])],
+        cbar_kws={'label': 'Induction Score'}
+    )
+
+    # Overlay categories
+    for i in range(induction_scores_np.shape[0]):
+        for j in range(induction_scores_np.shape[1]):
+            plt.text(j + 0.5, i + 0.5, categories[i, j],
+                     horizontalalignment='center',
+                     verticalalignment='center',
+                     color='red' if categories[i, j] == 'High' else
+                            'orange' if categories[i, j] == 'Moderate' else
+                            'black',
+                     fontsize=8)
+
+    plt.title("Induction Scores per Head")
+    plt.xlabel("Heads")
+    plt.ylabel("Layers")
+    plt.show()
+
+def plot_head_attention_pattern(
+    cache: ActivationCache,
+    layer: int,
+    head: int,
+    seq_len: int,
+    attn_type: str = 'self'
+):
+    """
+    Plots the attention pattern of a specific head with enhanced clarity.
+
+    Args:
+        cache: Activation cache.
+        layer: Layer index.
+        head: Head index.
+        seq_len: Total sequence length.
+        attn_type: 'self' or 'cross' to specify attention type.
+    """
+    with torch.no_grad():
+        if attn_type == 'self':
+            attn = cache[f'blocks.{layer}.attn.hook_pattern'][0, head].cpu().numpy()
+        elif attn_type == 'cross':
+            attn = cache[f'blocks.{layer}.cross_attn.hook_pattern'][0, head].cpu().numpy()
+        else:
+            raise ValueError("attn_type must be 'self' or 'cross'")
+
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(
+        attn,
+        cmap='viridis',
+        cbar=True,
+        square=True,
+        xticklabels=False,
+        yticklabels=False
+    )
+    plt.title(f"Attention Pattern - Layer {layer}, Head {head} ({attn_type}-Attention)")
+    plt.xlabel("Key Positions")
+    plt.ylabel("Query Positions")
+    plt.tight_layout()
+    plt.show()
+
+def create_induction_summary(induction_scores: torch.Tensor, threshold_high=0.05, threshold_medium=0.02):
+    """
+    Creates a summary table of induction scores with categories.
+
+    Args:
+        induction_scores: Tensor of shape [num_layers, num_heads]
+        threshold_high: Threshold for high induction score
+        threshold_medium: Threshold for moderate induction score
+
+    Returns:
+        df_summary: Pandas DataFrame with Layer, Head, Score, and Category
+    """
+    num_layers, num_heads = induction_scores.shape
+    data = []
+    for layer in range(num_layers):
+        for head in range(num_heads):
+            score = induction_scores[layer, head].item()
+            if score > threshold_high:
+                category = 'High'
+            elif score > threshold_medium:
+                category = 'Moderate'
+            else:
+                category = 'Low'
+            data.append({'Layer': layer, 'Head': head, 'Score': score, 'Category': category})
+    df_summary = pd.DataFrame(data)
+    return df_summary
+
+def ablate_heads(
+    model: HookedCursiveTransformer,
+    head_list: List[Tuple[int, int]],
+    rep_tokens: torch.Tensor,
+    context_tokens: Optional[torch.Tensor] = None
+) -> torch.Tensor:
+    from transformer_lens.hook_points import HookPoint
+    from functools import partial
+
+    def zero_out_head_output(value, hook, head_idx):
+        # value shape: [batch_size, seq_len, n_heads, d_head]
+        value[:, :, head_idx, :] = 0.0
+        return value
+
+    # Set up hooks
+    ablation_hooks = []
+    for layer_idx, head_idx, _ in head_list:
+        hook_name = f"blocks.{layer_idx}.attn.hook_z"
+        hook_fn = partial(zero_out_head_output, head_idx=head_idx)
+        ablation_hooks.append((hook_name, hook_fn))
+
+    # Run the model with ablation hooks
+    inputs = rep_tokens[:, :-1]
+    logits = model.run_with_hooks(
+        inputs,
+        context=context_tokens,
+        return_type="logits",
+        fwd_hooks=ablation_hooks
+    )
+
+    return logits
+
+def compute_loss_on_induction_positions(
+    logits,
+    targets: torch.Tensor,
+    induction_positions: List[torch.Tensor]
+):
+    """
+    Computes cross-entropy loss only on the specified positions.
+
+    Args:
+        logits: Model logits of shape [batch_size, seq_len, vocab_size], or a tuple where the first element is logits.
+        targets: Target tokens of shape [batch_size, seq_len]
+        induction_positions: List of tensors indicating positions to include in loss
+
+    Returns:
+        loss: Scalar tensor representing the loss on the specified positions
+    """
+    import torch.nn.functional as F
+
+    # If logits is a tuple, extract the first element
+    if isinstance(logits, tuple):
+        logits = logits[0]
+
+    batch_size, seq_len, vocab_size = logits.shape
+    logits_flat = logits.reshape(-1, vocab_size)        # Shape: [batch_size * seq_len, vocab_size]
+    targets_flat = targets.reshape(-1)                  # Shape: [batch_size * seq_len]
+
+    # Create mask for induction positions
+    mask = torch.zeros(batch_size * seq_len, dtype=torch.bool, device=logits.device)
+    for b in range(batch_size):
+        indices = induction_positions[b] + b * seq_len
+
+        # Ensure indices are within bounds
+        if torch.any(indices >= batch_size * seq_len):
+            raise ValueError(f"Indices out of bounds for batch {b}: {indices}")
+
+        mask[indices] = True
+
+    # Apply the mask
+    logits_masked = logits_flat[mask]                   # Select logits at induction positions
+    targets_masked = targets_flat[mask]                 # Select targets at induction positions
+
+    # Compute loss
+    if logits_masked.numel() == 0:
+        print("No induction positions found. Returning zero loss.")
+        return torch.tensor(0.0, device=logits.device, requires_grad=False)
+
+    loss = F.cross_entropy(logits_masked, targets_masked)
+    return loss
+
+def get_induction_positions(
+    rep_tokens: torch.Tensor,
+    pattern_length: int,
+    n_repeats: int
+) -> List[torch.Tensor]:
+    """
+    Computes the positions in the sequence where induction occurs.
+
+    Args:
+        rep_tokens: Input tokens of shape [batch_size, seq_len]
+        pattern_length: Length of the repeating pattern (number of (θ, r) pairs)
+        n_repeats: Number of times the pattern repeats
+
+    Returns:
+        induction_positions: List of tensors, one per batch, containing positions of induction tokens
+    """
+    batch_size, seq_len = rep_tokens.shape
+    induction_positions = []
+
+    total_patterns = n_repeats
+    pattern_seq_length = pattern_length * 2  # Times 2 because each pattern token is two tokens long (θ and r)
+    expected_seq_len = total_patterns * pattern_seq_length
+
+    # Check if the sequence length matches the expected length
+    if seq_len != expected_seq_len:
+        raise ValueError(f"Mismatch between seq_len ({seq_len}) and expected_seq_len ({expected_seq_len})")
+
+    for b in range(batch_size):
+        positions = []
+
+        # Induction occurs starting from the second pattern
+        for i in range(1, n_repeats):
+            # Positions where the model should recall from previous patterns
+            start = i * pattern_seq_length
+            end = start + pattern_seq_length
+
+            # Induction positions are the positions within the current pattern where the model should predict the next token based on the pattern
+            induction_positions_in_pattern = torch.arange(start, end, device=rep_tokens.device)
+
+            positions.append(induction_positions_in_pattern)
+
+        # Concatenate positions for all repeats in the batch
+        if positions:
+            positions = torch.cat(positions)
+        else:
+            positions = torch.tensor([], dtype=torch.long, device=rep_tokens.device)
+
+        induction_positions.append(positions)
+
+    return induction_positions
+
+def activation_patching(
+    model: HookedCursiveTransformer,
+    src_tokens: torch.Tensor,
+    dst_tokens: torch.Tensor,
+    layer: int,
+    head: int,
+    context_tokens: Optional[torch.Tensor] = None
+) -> torch.Tensor:
+    """
+    Patches activations from src_tokens into dst_tokens at a specific layer and head.
+
+    Args:
+        model: The transformer model.
+        src_tokens: Source input tokens.
+        dst_tokens: Destination input tokens.
+        layer: Layer index.
+        head: Head index.
+        context_tokens: Optional context tokens.
+
+    Returns:
+        logits: Model logits with patched activations.
+    """
+    from transformer_lens.hook_points import HookPoint
+
+    def replace_head_activation(dst_value, hook: HookPoint):
+        # Run the model on src_tokens to get the source head activation
+        src_cache = {}
+        def save_src_activation(value, hook):
+            src_cache["value"] = value.detach()
+            return value
+
+        # Run src_tokens to get the source activation
+        model.run_with_hooks(
+            src_tokens,
+            context=context_tokens,
+            fwd_hooks=[(hook.name, save_src_activation)]
+        )
+
+        # Replace the destination activation with source activation for the specified head
+        dst_value[:, :, head, :] = src_cache["value"][:, :, head, :]
+        return dst_value
+
+    # Run the model with activation patching
+    inputs = dst_tokens[:, :-1]
+    logits = model.run_with_hooks(
+        inputs,
+        context=context_tokens,
+        return_type="logits",
+        fwd_hooks=[(f"v{layer}", replace_head_activation)]
+    )
+
+    return logits
     
