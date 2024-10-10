@@ -3,7 +3,7 @@ import copy
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from jaxtyping import Float, Int
+from jaxtyping import Float, Int, Tuple
 
 import matplotlib.pyplot as plt
 
