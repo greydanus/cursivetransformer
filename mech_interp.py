@@ -8,7 +8,7 @@ from jaxtyping import Float, Int
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from typing import Dict, Optional, Union, Tuple
+from typing import Dict, Optional, Union, Tuple, List
 
 from .model import get_latest_checkpoint_artifact
 
