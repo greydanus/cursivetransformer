@@ -3,6 +3,7 @@ import copy
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 from jaxtyping import Float, Int
 
 import matplotlib.pyplot as plt
@@ -11,7 +12,7 @@ import seaborn as sns
 from typing import Dict, Optional, Union, Tuple, List
 
 from .model import get_latest_checkpoint_artifact
-
+from functools import partial
 from transformer_lens import (
     HookedTransformer,
     HookedTransformerConfig,
@@ -31,7 +32,7 @@ from transformer_lens.components import (
 )
 from transformer_lens.components.mlps.can_be_used_as_mlp import CanBeUsedAsMLP
 from transformer_lens.utilities.addmm import batch_addmm
-
+from transformer_lens.hook_points import HookPoint
 sns.set_theme(style="whitegrid")
 
 
@@ -474,6 +475,7 @@ def visualize_attention(model, x, c, layer_range=None, head_range=None, attn_typ
 
 def generate_repeated_stroke_tokens(
     model,
+    dataset,
     seq_len: int,
     n_repeats: int,
     batch_size: int = 1
@@ -491,8 +493,8 @@ def generate_repeated_stroke_tokens(
         rep_tokens: Tensor of shape [batch_size, n_repeats * 2 * seq_len]
     """
     device = model.cfg.device
-    feature_sizes = test_dataset.feature_sizes  # [size_r_bins, size_theta_bins]
-    cumulative_sizes = test_dataset.cumulative_sizes  # cumulative indices for token types
+    feature_sizes = dataset.feature_sizes  # [size_r_bins, size_theta_bins]
+    cumulative_sizes = dataset.cumulative_sizes  # cumulative indices for token types
 
     # Get valid indices for θ and r tokens
     theta_token_indices = torch.arange(
@@ -842,8 +844,6 @@ def ablate_heads(
     rep_tokens: torch.Tensor,
     context_tokens: Optional[torch.Tensor] = None
 ) -> torch.Tensor:
-    from transformer_lens.hook_points import HookPoint
-    from functools import partial
 
     def zero_out_head_output(value, hook, head_idx):
         # value shape: [batch_size, seq_len, n_heads, d_head]
@@ -884,7 +884,6 @@ def compute_loss_on_induction_positions(
     Returns:
         loss: Scalar tensor representing the loss on the specified positions
     """
-    import torch.nn.functional as F
 
     # If logits is a tuple, extract the first element
     if isinstance(logits, tuple):
@@ -990,7 +989,6 @@ def activation_patching(
     Returns:
         logits: Model logits with patched activations.
     """
-    from transformer_lens.hook_points import HookPoint
 
     def replace_head_activation(dst_value, hook: HookPoint):
         # Run the model on src_tokens to get the source head activation
