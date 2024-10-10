@@ -3,11 +3,11 @@ import copy
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from jaxtyping import Float, Int, Tuple
+from jaxtyping import Float, Int
 
 import matplotlib.pyplot as plt
 
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union, Tuple
 
 from .model import get_latest_checkpoint_artifact
 
