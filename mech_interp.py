@@ -14,7 +14,8 @@ from .model import get_latest_checkpoint_artifact
 
 from transformer_lens import (
     HookedTransformer,
-    HookedTransformerConfig
+    HookedTransformerConfig,
+    ActivationCache
 )
 from transformer_lens.hook_points import HookPoint
 from transformer_lens.utilities.attention import simple_attn_linear
@@ -26,8 +27,7 @@ from transformer_lens.components import (
     RMSNorm,
     RMSNormPre,
     Embed,
-    Unembed,
-    ActivationCache
+    Unembed
 )
 from transformer_lens.components.mlps.can_be_used_as_mlp import CanBeUsedAsMLP
 from transformer_lens.utilities.addmm import batch_addmm
