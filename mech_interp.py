@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from jaxtyping import Float, Int
 
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 from typing import Dict, Optional, Union, Tuple
 
@@ -30,6 +31,8 @@ from transformer_lens.components import (
 )
 from transformer_lens.components.mlps.can_be_used_as_mlp import CanBeUsedAsMLP
 from transformer_lens.utilities.addmm import batch_addmm
+
+sns.set_theme(style="whitegrid")
 
 
 class HookedCursiveTransformerConfig(HookedTransformerConfig):
