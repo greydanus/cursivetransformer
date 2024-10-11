@@ -640,6 +640,7 @@ def verify_attention_summation(cache: ActivationCache, layer: int, head: int, at
         print(f"Attention weights verified for Layer {layer}, Head {head} ({attn_type}-Attention).")
 
 
+# - [ ] TODO: verify that induction scores are computed correctly, specifically if it makes sense to do it this way in the later layers
 def compute_induction_scores(
     rep_tokens: torch.Tensor,
     cache: ActivationCache,
