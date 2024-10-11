@@ -639,22 +639,12 @@ def verify_attention_summation(cache: ActivationCache, layer: int, head: int, at
     else:
         print(f"Attention weights verified for Layer {layer}, Head {head} ({attn_type}-Attention).")
 
+
 def compute_induction_scores(
     rep_tokens: torch.Tensor,
     cache: ActivationCache,
     model: HookedCursiveTransformer
 ) -> torch.Tensor:
-    """
-    Computes induction scores for all attention heads.
-
-    Args:
-        rep_tokens: Input tokens of shape [batch_size, seq_len]
-        cache: Activation cache containing attention patterns.
-        model: The transformer model.
-
-    Returns:
-        induction_scores: Tensor of shape [num_layers, num_heads]
-    """
     num_layers = model.cfg.n_layers
     num_heads = model.cfg.n_heads
     induction_scores = torch.zeros(num_layers, num_heads, device=model.cfg.device)
@@ -673,57 +663,33 @@ def compute_induction_scores(
 
             # Initialize induction score for this head
             score_sum = 0.0
+            total_instances = 0
 
             for b in range(batch_size):
                 for t in range(1, seq_len - 1):
-                    # Current token and previous tokens
+                    # Current token and target (next) token
                     current_token = tokens[b, t]
-                    previous_tokens = tokens[b, :t]
+                    next_token = targets[b, t]
 
-                    # Find positions where previous_tokens == current_token
-                    matching_positions = (previous_tokens == current_token).nonzero(as_tuple=True)[0]
+                    # Find positions where previous tokens match the current token
+                    # and the token after matches the next token
+                    matching_positions = ((tokens[b, :t] == current_token) & (targets[b, :t] == next_token)).nonzero(as_tuple=True)[0]
 
-                    # For each matching position, check if the next token matches the target
-                    for pos in matching_positions:
-                        if targets[b, pos] == targets[b, t]:
-                            # Accumulate attention weight
-                            score_sum += attn_weights[b, t, pos].item()
+                    if len(matching_positions) > 0:
+                        # Get the most recent matching position
+                        prev_pos = matching_positions[-1]
+                        
+                        # Accumulate attention weight
+                        score_sum += attn_weights[b, t, prev_pos].item()
+                        total_instances += 1
 
             # Normalize the score
-            induction_scores[layer, head] = score_sum / (batch_size * (seq_len - 2))
+            if total_instances > 0:
+                induction_scores[layer, head] = score_sum / total_instances
+            else:
+                induction_scores[layer, head] = 0.0
 
     return induction_scores
-
-def compute_cross_attention_induction_scores(
-    model,
-    context_tokens: torch.Tensor,
-    cache: ActivationCache
-) -> torch.Tensor:
-    """
-    Computes induction-like scores for cross-attention heads.
-
-    Args:
-        model: The model instance.
-        context_tokens: Context tokens of shape [batch_size, context_seq_len]
-        cache: Activation cache.
-
-    Returns:
-        cross_induction_scores: Tensor of shape [num_layers, num_heads]
-    """
-    num_layers = model.cfg.n_layers
-    num_heads = model.cfg.n_heads
-    cross_induction_scores = torch.zeros(num_layers, num_heads, device=model.cfg.device)
-
-    batch_size, context_seq_len = context_tokens.shape
-
-    for layer in range(num_layers):
-        attn_patterns = cache["pattern", layer, "cross_attn"]  # Need to access cross-attention patterns
-        for head in range(num_heads):
-            attn = attn_patterns[0, head]  # Shape: [stroke_seq_len, context_seq_len]
-            # For this example, we might need more specific analysis based on the use case
-            # Placeholder for cross-attention induction score computation
-            cross_induction_scores[layer, head] = attn.mean().item()
-    return cross_induction_scores
 
 def plot_induction_scores(induction_scores: torch.Tensor):
     """
