@@ -90,7 +90,7 @@ class HookedCursiveTransformer(HookedTransformer):
         self.setup()
 
     # - [ ] TODO: DEBUG `per_token_loss`, currently still returning a scalar
-    def forward(self, tokens, context, targets=None,return_type="logits", per_token_loss=False):
+    def forward(self, tokens, context, targets=None,return_type="logits", per_token_loss=False, **kwargs):
         B, T = tokens.shape
         B_c, T_c = context.shape
 
