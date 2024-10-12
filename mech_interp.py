@@ -429,7 +429,7 @@ def convert_cursivetransformer_model_config(args):
         "init_weights": False,
         "device": args.device,
         # Additional parameters for cross-attention
-        "d_model_c": args.n_embd2,
+        "d_model_c": args.n_embd_context,
         "context_block_size": args.context_block_size,
         "context_vocab_size": args.context_vocab_size,
         # "use_cross_attention": True,
