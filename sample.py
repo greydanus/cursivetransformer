@@ -60,7 +60,7 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
     else:
         block_size = model.cfg.block_size 
     steps = max(0, max_new_tokens-idx.size(1))
-    cache = {}
+    step_cache = {}
     
     for i in range(steps):
         # if the sequence context is growing too long we must crop it at block_size
@@ -68,12 +68,7 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
         # forward the model to get the logits for the index in the sequence
         if is_hooked:
             logits, new_cache = model.run_with_cache(idx_cond, context, return_type='logits')
-            # Update the cache
-            for k, v in new_cache.items():
-                if k not in cache:
-                    cache[k] = v
-                else:
-                    cache[k] = torch.cat((cache[k], v), dim=1)
+            step_cache[i] = new_cache
         else:  # Original Transformer
             logits, _ = model(idx_cond, context)
             # No cache to update for the original Transformer
@@ -94,7 +89,7 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
         # append sampled index to the running sequence and continue
         idx = torch.cat((idx, idx_next), dim=1)
 
-    return idx, cache
+    return idx, step_cache
 
 
 def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do_sample=False, log_wandb=True):
