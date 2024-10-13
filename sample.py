@@ -108,7 +108,8 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do
     top_k = None
     steps = dataset.get_stroke_seq_length() - 1  # -1 because we already start with the first token
 
-    X_samp = generate(model, X_init, context, steps, top_k=top_k, do_sample=do_sample).to('cpu')
+    X_samp, _ = generate(model, X_init, context, steps, top_k=top_k, do_sample=do_sample)
+    X_samp = X_samp.to('cpu')   
 
     for i in range(X_samp.size(0)):
         # get the i'th row of sampled integers, as python list
