@@ -67,7 +67,7 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
         idx_cond = idx if idx.size(1) <= block_size else idx[:, -block_size:]
         # forward the model to get the logits for the index in the sequence
         if isinstance(model, HookedCursiveTransformer):
-            logits, new_cache = model.run_with_cache(idx_cond, context)
+            logits, new_cache = model.run_with_cache(idx_cond, context, return_type='logits')
             # Update the cache
             for k, v in new_cache.items():
                 if k not in cache:
@@ -134,7 +134,7 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do
 
 
 def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
-                         top_k=None, temperature=1.0, num_steps=1250, n_words=4):
+                         top_k=None, temperature=1.0, num_steps=1250, n_words=4, is_hooked=False):
     '''Assumes we're using tokenization of git commit b8ffa51767ead8fae14eeaad8c2f2559202fc8dd'''
     SEED_TOKENS = torch.tensor(
         [289,   0, 255,   8, 266,  18, 262,  14, 262,  14, 262,  14, 261,   9,
@@ -175,7 +175,7 @@ def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
 
     steps = num_steps - X_init.size(1)
     X_samp, cache = generate(model, X_init, context, steps, temperature=temperature,
-                             top_k=top_k, do_sample=do_sample)
+                             top_k=top_k, do_sample=do_sample, is_hooked=is_hooked)
     X_samp = X_samp.to('cpu')
 
     stroke_seq = X_samp[0].detach().cpu().numpy()[len(SEED_TOKENS):]
