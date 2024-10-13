@@ -15,6 +15,7 @@ from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from mech_interp import HookedCursiveTransformer
 from model import Transformer, get_checkpoint, get_all_args
 from data import create_datasets, offsets_to_strokes
 
@@ -52,15 +53,28 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
     """
     Take a conditioning sequence of indices idx (LongTensor of shape (b,t)) and complete
     the sequence max_new_tokens times, feeding the predictions back into the model each time.
-    Most likely you'll want to make sure to be in model.eval() mode of operation for this.
+    Returns the generated sequence and the activation cache.
     """
-    block_size = model.get_block_size()
+    block_size = model.cfg.block_size
     steps = max(0, max_new_tokens-idx.size(1))
+    cache = {}
+    
     for i in range(steps):
         # if the sequence context is growing too long we must crop it at block_size
         idx_cond = idx if idx.size(1) <= block_size else idx[:, -block_size:]
         # forward the model to get the logits for the index in the sequence
-        logits, _ = model(idx_cond, context)
+        if isinstance(model, HookedCursiveTransformer):
+            logits, new_cache = model.run_with_cache(idx_cond, context)
+            # Update the cache
+            for k, v in new_cache.items():
+                if k not in cache:
+                    cache[k] = v
+                else:
+                    cache[k] = torch.cat((cache[k], v), dim=1)
+        else:  # Original Transformer
+            logits, _ = model(idx_cond, context)
+            # No cache to update for the original Transformer
+        
         # pluck the logits at the final step and scale by desired temperature
         logits = logits[:, -1, :] / temperature
         # optionally crop the logits to only the top k options
@@ -77,7 +91,7 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
         # append sampled index to the running sequence and continue
         idx = torch.cat((idx, idx_next), dim=1)
 
-    return idx
+    return idx, cache
 
 
 def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do_sample=False, log_wandb=True):
@@ -139,14 +153,15 @@ def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
     ascii_context = f'{SEED_CHARS} {text}'
 
     def trunc_or_pad_words(text):
-      n = len(text.split(' '))
-      if n > n_words:
-        print(f"Expected {n_words+1} words, got {n}; truncating")
-        return ' '.join(text.split(' ')[:n_words])
-      elif n < n_words:
-        print(f"Expected {n_words+1} words, got {n}; padding with 'hello'")
-        return text + ' hello'*(n_words-n)
-      return text
+        n = len(text.split(' '))
+        if n > n_words:
+            print(f"Expected {n_words+1} words, got {n}; truncating")
+            return ' '.join(text.split(' ')[:n_words])
+        elif n < n_words:
+            print(f"Expected {n_words+1} words, got {n}; padding with 'hello'")
+            return text + ' hello'*(n_words-n)
+        return text
+    
     text = trunc_or_pad_words(text)
 
     context = dataset.encode_text(ascii_context).unsqueeze(0)
@@ -155,16 +170,15 @@ def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
     X_init = SEED_TOKENS.unsqueeze(0).to(model_device)
 
     steps = num_steps - X_init.size(1)
-    X_samp = generate(model, X_init, context, steps, temperature=temperature,
-                      top_k=top_k, do_sample=do_sample).to('cpu')
+    X_samp, cache = generate(model, X_init, context, steps, temperature=temperature,
+                             top_k=top_k, do_sample=do_sample)
+    X_samp = X_samp.to('cpu')
 
     stroke_seq = X_samp[0].detach().cpu().numpy()[len(SEED_TOKENS):]
     offset_samp = dataset.decode_stroke(stroke_seq)
     point_samp = offsets_to_strokes(offset_samp)
 
-    return offset_samp, point_samp
-
-
+    return offset_samp, point_samp, cache
 ########## ARGS, LOGGING, AND TRAIN LOOP ##########
 
 
