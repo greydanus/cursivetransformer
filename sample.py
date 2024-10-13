@@ -55,7 +55,10 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
     the sequence max_new_tokens times, feeding the predictions back into the model each time.
     Returns the generated sequence and the activation cache.
     """
-    block_size = model.cfg.block_size if not isinstance(model, HookedCursiveTransformer) else model.cfg.n_ctx
+    if isinstance(model, HookedCursiveTransformer):
+        block_size = model.cfg.n_ctx
+    else:
+        block_size = model.cfg.block_size 
     steps = max(0, max_new_tokens-idx.size(1))
     cache = {}
     
