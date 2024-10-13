@@ -12,7 +12,7 @@ import seaborn as sns
 
 from typing import Dict, Optional, Union, Tuple, List
 
-from .model import get_latest_checkpoint_artifact
+from model import get_latest_checkpoint_artifact
 from functools import partial
 from transformer_lens import (
     HookedTransformer,
