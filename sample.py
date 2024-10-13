@@ -49,13 +49,13 @@ def plot_strokes(stroke, title, fig=None, ax=None):
 
 
 @torch.no_grad()
-def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=False, top_k=None):
+def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=False, top_k=None, is_hooked=False):
     """
     Take a conditioning sequence of indices idx (LongTensor of shape (b,t)) and complete
     the sequence max_new_tokens times, feeding the predictions back into the model each time.
     Returns the generated sequence and the activation cache.
     """
-    if isinstance(model, HookedCursiveTransformer):
+    if is_hooked:
         block_size = model.cfg.n_ctx
     else:
         block_size = model.cfg.block_size 
