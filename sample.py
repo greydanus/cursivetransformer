@@ -66,7 +66,7 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
         # if the sequence context is growing too long we must crop it at block_size
         idx_cond = idx if idx.size(1) <= block_size else idx[:, -block_size:]
         # forward the model to get the logits for the index in the sequence
-        if isinstance(model, HookedCursiveTransformer):
+        if is_hooked:
             logits, new_cache = model.run_with_cache(idx_cond, context, return_type='logits')
             # Update the cache
             for k, v in new_cache.items():
