@@ -44,6 +44,7 @@ class HookedCursiveTransformerConfig(HookedTransformerConfig):
         self.d_model_c = kwargs.pop('d_model_c', None)
         self.context_block_size = kwargs.pop('context_block_size', None)
         self.context_vocab_size = kwargs.pop('context_vocab_size', None)
+        self.block_size = kwargs.pop('block_size', None)
         # self.use_cross_attention = kwargs.pop('use_cross_attention', True)
 
         # W&B specific parameters
