@@ -178,6 +178,7 @@ class HookedCursiveTransformer(HookedTransformer):
     def convert_cursivetransformer_weights(state_dict, cfg):
         """Convert CursiveTransformer weights to HookedCursiveTransformer format."""
         new_state_dict = {}
+        print("Original state dict keys:", state_dict.keys())
 
         # Embeddings
         new_state_dict["embed.W_E"] = state_dict["transformer.wte.weight"]
@@ -243,6 +244,7 @@ class HookedCursiveTransformer(HookedTransformer):
         new_state_dict["unembed.W_U"] = state_dict["lm_head.weight"].t()
         new_state_dict["unembed.b_U"] = state_dict.get("lm_head.bias", torch.zeros(cfg.d_vocab))
 
+        print("Converted state dict keys:", new_state_dict.keys())
         return new_state_dict
 
 class TransformerBlock(nn.Module):
