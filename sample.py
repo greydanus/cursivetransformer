@@ -50,45 +50,42 @@ def plot_strokes(stroke, title, fig=None, ax=None):
 
 @torch.no_grad()
 def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=False, top_k=None, is_hooked=False):
-    """
-    Take a conditioning sequence of indices idx (LongTensor of shape (b,t)) and complete
-    the sequence max_new_tokens times, feeding the predictions back into the model each time.
-    Returns the generated sequence and the activation cache.
-    """
+    print(f"Starting generation with max_new_tokens: {max_new_tokens}, is_hooked: {is_hooked}")
     if is_hooked:
         block_size = model.cfg.n_ctx
     else:
         block_size = model.cfg.block_size 
+    print(f"Block size: {block_size}")
     steps = max(0, max_new_tokens-idx.size(1))
+    print(f"Generating for {steps} steps")
     step_cache = {}
     
     for i in range(steps):
-        # if the sequence context is growing too long we must crop it at block_size
+        if i % 100 == 0:
+            print(f"Generation step: {i}/{steps}")
         idx_cond = idx if idx.size(1) <= block_size else idx[:, -block_size:]
-        # forward the model to get the logits for the index in the sequence
-        if is_hooked:
-            logits, new_cache = model.run_with_cache(idx_cond, context, return_type='logits')
-            step_cache[i] = new_cache
-        else:  # Original Transformer
-            logits, _ = model(idx_cond, context)
-            # No cache to update for the original Transformer
-        
-        # pluck the logits at the final step and scale by desired temperature
+        try:
+            if is_hooked:
+                logits, new_cache = model.run_with_cache(idx_cond, context, return_type='logits')
+                step_cache[i] = new_cache
+            else:
+                logits, _ = model(idx_cond, context)
+        except RuntimeError as e:
+            print(f"Error at step {i}: {e}")
+            return idx, step_cache
+
         logits = logits[:, -1, :] / temperature
-        # optionally crop the logits to only the top k options
         if top_k is not None:
             v, _ = torch.topk(logits, top_k)
             logits[logits < v[:, [-1]]] = -float('Inf')
-        # apply softmax to convert logits to (normalized) probabilities
         probs = F.softmax(logits, dim=-1)
-        # either sample from the distribution or take the most likely element
         if do_sample:
             idx_next = torch.multinomial(probs, num_samples=1)
         else:
             _, idx_next = torch.topk(probs, k=1, dim=-1)
-        # append sampled index to the running sequence and continue
         idx = torch.cat((idx, idx_next), dim=1)
 
+    print("Generation completed successfully")
     return idx, step_cache
 
 
@@ -127,10 +124,11 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do
 
     print('-'*80)
 
-
 def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
-                         top_k=None, temperature=1.0, num_steps=1250, n_words=4, is_hooked=False):
-    '''Assumes we're using tokenization of git commit b8ffa51767ead8fae14eeaad8c2f2559202fc8dd'''
+                     top_k=None, temperature=1.0, num_steps=1250, n_words=4, is_hooked=False):
+    print(f"Generating {n_words} words with text: '{text}'")
+    print(f"Model device: {model_device}, Is hooked: {is_hooked}")
+
     SEED_TOKENS = torch.tensor(
         [289,   0, 255,   8, 266,  18, 262,  14, 262,  14, 262,  14, 261,   9,
         260,  15, 258,  13, 248,   8, 378,  13, 352,   9, 337,  11, 337,  13,
@@ -148,6 +146,7 @@ def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
     SEED_CHARS = 'knzn'
 
     model_device = next(model.parameters()).device
+    print(f"Model is on device: {model_device}")
     warmup_steps = len(SEED_TOKENS)
     ascii_context = f'{SEED_CHARS} {text}'
 
@@ -162,21 +161,32 @@ def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
         return text
     
     text = trunc_or_pad_words(text)
+    print(f"Processed text: '{text}'")
 
     context = dataset.encode_text(ascii_context).unsqueeze(0)
-    print(model_device)
+    print(f"Context shape: {context.shape}")
     context = context.to(model_device)
     X_init = SEED_TOKENS.unsqueeze(0).to(model_device)
+    print(f"X_init shape: {X_init.shape}")
 
     steps = num_steps - X_init.size(1)
-    X_samp, cache = generate(model, X_init, context, steps, temperature=temperature,
-                             top_k=top_k, do_sample=do_sample, is_hooked=is_hooked)
+    print(f"Generating for {steps} steps")
+
+    try:
+        X_samp, cache = generate(model, X_init, context, steps, temperature=temperature,
+                                 top_k=top_k, do_sample=do_sample, is_hooked=is_hooked)
+        print(f"Generation successful, X_samp shape: {X_samp.shape}")
+    except RuntimeError as e:
+        print(f"Error during generation: {e}")
+        return None, None, None
+
     X_samp = X_samp.to('cpu')
 
     stroke_seq = X_samp[0].detach().cpu().numpy()[len(SEED_TOKENS):]
     offset_samp = dataset.decode_stroke(stroke_seq)
     point_samp = offsets_to_strokes(offset_samp)
 
+    print("Generation completed successfully")
     return offset_samp, point_samp, cache
 ########## ARGS, LOGGING, AND TRAIN LOOP ##########
 
