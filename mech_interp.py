@@ -987,3 +987,28 @@ def activation_patching(
 
     return logits
     
+def visualize_attention_patterns(attention_patterns, num_layers=None, num_heads=None):
+    if num_layers is None:
+        num_layers = len(attention_patterns[0])
+    if num_heads is None:
+        num_heads = attention_patterns[0][list(attention_patterns[0].keys())[0]].shape[1]
+    
+    fig, axes = plt.subplots(num_layers, num_heads, figsize=(4*num_heads, 4*num_layers), squeeze=False)
+    
+    for step, step_patterns in enumerate(attention_patterns):
+        for layer, (name, pattern) in enumerate(step_patterns.items()):
+            if layer >= num_layers:
+                break
+            for head in range(num_heads):
+                if head >= pattern.shape[1]:
+                    break
+                ax = axes[layer, head]
+                sns.heatmap(pattern[0, head].numpy(), ax=ax, cbar=False)
+                ax.set_title(f"L{layer}H{head}")
+                ax.axis('off')
+        
+        if step == 0:  # Only visualize the first step's patterns
+            break
+    
+    plt.tight_layout()
+    plt.show()

@@ -58,7 +58,7 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
     print(f"Block size: {block_size}")
     steps = max(0, max_new_tokens-idx.size(1))
     print(f"Generating for {steps} steps")
-    step_cache = {}
+    attention_patterns = []
     
     for i in range(steps):
         if i % 100 == 0:
@@ -66,13 +66,19 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
         idx_cond = idx if idx.size(1) <= block_size else idx[:, -block_size:]
         try:
             if is_hooked:
-                logits, new_cache = model.run_with_cache(idx_cond, context, return_type='logits')
-                step_cache[i] = new_cache
+                logits, new_cache = model.run_with_cache(
+                    idx_cond, 
+                    context, 
+                    return_type='logits',
+                    names_filter=lambda name: name.endswith('.hook_pattern')
+                )
+                # Store only the attention patterns
+                attention_patterns.append({k: v.detach().cpu() for k, v in new_cache.items()})
             else:
                 logits, _ = model(idx_cond, context)
         except RuntimeError as e:
             print(f"Error at step {i}: {e}")
-            return idx, step_cache
+            return idx, attention_patterns
 
         logits = logits[:, -1, :] / temperature
         if top_k is not None:
@@ -86,7 +92,7 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
         idx = torch.cat((idx, idx_next), dim=1)
 
     print("Generation completed successfully")
-    return idx, step_cache
+    return idx, attention_patterns
 
 
 def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do_sample=False, log_wandb=True):
@@ -173,8 +179,8 @@ def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
     print(f"Generating for {steps} steps")
 
     try:
-        X_samp, cache = generate(model, X_init, context, steps, temperature=temperature,
-                                 top_k=top_k, do_sample=do_sample, is_hooked=is_hooked)
+        X_samp, attention_patterns = generate(model, X_init, context, steps, temperature=temperature,
+                                              top_k=top_k, do_sample=do_sample, is_hooked=is_hooked)
         print(f"Generation successful, X_samp shape: {X_samp.shape}")
     except RuntimeError as e:
         print(f"Error during generation: {e}")
@@ -187,7 +193,7 @@ def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
     point_samp = offsets_to_strokes(offset_samp)
 
     print("Generation completed successfully")
-    return offset_samp, point_samp, cache
+    return offset_samp, point_samp, attention_patterns
 ########## ARGS, LOGGING, AND TRAIN LOOP ##########
 
 
