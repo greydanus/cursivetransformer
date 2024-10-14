@@ -442,6 +442,7 @@ def convert_cursivetransformer_model_config(args):
         "d_head": args.n_embd // args.n_ctx_head,
         "n_heads": args.n_ctx_head,
         "n_ctx": args.max_seq_length,
+        "d_model_c": args.n_embd_context,
         "d_vocab": args.vocab_size,
         "tokenizer_name": None,
         "act_fn": "gelu_new",
