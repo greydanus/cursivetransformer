@@ -12,7 +12,8 @@ import seaborn as sns
 
 from typing import Dict, Optional, Union, Tuple, List
 
-from model import get_latest_checkpoint_artifact
+import einops
+from model import Transformer, get_latest_checkpoint_artifact
 from functools import partial
 from transformer_lens import (
     HookedTransformer,
@@ -57,6 +58,7 @@ class HookedCursiveTransformerConfig(HookedTransformerConfig):
     def from_dict(cls, config_dict):
         return cls(**config_dict)
 
+# - [ ] TODO: Change all layers from torch.nn to HookedTransformer.components
 class HookedCursiveTransformer(HookedTransformer):
     def __init__(self, cfg):
         super().__init__(cfg)
@@ -89,7 +91,6 @@ class HookedCursiveTransformer(HookedTransformer):
 
         self.setup()
 
-    # - [ ] TODO: DEBUG `per_token_loss`, currently still returning a scalar
     def forward(self, tokens, context, targets=None,return_type="logits", per_token_loss=False, **kwargs):
         B, T = tokens.shape
         B_c, T_c = context.shape
@@ -172,80 +173,101 @@ class HookedCursiveTransformer(HookedTransformer):
         artifact = get_latest_checkpoint_artifact(args)
         artifact_dir = artifact.download()
         checkpoint = torch.load(os.path.join(artifact_dir, "best_checkpoint.pt"), weights_only=True)
-        return checkpoint['model_state_dict']
+        model = Transformer(args)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        return model
 
     @staticmethod
-    def convert_cursivetransformer_weights(state_dict, cfg):
+    def convert_cursivetransformer_weights(cursivetransformer, cfg):
         """Convert CursiveTransformer weights to HookedCursiveTransformer format."""
-        new_state_dict = {}
-        print("Original state dict keys:", state_dict.keys())
+        state_dict = {}
 
-        # Embeddings
-        new_state_dict["embed.W_E"] = state_dict["transformer.wte.weight"]
-        new_state_dict["pos_embed.W_pos"] = state_dict["transformer.wpe.weight"]
-        new_state_dict["embed_c.W_E"] = state_dict["transformer.wce.weight"]
-        new_state_dict["pos_embed_c.W_pos"] = state_dict["transformer.wcpe.weight"]
+        state_dict["embed.W_E"] = cursivetransformer.transformer.wte.weight
+        state_dict["pos_embed.W_pos"] = cursivetransformer.transformer.wpe.weight
+        state_dict["embed_c.W_E"] = cursivetransformer.transformer.wce.weight
+        state_dict["pos_embed_c.W_pos"] = cursivetransformer.transformer.wcpe.weight
 
         for l in range(cfg.n_layers):
-            # Layer Norms
-            new_state_dict[f'blocks.{l}.ln1.w'] = state_dict[f'transformer.h.{l}.ln_1.weight']
-            new_state_dict[f'blocks.{l}.ln1.b'] = state_dict[f'transformer.h.{l}.ln_1.bias']
-            new_state_dict[f'blocks.{l}.ln2.w'] = state_dict[f'transformer.h.{l}.ln_2.weight']
-            new_state_dict[f'blocks.{l}.ln2.b'] = state_dict[f'transformer.h.{l}.ln_2.bias']
-            new_state_dict[f'blocks.{l}.ln3.w'] = state_dict[f'transformer.h.{l}.ln_3.weight']
-            new_state_dict[f'blocks.{l}.ln3.b'] = state_dict[f'transformer.h.{l}.ln_3.bias']
+            state_dict[f"blocks.{l}.ln1.w"] = cursivetransformer.transformer.h[l].ln_1.weight
+            state_dict[f"blocks.{l}.ln1.b"] = cursivetransformer.transformer.h[l].ln_1.bias
 
             # Self-Attention
-            W_qkv = state_dict[f'transformer.h.{l}.attn.c_attn.weight']
-            b_qkv = state_dict[f'transformer.h.{l}.attn.c_attn.bias']
-            W_q, W_k, W_v = W_qkv.t().chunk(3, dim=1)
-            b_q, b_k, b_v = b_qkv.chunk(3, dim=0)
+            W = cursivetransformer.transformer.h[l].attn.c_attn.weight
+            W_Q, W_K, W_V = torch.tensor_split(W, 3, dim=1)
+            W_Q = einops.rearrange(W_Q, "m (i h)->i m h", i=cfg.n_heads)
+            W_K = einops.rearrange(W_K, "m (i h)->i m h", i=cfg.n_heads)
+            W_V = einops.rearrange(W_V, "m (i h)->i m h", i=cfg.n_heads)
 
-            new_state_dict[f'blocks.{l}.attn.W_Q'] = W_q.t().reshape(cfg.n_heads, cfg.d_model, cfg.d_head)
-            new_state_dict[f'blocks.{l}.attn.W_K'] = W_k.t().reshape(cfg.n_heads, cfg.d_model, cfg.d_head)
-            new_state_dict[f'blocks.{l}.attn.W_V'] = W_v.t().reshape(cfg.n_heads, cfg.d_model, cfg.d_head)
-            new_state_dict[f'blocks.{l}.attn.b_Q'] = b_q.reshape(cfg.n_heads, cfg.d_head)
-            new_state_dict[f'blocks.{l}.attn.b_K'] = b_k.reshape(cfg.n_heads, cfg.d_head)
-            new_state_dict[f'blocks.{l}.attn.b_V'] = b_v.reshape(cfg.n_heads, cfg.d_head)
+            state_dict[f"blocks.{l}.attn.W_Q"] = W_Q
+            state_dict[f"blocks.{l}.attn.W_K"] = W_K
+            state_dict[f"blocks.{l}.attn.W_V"] = W_V
 
-            W_o = state_dict[f'transformer.h.{l}.attn.c_proj.weight']
-            new_state_dict[f'blocks.{l}.attn.W_O'] = W_o.t().reshape(cfg.n_heads, cfg.d_head, cfg.d_model)
-            new_state_dict[f'blocks.{l}.attn.b_O'] = state_dict[f'transformer.h.{l}.attn.c_proj.bias']
+            qkv_bias = cursivetransformer.transformer.h[l].attn.c_attn.bias
+            qkv_bias = einops.rearrange(
+                qkv_bias,
+                "(qkv index head)->qkv index head",
+                qkv=3,
+                index=cfg.n_heads,
+                head=cfg.d_head,
+            )
+            state_dict[f"blocks.{l}.attn.b_Q"] = qkv_bias[0]
+            state_dict[f"blocks.{l}.attn.b_K"] = qkv_bias[1]
+            state_dict[f"blocks.{l}.attn.b_V"] = qkv_bias[2]
+
+            W_O = cursivetransformer.transformer.h[l].attn.c_proj.weight
+            W_O = einops.rearrange(W_O, "(i h) m->i h m", i=cfg.n_heads)
+            state_dict[f"blocks.{l}.attn.W_O"] = W_O
+            state_dict[f"blocks.{l}.attn.b_O"] = cursivetransformer.transformer.h[l].attn.c_proj.bias
 
             # Cross-Attention
-            W_q = state_dict[f'transformer.h.{l}.cross_attn.c_attn_q.weight']
-            b_q = state_dict[f'transformer.h.{l}.cross_attn.c_attn_q.bias']
-            new_state_dict[f'blocks.{l}.cross_attn.W_Q'] = W_q.t().reshape(cfg.n_heads, cfg.d_model, cfg.d_head)
-            new_state_dict[f'blocks.{l}.cross_attn.b_Q'] = b_q.reshape(cfg.n_heads, cfg.d_head)
+            state_dict[f"blocks.{l}.ln2.w"] = cursivetransformer.transformer.h[l].ln_2.weight
+            state_dict[f"blocks.{l}.ln2.b"] = cursivetransformer.transformer.h[l].ln_2.bias
 
-            W_kv = state_dict[f'transformer.h.{l}.cross_attn.c_attn_kv.weight']
-            b_kv = state_dict[f'transformer.h.{l}.cross_attn.c_attn_kv.bias']
-            W_k, W_v = W_kv.t().chunk(2, dim=1)
-            b_k, b_v = b_kv.chunk(2, dim=0)
+            W_Q = cursivetransformer.transformer.h[l].cross_attn.c_attn_q.weight
+            W_Q = einops.rearrange(W_Q, "m (i h)->i m h", i=cfg.n_heads)
+            state_dict[f"blocks.{l}.cross_attn.W_Q"] = W_Q
+            state_dict[f"blocks.{l}.cross_attn.b_Q"] = cursivetransformer.transformer.h[l].cross_attn.c_attn_q.bias
 
-            new_state_dict[f'blocks.{l}.cross_attn.W_K'] = W_k.t().reshape(cfg.n_heads, cfg.d_model_c, cfg.d_head)
-            new_state_dict[f'blocks.{l}.cross_attn.W_V'] = W_v.t().reshape(cfg.n_heads, cfg.d_model_c, cfg.d_head)
-            new_state_dict[f'blocks.{l}.cross_attn.b_K'] = b_k.reshape(cfg.n_heads, cfg.d_head)
-            new_state_dict[f'blocks.{l}.cross_attn.b_V'] = b_v.reshape(cfg.n_heads, cfg.d_head)
+            W_KV = cursivetransformer.transformer.h[l].cross_attn.c_attn_kv.weight
+            W_K, W_V = torch.tensor_split(W_KV, 2, dim=1)
+            W_K = einops.rearrange(W_K, "m (i h)->i m h", i=cfg.n_heads)
+            W_V = einops.rearrange(W_V, "m (i h)->i m h", i=cfg.n_heads)
+            state_dict[f"blocks.{l}.cross_attn.W_K"] = W_K
+            state_dict[f"blocks.{l}.cross_attn.W_V"] = W_V
 
-            W_o = state_dict[f'transformer.h.{l}.cross_attn.c_proj.weight']
-            new_state_dict[f'blocks.{l}.cross_attn.W_O'] = W_o.t().reshape(cfg.n_heads, cfg.d_head, cfg.d_model)
-            new_state_dict[f'blocks.{l}.cross_attn.b_O'] = state_dict[f'transformer.h.{l}.cross_attn.c_proj.bias']
+            kv_bias = cursivetransformer.transformer.h[l].cross_attn.c_attn_kv.bias
+            kv_bias = einops.rearrange(
+                kv_bias,
+                "(kv index head)->kv index head",
+                kv=2,
+                index=cfg.n_heads,
+                head=cfg.d_head,
+            )
+            state_dict[f"blocks.{l}.cross_attn.b_K"] = kv_bias[0]
+            state_dict[f"blocks.{l}.cross_attn.b_V"] = kv_bias[1]
 
-            # MLP
-            new_state_dict[f'blocks.{l}.mlp.W_in'] = state_dict[f'transformer.h.{l}.mlp.c_fc.weight'].t()
-            new_state_dict[f'blocks.{l}.mlp.b_in'] = state_dict[f'transformer.h.{l}.mlp.c_fc.bias']
-            new_state_dict[f'blocks.{l}.mlp.W_out'] = state_dict[f'transformer.h.{l}.mlp.c_proj.weight'].t()
-            new_state_dict[f'blocks.{l}.mlp.b_out'] = state_dict[f'transformer.h.{l}.mlp.c_proj.bias']
+            W_O = cursivetransformer.transformer.h[l].cross_attn.c_proj.weight
+            W_O = einops.rearrange(W_O, "(i h) m->i h m", i=cfg.n_heads)
+            state_dict[f"blocks.{l}.cross_attn.W_O"] = W_O
+            state_dict[f"blocks.{l}.cross_attn.b_O"] = cursivetransformer.transformer.h[l].cross_attn.c_proj.bias
 
-        # Final layer norm and unembedding
-        new_state_dict["ln_final.w"] = state_dict["transformer.ln_f.weight"]
-        new_state_dict["ln_final.b"] = state_dict["transformer.ln_f.bias"]
-        new_state_dict["unembed.W_U"] = state_dict["lm_head.weight"].t()
-        new_state_dict["unembed.b_U"] = state_dict.get("lm_head.bias", torch.zeros(cfg.d_vocab))
+            state_dict[f"blocks.{l}.ln3.w"] = cursivetransformer.transformer.h[l].ln_3.weight
+            state_dict[f"blocks.{l}.ln3.b"] = cursivetransformer.transformer.h[l].ln_3.bias
 
-        print("Converted state dict keys:", new_state_dict.keys())
-        return new_state_dict
+            W_in = cursivetransformer.transformer.h[l].mlp.c_fc.weight
+            state_dict[f"blocks.{l}.mlp.W_in"] = W_in
+            state_dict[f"blocks.{l}.mlp.b_in"] = cursivetransformer.transformer.h[l].mlp.c_fc.bias
+
+            W_out = cursivetransformer.transformer.h[l].mlp.c_proj.weight
+            state_dict[f"blocks.{l}.mlp.W_out"] = W_out
+            state_dict[f"blocks.{l}.mlp.b_out"] = cursivetransformer.transformer.h[l].mlp.c_proj.bias
+
+        state_dict["unembed.W_U"] = cursivetransformer.lm_head.weight.T
+
+        state_dict["ln_final.w"] = cursivetransformer.transformer.ln_f.weight
+        state_dict["ln_final.b"] = cursivetransformer.transformer.ln_f.bias
+
+        return state_dict
 
 class TransformerBlock(nn.Module):
     def __init__(self, cfg: Union[Dict, HookedTransformerConfig], block_index):
