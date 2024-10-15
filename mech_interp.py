@@ -130,43 +130,14 @@ class HookedCursiveTransformer(HookedTransformer):
             raise ValueError(f"Invalid return_type {return_type}")
 
     @classmethod
-    def from_pretrained(
-        cls,
-        model_name: str,
-        cfg,
-        tokenizer=None,
-        **from_pretrained_kwargs
-    ):
-        """
-        Load a pretrained CursiveTransformer model into the HookedCursiveTransformer format.
-
-        Args:
-            model_name (str): The name or path of the pretrained model.
-            cfg: The configuration object for the model.
-            tokenizer: The tokenizer to use (optional).
-            **from_pretrained_kwargs: Additional keyword arguments.
-
-        Returns:
-            HookedCursiveTransformer: The loaded model.
-        """
-        print(f"Loading pretrained model {model_name}")
-
-        # Initialize the HookedCursiveTransformer with the given config
+    def from_pretrained(cls, args):
+        print(f"Loading pretrained cursivetransformer model...")
+        state_dict = cls.load_state_dict_from_wandb(args)
+        cfg = convert_cursivetransformer_model_config(args)
         model = cls(cfg)
-
-        # Load the state dict from the wandb artifact
-        state_dict = cls.load_state_dict_from_wandb(cfg)
-
-        # Convert the state dict to match HookedCursiveTransformer format
         converted_state_dict = cls.convert_cursivetransformer_weights(state_dict, cfg)
-
-        # Load the converted state dict into the model
         model.load_state_dict(converted_state_dict, strict=False)
-
-        if tokenizer is not None:
-            model.tokenizer = tokenizer
-
-        print(f"Successfully loaded pretrained model {model_name}")
+        print(f"Successfully loaded pretrained cursivetransformer model")
         return model
 
     @staticmethod
