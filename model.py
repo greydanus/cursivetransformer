@@ -313,3 +313,17 @@ class Transformer(nn.Module):
         if targets is not None:
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
         return logits, loss
+
+    def register_attention_hooks(self):
+        self.attention_patterns = {}
+        
+        def hook_fn(module, input, output):
+            self.attention_patterns[module.name] = output.detach().cpu()
+
+        for name, module in self.named_modules():
+            if isinstance(module, CausalSelfAttention):
+                module.name = name
+                module.register_forward_hook(hook_fn)
+
+    def clear_attention_patterns(self):
+        self.attention_patterns = {}

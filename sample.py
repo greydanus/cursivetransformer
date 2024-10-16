@@ -48,33 +48,24 @@ def plot_strokes(stroke, title, fig=None, ax=None):
 
 
 @torch.no_grad()
-def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=False, top_k=None, is_hooked=False):
-    print(f"Starting generation with max_new_tokens: {max_new_tokens}, is_hooked: {is_hooked}")
-    if is_hooked:
-        block_size = model.cfg.n_ctx
-    else:
-        block_size = model.cfg.block_size 
+def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=False, top_k=None, return_attention_patterns=False):
+    print(f"Starting generation with max_new_tokens: {max_new_tokens}")
+    block_size = model.cfg.block_size 
     print(f"Block size: {block_size}")
     steps = max(0, max_new_tokens-idx.size(1))
     print(f"Generating for {steps} steps")
     attention_patterns = []
+    
+    model.register_attention_hooks()
     
     for i in range(steps):
         if i % 100 == 0:
             print(f"Generation step: {i}/{steps}")
         idx_cond = idx if idx.size(1) <= block_size else idx[:, -block_size:]
         try:
-            if is_hooked:
-                logits, new_cache = model.run_with_cache(
-                    idx_cond, 
-                    context, 
-                    return_type='logits',
-                    names_filter=lambda name: name.endswith('.hook_pattern')
-                )
-                # Store only the attention patterns
-                attention_patterns.append({k: v.detach().cpu() for k, v in new_cache.items()})
-            else:
-                logits, _ = model(idx_cond, context)
+            logits, _ = model(idx_cond, context)
+            attention_patterns.append(model.attention_patterns)
+            model.clear_attention_patterns()
         except RuntimeError as e:
             print(f"Error at step {i}: {e}")
             return idx, attention_patterns
@@ -90,8 +81,10 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
             _, idx_next = torch.topk(probs, k=1, dim=-1)
         idx = torch.cat((idx, idx_next), dim=1)
 
-    print("Generation completed successfully")
-    return idx, attention_patterns
+    if return_attention_patterns:
+        return idx, attention_patterns
+    else:
+        return idx
 
 
 def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do_sample=False, log_wandb=True):
@@ -130,9 +123,9 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do
     print('-'*80)
 
 def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
-                     top_k=None, temperature=1.0, num_steps=1250, n_words=4, is_hooked=False):
+                     top_k=None, temperature=1.0, num_steps=1250, n_words=4, return_attention_patterns=False):
     print(f"Generating {n_words} words with text: '{text}'")
-    print(f"Model device: {model_device}, Is hooked: {is_hooked}")
+    print(f"Model device: {model_device}")
 
     SEED_TOKENS = torch.tensor(
         [289,   0, 255,   8, 266,  18, 262,  14, 262,  14, 262,  14, 261,   9,
@@ -178,8 +171,16 @@ def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
     print(f"Generating for {steps} steps")
 
     try:
-        X_samp, attention_patterns = generate(model, X_init, context, steps, temperature=temperature,
-                                              top_k=top_k, do_sample=do_sample, is_hooked=is_hooked)
+        X_samp, attention_patterns = generate(
+            model, 
+            X_init,
+            context, 
+            steps, 
+            temperature=temperature,
+            top_k=top_k, 
+            do_sample=do_sample,
+            return_attention_patterns=return_attention_patterns
+        )
         print(f"Generation successful, X_samp shape: {X_samp.shape}")
     except RuntimeError as e:
         print(f"Error during generation: {e}")
@@ -192,7 +193,10 @@ def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
     point_samp = offsets_to_strokes(offset_samp)
 
     print("Generation completed successfully")
-    return offset_samp, point_samp, attention_patterns
+    if return_attention_patterns:
+        return offset_samp, point_samp, attention_patterns
+    else:
+        return offset_samp, point_samp
 ########## ARGS, LOGGING, AND TRAIN LOOP ##########
 
 
@@ -214,3 +218,4 @@ if __name__ == '__main__':
     save_samples(model, test_dataset, num=6, do_sample=True, log_wandb=False)
     save_samples(model, test_dataset, num=6, do_sample=False, log_wandb=False)
     sys.exit()
+
