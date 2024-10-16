@@ -15,7 +15,6 @@ from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from mech_interp import HookedCursiveTransformer
 from model import Transformer, get_checkpoint, get_all_args
 from data import create_datasets, offsets_to_strokes
 
