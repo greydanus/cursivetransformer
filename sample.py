@@ -50,7 +50,7 @@ def plot_strokes(stroke, title, fig=None, ax=None):
 @torch.no_grad()
 def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=False, top_k=None, return_attention_patterns=False):
     print(f"Starting generation with max_new_tokens: {max_new_tokens}")
-    block_size = model.config.max_seq_len 
+    block_size = model.config.max_seq_length
     print(f"Block size: {block_size}")
     steps = max(0, max_new_tokens-idx.size(1))
     print(f"Generating for {steps} steps")
