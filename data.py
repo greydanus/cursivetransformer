@@ -69,15 +69,15 @@ def combine_handwriting_examples(examples, space_width=0.17):
     return {'metadata': combined_metadata, 'points': combined_points}
 
 def generate_word_combos(raw_json, desired_num_combos=10000, num_words=3):
-    num_combos = comb(len(raw_json), num_words)
-    print(f'For a dataset of {len(raw_json)} examples we can generate {num_combos} combinations of {num_words} examples.')
-    print(f'Generating {desired_num_combos} random combinations.')
-    combo_json = []
-    for i in range(desired_num_combos):
-        ixs = np.random.choice(len(raw_json), size=num_words, replace=False)
-        examples_to_merge = [raw_json[i] for i in ixs]
-        combo_json.append( combine_handwriting_examples(examples_to_merge) )
-    return combo_json
+  num_combos = comb(len(raw_json), num_words)
+  print(f'For a dataset of {len(raw_json)} examples we can generate {num_combos} combinations of {num_words} examples.')
+  print(f'Generating {desired_num_combos} random combinations.')
+  combo_json = []
+  for i in range(desired_num_combos):
+    ixs = np.random.choice(len(raw_json), size=num_words, replace=False)
+    examples_to_merge = [raw_json[i] for i in ixs]
+    combo_json.append( combine_handwriting_examples(examples_to_merge) )
+  return combo_json
 
 
 ########## TOKENIZATION, AUGMENTATION, AND DATA IO ##########
@@ -277,37 +277,37 @@ class StrokeDataset(Dataset):
 
 
 def create_datasets(args):
-    np.random.seed(args.seed) ; torch.manual_seed(args.seed)
-    data = load_and_parse_data(args.dataset_name)
+  np.random.seed(args.seed) ; torch.manual_seed(args.seed)
+  data = load_and_parse_data(args.dataset_name)
 
-    # partition the input data into a training and the test set
-    test_set_size = min(1000, max(10, int(len(data) * 0.05))) # between 10 and 1000 examples: ideally 10% of dataset
-    rp = torch.randperm(len(data)).tolist()
+  # partition the input data into a training and the test set
+  test_set_size = min(1000, max(10, int(len(data) * 0.05))) # between 10 and 1000 examples: ideally 10% of dataset
+  rp = torch.randperm(len(data)).tolist()
 
-    train_examples = generate_word_combos([data[i] for i in rp[:-test_set_size]], desired_num_combos=args.train_size, num_words=args.num_words)
-    train_examples = [train_examples[i] for i in torch.randperm(len(train_examples)).tolist()]
+  train_examples = generate_word_combos([data[i] for i in rp[:-test_set_size]], desired_num_combos=args.train_size, num_words=args.num_words)
+  train_examples = [train_examples[i] for i in torch.randperm(len(train_examples)).tolist()]
 
-    test_examples = generate_word_combos([data[i] for i in rp[-test_set_size:]], desired_num_combos=args.test_size, num_words=args.num_words)
-    test_examples = [test_examples[i] for i in torch.randperm(len(test_examples)).tolist()]
+  test_examples = generate_word_combos([data[i] for i in rp[-test_set_size:]], desired_num_combos=args.test_size, num_words=args.num_words)
+  test_examples = [test_examples[i] for i in torch.randperm(len(test_examples)).tolist()]
 
-    train_strokes = [copy.deepcopy(v['points']) for v in train_examples]
-    train_texts = [copy.deepcopy(v['metadata']['asciiSequence']) for v in train_examples]
+  train_strokes = [copy.deepcopy(v['points']) for v in train_examples]
+  train_texts = [copy.deepcopy(v['metadata']['asciiSequence']) for v in train_examples]
 
-    test_strokes = [copy.deepcopy(v['points']) for v in test_examples]
-    test_texts = [copy.deepcopy(v['metadata']['asciiSequence']) for v in test_examples]
+  test_strokes = [copy.deepcopy(v['points']) for v in test_examples]
+  test_texts = [copy.deepcopy(v['metadata']['asciiSequence']) for v in test_examples]
 
-    print(f"Number of examples in the train dataset: {len(train_examples)}")
-    print(f"Number of examples in the test dataset: {len(test_examples)}")
-    print(f"Max token sequence length: {args.max_seq_length}")
-    print(f"Number of unique characters in the ascii vocabulary: {len(args.alphabet)}")
-    print("Ascii vocabulary:")
-    print(f'\t"{args.alphabet}"')
-    print(f"Split up the dataset into {len(train_examples)} training examples and {len(test_examples)} test examples")
+  print(f"Number of examples in the train dataset: {len(train_examples)}")
+  print(f"Number of examples in the test dataset: {len(test_examples)}")
+  print(f"Max token sequence length: {args.max_seq_length}")
+  print(f"Number of unique characters in the ascii vocabulary: {len(args.alphabet)}")
+  print("Ascii vocabulary:")
+  print(f'\t"{args.alphabet}"')
+  print(f"Split up the dataset into {len(train_examples)} training examples and {len(test_examples)} test examples")
 
-    # wrap in dataset objects
-    train_dataset = StrokeDataset(train_strokes, train_texts, args, name='train')
-    test_dataset = StrokeDataset(test_strokes, test_texts, args, name='test')
-    return train_dataset, test_dataset
+  # wrap in dataset objects
+  train_dataset = StrokeDataset(train_strokes, train_texts, args, name='train')
+  test_dataset = StrokeDataset(test_strokes, test_texts, args, name='test')
+  return train_dataset, test_dataset
 
 
 class InfiniteDataLoader:

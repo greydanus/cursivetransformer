@@ -44,7 +44,7 @@ def get_all_args(use_argparse=True):
         'wandb_project': ('bigbank_experiments', str, 'W&B project name'),
         'wandb_entity': ('sam-greydanus', str, 'Set this to your wandb username or team name'),
         'wandb_run_name': ('unnamed_run', str, 'W&B run name'),
-        'wandb_api_key': (os.environ.get('WANDB_API_KEY', None), str, 'Weights & Biases API Key'),
+        'wandb_api_key': (None, str, 'Weights & Biases API Key'),
         'load_from_run_id': (None, str, 'Load from a specific W&B run ID'),
         'local_checkpoint_path': ('best_checkpoint.pt', str, 'Path to local model file'),
     }
@@ -60,10 +60,10 @@ def get_all_args(use_argparse=True):
     else:
         args = SimpleNamespace(**{k: v[0] for k, v in args_config.items()})
 
-    # Set WANDB_API_KEY environment variable if it's not already set
-    if "WANDB_API_KEY" not in os.environ and args.wandb_api_key:
+    if "WANDB_API_KEY" not in os.environ:
+        if args.wandb_api_key is None:
+            args.wandb_api_key = getpass.getpass("Enter your W&B API key: ")
         os.environ["WANDB_API_KEY"] = args.wandb_api_key
-    
     return args
 
 
@@ -313,17 +313,3 @@ class Transformer(nn.Module):
         if targets is not None:
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
         return logits, loss
-
-    def register_attention_hooks(self):
-        self.attention_patterns = {}
-        
-        def hook_fn(module, input, output):
-            self.attention_patterns[module.name] = output.detach().cpu()
-
-        for name, module in self.named_modules():
-            if isinstance(module, CausalSelfAttention):
-                module.name = name
-                module.register_forward_hook(hook_fn)
-
-    def clear_attention_patterns(self):
-        self.attention_patterns = {}
