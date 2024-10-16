@@ -44,7 +44,7 @@ def get_all_args(use_argparse=True):
         'wandb_project': ('bigbank_experiments', str, 'W&B project name'),
         'wandb_entity': ('sam-greydanus', str, 'Set this to your wandb username or team name'),
         'wandb_run_name': ('unnamed_run', str, 'W&B run name'),
-        'wandb_api_key': (None, str, 'Weights & Biases API Key'),
+        'wandb_api_key': (os.environ.get('WANDB_API_KEY', None), str, 'Weights & Biases API Key'),
         'load_from_run_id': (None, str, 'Load from a specific W&B run ID'),
         'local_checkpoint_path': ('best_checkpoint.pt', str, 'Path to local model file'),
     }
@@ -60,10 +60,10 @@ def get_all_args(use_argparse=True):
     else:
         args = SimpleNamespace(**{k: v[0] for k, v in args_config.items()})
 
-    if "WANDB_API_KEY" not in os.environ:
-        if args.wandb_api_key is None:
-            args.wandb_api_key = getpass.getpass("Enter your W&B API key: ")
+    # Set WANDB_API_KEY environment variable if it's not already set
+    if "WANDB_API_KEY" not in os.environ and args.wandb_api_key:
         os.environ["WANDB_API_KEY"] = args.wandb_api_key
+    
     return args
 
 
