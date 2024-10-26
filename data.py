@@ -158,6 +158,7 @@ class StrokeDataset(Dataset):
         self.max_seq_length = args.max_seq_length
         self.max_text_length = max_text_length
         self.name = name
+        self.counter = 0
 
         self.theta_bins = np.linspace(-np.pi, np.pi, 220)
 
@@ -282,6 +283,8 @@ class StrokeDataset(Dataset):
 
         # Apply augmentation per word if enabled
         if self.augment:
+            np.random.seed(self.args.seed+idx+self.counter)  # use the same augmentation across
+            self.counter = (self.counter + 1) % 100000
             word_strokes = [self.augment_stroke(word.copy()) for word in word_strokes]
 
         # Encode each word separately and combine with WORD_TOKENs
