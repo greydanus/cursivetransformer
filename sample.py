@@ -16,7 +16,7 @@ from torch.utils.data.dataloader import DataLoader
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from model import Transformer, get_checkpoint, get_all_args
-from data import create_datasets, offsets_to_strokes
+from data import create_datasets, word_offsets_to_points
 
 
 def plot_strokes(stroke, title, fig=None, ax=None):
@@ -100,7 +100,7 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do
         # get the i'th row of sampled integers, as python list
         row = X_samp[i].detach().cpu().numpy()
         offset_samp = dataset.decode_stroke(row)
-        point_samp = offsets_to_strokes(offset_samp)
+        point_samp = word_offsets_to_points(offset_samp)
         decoded_ascii = dataset.decode_text(context[i])
 
         # Plot the stroke
