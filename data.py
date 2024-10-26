@@ -34,50 +34,45 @@ def load_and_parse_data(dataset_name):
     print(f'Succeeded in loading the {dataset_name} dataset; contains {len(data)} items.')
     return data
     
-def combine_handwriting_examples(examples, space_width=0.17):
-    assert len(set(ex['metadata']['author'] for ex in examples)) == 1, "All examples must have the same author"
-
-    combined_metadata = {
-        'author': examples[0]['metadata']['author'],
-        'asciiSequence': ' '.join(ex['metadata']['asciiSequence'] for ex in examples),
-        'pointCount': sum(ex['metadata']['pointCount'] for ex in examples),
-        'strokeCount': sum(ex['metadata']['strokeCount'] for ex in examples),
-        'aspectRatio': examples[0]['metadata']['aspectRatio']
+def combine_handwriting_examples(examples):
+    return {
+        'metadata': {
+            'author': examples[0]['metadata']['author'],
+            'asciiSequence': ' '.join(ex['metadata']['asciiSequence'] for ex in examples),
+            'pointCount': sum(ex['metadata']['pointCount'] for ex in examples),
+            'strokeCount': sum(ex['metadata']['strokeCount'] for ex in examples),
+            'aspectRatio': examples[0]['metadata']['aspectRatio']
+        },
+        'points': [ex['points'].copy() for ex in examples]
     }
 
-    combined_points, current_x_offset, total_width = [], 0, 0
-
-    for i, example in enumerate(examples):
-        points = example['points']
-        word_width = np.max(points[:, 0]) - np.min(points[:, 0])
-        total_width += word_width
-
-        normalized_points = points.copy()
-        normalized_points[:, 0] -= np.min(points[:, 0])
-        normalized_points[:, 0] += current_x_offset
-
-        combined_points.append(normalized_points)
-        current_x_offset += word_width
-
-        if i < len(examples) - 1:
-            combined_points.append(np.array([[current_x_offset + space_width, normalized_points[-1, 1], 0]]))
-            current_x_offset += space_width
-            total_width += space_width
-            combined_metadata['pointCount'] += 1
-
-    combined_points = np.vstack(combined_points)
-    return {'metadata': combined_metadata, 'points': combined_points}
-
 def generate_word_combos(raw_json, desired_num_combos=10000, num_words=3):
-  num_combos = comb(len(raw_json), num_words)
-  print(f'For a dataset of {len(raw_json)} examples we can generate {num_combos} combinations of {num_words} examples.')
-  print(f'Generating {desired_num_combos} random combinations.')
-  combo_json = []
-  for i in range(desired_num_combos):
-    ixs = np.random.choice(len(raw_json), size=num_words, replace=False)
-    examples_to_merge = [raw_json[i] for i in ixs]
-    combo_json.append( combine_handwriting_examples(examples_to_merge) )
-  return combo_json
+    num_combos = comb(len(raw_json), num_words)
+    print(f'For a dataset of {len(raw_json)} examples we can generate {num_combos} combinations of {num_words} examples.')
+    print(f'Generating {desired_num_combos} random combinations.')
+    combo_json = []
+    for _ in range(desired_num_combos):
+        ixs = np.random.choice(len(raw_json), size=num_words, replace=False)
+        examples_to_merge = [raw_json[ix] for ix in ixs]
+        combo_json.append(combine_handwriting_examples(examples_to_merge))
+    return combo_json
+
+def word_offsets_to_points(word_offsets, space_width=0.17):
+    word_points = []
+    last_point = None
+    
+    for i, offsets in enumerate(word_offsets):
+        points = offsets_to_strokes(offsets)
+        if last_point is not None:
+            lp = last_point[np.newaxis, :]
+            points = points + lp
+
+        last_point = points[-1]
+        last_point[0] += space_width
+        last_point[-1] = 0
+        word_points.append(points)
+    
+    return np.vstack(word_points)
 
 
 ########## TOKENIZATION, AUGMENTATION, AND DATA IO ##########
@@ -95,11 +90,16 @@ def reconstruct_offsets(polar_data):
     dy = r * np.sin(theta)
     return np.column_stack((dx, dy, polar_data[:, 2]))
 
-def strokes_to_offsets(points):
-    # Calculate pen offsets (dx, dy)
+def strokes_to_offsets(points, prev_points=None):
     offsets = np.zeros_like(points)
-    offsets[1:, 0:2] = np.diff(points[:, 0:2], axis=0)  # Compute dx, dy
-    offsets[:, 2] = points[:, 2]  # Copy pen_down directly
+    offsets[1:, 0:2] = np.diff(points[:, 0:2], axis=0)  # Same dx, dy computation
+    
+    if prev_points is not None:
+        offsets[0, 1] = points[0, 1] - prev_points[-1, 1]
+        offsets[0, 0] = (prev_points[:, 0].max() - prev_points[-1, 0]) + \
+                        (points[0, 0] - points[:, 0].min())
+    
+    offsets[:, 2] = points[:, 2]
     return decompose_offsets(offsets)
 
 def offsets_to_strokes(offsets_dec):
@@ -147,8 +147,9 @@ def downsample(arr, fraction):
 
 
 class StrokeDataset(Dataset):
-    def __init__(self, strokes, texts, args, max_text_length=50, name=''):
-        self.strokes = strokes  # List of Nx3 arrays, each representing a cursive sentence
+    def __init__(self, raw_word_strokes, texts, args, max_text_length=50, name=''):
+        ## Change: Renamed strokes to raw_word_strokes to reflect new structure
+        self.raw_word_strokes = raw_word_strokes  # List of lists of Nx3 arrays, each inner list representing words in a sentence
         self.texts = texts      # List of corresponding text strings
         self.args = args
         self.alphabet = args.alphabet  # String of all possible characters
@@ -157,12 +158,12 @@ class StrokeDataset(Dataset):
         self.max_text_length = max_text_length
         self.name = name
 
-        self.theta_bins = np.linspace(-np.pi, np.pi, 180)
+        self.theta_bins = np.linspace(-np.pi, np.pi, 220)
 
         r_bins_pen_down = np.concatenate([
                             np.asarray([0]),
                             np.linspace(0.0001, 0.060, 25),
-                            np.geomspace(0.06001, 0.75, 74) ]) # 100 discrete radii
+                            np.geomspace(0.06001, 0.75, 90) ]) # 100 discrete radii
         r_bins_pen_up = r_bins_pen_down + max(r_bins_pen_down) + 1  # Offset for pen-up states
         self.r_bins = np.concatenate([r_bins_pen_down, r_bins_pen_up])  # 200 bins for: {radii x pen up/down}
 
@@ -172,11 +173,28 @@ class StrokeDataset(Dataset):
         # Add special tokens for strokes
         self.PAD_TOKEN = sum(self.feature_sizes)
         self.END_TOKEN = sum(self.feature_sizes) + 1
+        self.WORD_TOKEN = sum(self.feature_sizes) + 2
 
         # Character tokenization
+        self.char_PAD_TOKEN = 0
         self.stoi = {ch:i+1 for i,ch in enumerate(self.alphabet)}
         self.itos = {i:s for s,i in self.stoi.items()}
-        self.char_PAD_TOKEN = 0
+
+    ## Change: Added helper method to split token sequence by word tokens
+    def split_by_word_tokens(self, tokens):
+        if isinstance(tokens, torch.Tensor):
+            tokens = tokens.cpu().numpy()
+        # Find pairs of WORD_TOKENs
+        word_boundaries = np.where((tokens[:-1] == self.WORD_TOKEN) & (tokens[1:] == self.WORD_TOKEN))[0]
+        # Split using these boundaries
+        splits = np.split(tokens, word_boundaries[::2] + 1)
+        return [s for s in splits if len(s) > 0]
+
+    ## Change: Added helper method to concatenate token sequences with word tokens
+    def concat_with_word_tokens(self, token_lists):
+        word_tokens = np.array([self.WORD_TOKEN, self.WORD_TOKEN])
+        return np.concatenate([np.concatenate([tokens, word_tokens]) if i < len(token_lists)-1 else tokens 
+                             for i, tokens in enumerate(token_lists)])
 
     def augment_stroke(self, stroke):
         stroke = random_horizontal_shear(stroke, shear_range=(-0.30, 0.15)) # Horizontal shear
@@ -189,10 +207,10 @@ class StrokeDataset(Dataset):
         return stroke
 
     def __len__(self):
-        return len(self.strokes)
+        return len(self.raw_word_strokes)
 
     def get_vocab_size(self):
-        return sum(self.feature_sizes) + 2  # +2 for PAD and END tokens
+        return sum(self.feature_sizes) + 3  # +3 for PAD, END, and WORD tokens
 
     def get_char_vocab_size(self):
         return len(self.alphabet) + 1  # +1 for PAD token
@@ -216,11 +234,15 @@ class StrokeDataset(Dataset):
         return encoded.flatten()
 
     def decode_stroke(self, ix):
+      ix_list = self.split_by_word_tokens(ix)
+      return [self.decode_word_strokes(ix) for ix in ix_list]
+
+    def decode_word_strokes(self, ix):
         if isinstance(ix, torch.Tensor):
             ix = ix.cpu().numpy()
 
-        # Remove PAD and END tokens
-        ix = ix[(ix != self.PAD_TOKEN) & (ix != self.END_TOKEN)]
+        # Remove PAD, END, and WORD tokens
+        ix = ix[(ix != self.PAD_TOKEN) & (ix != self.END_TOKEN) & (ix != self.WORD_TOKEN)]
 
         # Reshape the flattened array back to Nx2
         ix = ix[:(len(ix)//2)*2]
@@ -253,15 +275,23 @@ class StrokeDataset(Dataset):
         return ''.join(self.itos.get(i, '') for i in ix[:end_idx])
 
     def __getitem__(self, idx):
-        stroke = self.strokes[idx]
+        ## Change: Updated to handle list of word strokes
+        word_strokes = self.raw_word_strokes[idx]
         text = self.texts[idx]
 
+        # Apply augmentation per word if enabled
         if self.augment:
-            stroke = self.augment_stroke(stroke.copy())
+            word_strokes = [self.augment_stroke(word.copy()) for word in word_strokes]
 
-        # Encode stroke
-        stroke_offsets = strokes_to_offsets(stroke)
-        encoded_stroke = self.encode_stroke(stroke_offsets)
+        # Encode each word separately and combine with WORD_TOKENs
+        ## Change: New word-level encoding logic
+        encoded_words = [self.encode_stroke(
+                         strokes_to_offsets(word_strokes[i],
+                         prev_points=word_strokes[i-1] if i > 0 else None))
+                              for i in range(len(word_strokes)) ]
+        encoded_stroke = self.concat_with_word_tokens(encoded_words)
+
+        # Create input and target sequences
         x = torch.full((self.max_seq_length,), self.PAD_TOKEN, dtype=torch.long)
         y = torch.full((self.max_seq_length,), self.PAD_TOKEN, dtype=torch.long)
 
@@ -272,7 +302,7 @@ class StrokeDataset(Dataset):
         y[:seq_len] = x[1:seq_len+1]
         y[seq_len] = self.END_TOKEN
 
-        c = self.encode_text(text)  # Encode text (context) and pad to max_text_length of 30
+        c = self.encode_text(text)
         return x, c, y
 
 
@@ -290,14 +320,15 @@ def create_datasets(args):
   test_examples = generate_word_combos([data[i] for i in rp[-test_set_size:]], desired_num_combos=args.test_size, num_words=args.num_words)
   test_examples = [test_examples[i] for i in torch.randperm(len(test_examples)).tolist()]
 
-  train_strokes = [copy.deepcopy(v['points']) for v in train_examples]
+  train_word_strokes = [[copy.deepcopy(stroke) for stroke in v['points']] for v in train_examples]
   train_texts = [copy.deepcopy(v['metadata']['asciiSequence']) for v in train_examples]
 
-  test_strokes = [copy.deepcopy(v['points']) for v in test_examples]
+  test_word_strokes = [[copy.deepcopy(stroke) for stroke in v['points']] for v in test_examples]
   test_texts = [copy.deepcopy(v['metadata']['asciiSequence']) for v in test_examples]
 
   print(f"Number of examples in the train dataset: {len(train_examples)}")
   print(f"Number of examples in the test dataset: {len(test_examples)}")
+  print(f"Average number of words per example: {np.mean([len(strokes) for strokes in train_word_strokes]):.1f}")
   print(f"Max token sequence length: {args.max_seq_length}")
   print(f"Number of unique characters in the ascii vocabulary: {len(args.alphabet)}")
   print("Ascii vocabulary:")
@@ -305,8 +336,8 @@ def create_datasets(args):
   print(f"Split up the dataset into {len(train_examples)} training examples and {len(test_examples)} test examples")
 
   # wrap in dataset objects
-  train_dataset = StrokeDataset(train_strokes, train_texts, args, name='train')
-  test_dataset = StrokeDataset(test_strokes, test_texts, args, name='test')
+  train_dataset = StrokeDataset(train_word_strokes, train_texts, args, name='train')
+  test_dataset = StrokeDataset(test_word_strokes, test_texts, args, name='test')
   return train_dataset, test_dataset
 
 
