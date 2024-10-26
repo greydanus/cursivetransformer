@@ -69,7 +69,7 @@ def word_offsets_to_points(word_offsets, space_width=0.17):
 
         if len(points) > 0:
           last_point = points[-1]
-          last_point[0] += space_width
+          last_point[0] = last_point[0] + space_width
           last_point[-1] = 0
         word_points.append(points)
     
@@ -189,7 +189,7 @@ class StrokeDataset(Dataset):
         # Find pairs of WORD_TOKENs
         word_boundaries = np.where((tokens[:-1] == self.WORD_TOKEN) & (tokens[1:] == self.WORD_TOKEN))[0]
         # Split using these boundaries
-        splits = np.split(tokens, word_boundaries[::2] + 1)
+        splits = np.split(tokens, word_boundaries + 1)
         return [s for s in splits if len(s) > 0]
 
     ## Change: Added helper method to concatenate token sequences with word tokens
