@@ -67,9 +67,10 @@ def word_offsets_to_points(word_offsets, space_width=0.17):
             lp = last_point[np.newaxis, :]
             points = points + lp
 
-        last_point = points[-1]
-        last_point[0] += space_width
-        last_point[-1] = 0
+        if len(points) > 0:
+          last_point = points[-1]
+          last_point[0] += space_width
+          last_point[-1] = 0
         word_points.append(points)
     
     return np.vstack(word_points)
