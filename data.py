@@ -284,8 +284,8 @@ class StrokeDataset(Dataset):
         # Apply augmentation per word if enabled
         if self.augment:
             np.random.seed(self.args.seed+idx+self.counter)  # use the same augmentation across
-            self.counter = (self.counter + 1) % 100000
             word_strokes = [self.augment_stroke(word.copy()) for word in word_strokes]
+        self.counter = (self.counter + 1) % 100000
 
         # Encode each word separately and combine with WORD_TOKENs
         ## Change: New word-level encoding logic
