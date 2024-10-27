@@ -1,4 +1,8 @@
-# Sam Greydanus
+# Sam Greydanus, Zach Wimpee
+
+models/
+logs/
+data/
 
 .DS_Store
 *.egg-info
@@ -9,7 +13,7 @@
 *.pkl
 __pycache__
 *.epub
-*.json
+#*.json
 *.zip
 /data/BRUSH*
 /data/BIGBANK*
@@ -20,6 +24,9 @@ __pycache__
 !data/synthbank_v2.json.zip
 !data/easybank.json.zip
 !data/bigbank.json.zip
+!data/zach*.json.zip
+!data/wordbank.json
+!data/zachbigbank_v2
 paperspace.sh
 
 /examples*
@@ -185,3 +192,25 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+wandb/run-20240830_151240-pn6vy0c2/run-pn6vy0c2.wandb
+wandb/run-20240830_151240-pn6vy0c2/files/conda-environment.yaml
+wandb/run-20240830_151240-pn6vy0c2/files/config.yaml
+wandb/run-20240830_151240-pn6vy0c2/files/requirements.txt
+wandb/run-20240830_151332-vt0dzpgk/run-vt0dzpgk.wandb
+wandb/run-20240830_151332-vt0dzpgk/files/conda-environment.yaml
+wandb/run-20240830_151332-vt0dzpgk/files/config.yaml
+wandb/run-20240830_151332-vt0dzpgk/files/requirements.txt
+wandb/run-20240830_151610-bz0ozwzk/run-bz0ozwzk.wandb
+wandb/run-20240830_151610-bz0ozwzk/files/conda-environment.yaml
+wandb/run-20240830_151610-bz0ozwzk/files/config.yaml
+wandb/run-20240830_151610-bz0ozwzk/files/requirements.txt
+wandb/run-20240830_151922-j77ohdq4/run-j77ohdq4.wandb
+wandb/run-20240830_151922-j77ohdq4/files/conda-environment.yaml
+wandb/run-20240830_151922-j77ohdq4/files/config.yaml
+wandb/run-20240830_151922-j77ohdq4/files/requirements.txt
+wandb/run-20240830_151240-pn6vy0c2/files/wandb-metadata.json
+wandb/run-20240830_151332-vt0dzpgk/files/wandb-metadata.json
+wandb/run-20240830_151610-bz0ozwzk/files/wandb-metadata.json
+wandb/run-20240830_151922-j77ohdq4/files/wandb-metadata.json
+static/AttentionVisualizationAnimation.mp4
+static/PlotStrokesAnimation.mp4

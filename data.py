@@ -1,4 +1,4 @@
-# Sam Greydanus | 2024
+# Sam Greydanus and Zachary Wimpee| 2024
 
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
