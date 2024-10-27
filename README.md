@@ -391,3 +391,34 @@ Today we cleaned up the code and made some adjustments to augmentation parameter
 
 ![sample_v52](static/sample_v52.png)
 
+### Progress September 27
+
+Generation results have improved further. Longer context window as well
+
+![sample_v55](static/sample_v55.png)
+
+
+### Progress October 24
+
+Over the past month, little core progress was made on this project. We did get some nice interpretability results showing the model's cross attention patterns with respect to the ascii characters during generation. Zach has those and I will add them when he sends them to me.
+
+
+
+### Progress October 25
+
+It's quite difficult to add newlines and generate large paragraphs of text without performing word-level segmentation. After much thought and discussion, we decided to add a WORD_TOKEN in between the strokes for each of the words. This allows us to break out model's generated sequences up by words at sampling time. In the process of adding this feature, we did take a step backwards in terms of plot quality...here are two samples that Zach was quick to label "demon scrawl" when they showed up in our debugger.
+
+![sample_v56](static/sample_v56.png)
+
+![sample_v57](static/sample_v57.png)
+
+### Progress October 26
+
+We conducted a full-scale training run using the WORD_TOKEN feature to separate words within training samples. The introduction of this token also improved sample quality and reduced the sheer amount of gradients steps needed to get good samples. Here are two more or less randomly selected samples from the latest run.
+
+
+![sample_v58](static/sample_v58.png)
+
+![sample_v59](static/sample_v59.png)
+
+

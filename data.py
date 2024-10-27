@@ -283,7 +283,7 @@ class StrokeDataset(Dataset):
 
         # Apply augmentation per word if enabled
         if self.augment:
-            np.random.seed(self.args.seed+idx+self.counter)  # use the same augmentation across
+            np.random.seed(self.args.seed+idx+self.counter)  # use the same augmentation across all words in sample
             word_strokes = [self.augment_stroke(word.copy()) for word in word_strokes]
         self.counter = (self.counter + 1) % 100000
 
