@@ -443,4 +443,4 @@ Today we got the first sentence-level generation working. We start with a list o
 ![sample_v60](static/sample_v60.png)
 
 
-Our next steps will be to add support for line wrapping and for swapping out specific words within the sequence that were mis-generated. For example, we should be able to pass a list of the indices of the words that were mis-spelled (just `[4]` in this case) and get back some re-generations. With just a bit of additional work, we should reach the point where we are generating entire paragraphs or handwritten "letters."
+Our next steps will be to add support for line wrapping and for swapping out specific words within the sequence that were mis-generated. For example, we should be able to pass a list of the indices of the words that were mis-spelled (just `[2, 4]` in this case) and get back some re-generations. With just a bit of additional work, we should reach the point where we are generating entire paragraphs or handwritten "letters."

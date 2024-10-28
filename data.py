@@ -149,7 +149,6 @@ def downsample(arr, fraction):
 
 class StrokeDataset(Dataset):
     def __init__(self, raw_word_strokes, texts, args, max_text_length=50, name=''):
-        ## Change: Renamed strokes to raw_word_strokes to reflect new structure
         self.raw_word_strokes = raw_word_strokes  # List of lists of Nx3 arrays, each inner list representing words in a sentence
         self.texts = texts      # List of corresponding text strings
         self.args = args
@@ -275,7 +274,6 @@ class StrokeDataset(Dataset):
         return ''.join(self.itos.get(i, '') for i in ix[:end_idx])
 
     def __getitem__(self, idx):
-        ## Change: Updated to handle list of word strokes
         word_strokes = self.raw_word_strokes[idx]
         text = self.texts[idx]
 
@@ -286,7 +284,6 @@ class StrokeDataset(Dataset):
         self.counter = (self.counter + 1) % 100000
 
         # Encode each word separately and combine with WORD_TOKENs
-        ## Change: New word-level encoding logic
         encoded_words = [self.encode_stroke(
                          strokes_to_offsets(word_strokes[i],
                          prev_points=word_strokes[i-1] if i > 0 else None))
