@@ -22,7 +22,7 @@ from data import create_datasets, word_offsets_to_points
 def plot_strokes(stroke, title, fig=None, ax=None, figsize=(12, 2), dpi=150):
     """Plot a single stroke"""
     if fig is None or ax is None:
-        fig, ax = plt.subplots(figsize=figize, dpi=dpi)
+        fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
 
     # Separate strokes based on pen lifts
     strokes = []
