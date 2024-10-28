@@ -442,9 +442,9 @@ Today we got the first sentence-level generation working. We start with a list o
 
 ![sample_v60](static/sample_v60.png)
 
-One feature we'd like to add is a re-spell feature which allows us to quickly re-generate mis-spelled words. For example, we could pass a list of the indices of the words that were mis-spelled (just `[2, 4]` in the case above) and get back corrected versions of those words.
+One feature we'd like to add is a re-spell feature which allows us to quickly re-generate misspelled words. For example, we could pass a list of the indices of the words that were misspelled (just `[2, 4]` in the case above) and get back corrected versions of those words.
 
-Later in the morning, we added support for line wrapping; this allows us to generate entire paragraphs of text:
+We also support line wrapping, which lets us generate entire paragraphs of text:
 
 ![sample_v61](static/sample_v61.png)
 
