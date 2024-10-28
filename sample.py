@@ -16,7 +16,7 @@ from torch.utils.data.dataloader import DataLoader
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from model import Transformer, get_checkpoint, get_all_args
-from data import create_datasets, word_offsets_to_points
+from data import create_datasets, offsets_to_strokes, word_offsets_to_points
 
 
 def plot_strokes(stroke, title, fig=None, ax=None, figsize=(12, 2), dpi=150):
