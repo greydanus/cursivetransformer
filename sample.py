@@ -171,12 +171,12 @@ def generate_paragraph(model, dataset, text, n_at_a_time=3, **kwargs):
     return word_list_offsets
 
 
-def word_offsets_to_points(word_offsets, space_width=0.17, line_width=6.0, line_height=0.75,
+def word_offsets_to_points(word_offsets, space_width=0.17, line_width=12.0, line_height=0.75, 
                           min_x=0, max_y=5.0):  # Add bounds parameters
     word_points = []
     last_point = None
     current_x = current_y = 0
-
+    
     for offsets in word_offsets:
         points = offsets_to_strokes(offsets)
         if last_point is not None:
@@ -186,22 +186,22 @@ def word_offsets_to_points(word_offsets, space_width=0.17, line_width=6.0, line_
                 current_x = min_x  # Reset to minimum x bound
                 current_y = min(current_y + line_height, max_y)  # Bound maximum y
                 points = points + np.array([current_x - points[0][0], current_y - points[0][1], 0])
-
+        
         if len(points) > 0:
             # Update last point and add space for next word
             last_point = points[-1].copy()
             last_point[0] = (current_x := max(min_x, min(last_point[0] + space_width, line_width)))
             last_point[1] = min(current_y, max_y)
-
+            
         word_points.append(points)
-
+    
     return np.vstack(word_points)
 
 
-def plot_paragraph(word_list_offsets, text, figsize=(12, 4*2), dpi=200):
-  point_samp = word_offsets_to_points(word_list_offsets)
-  fig, ax = plot_strokes(point_samp, '', figsize=figsize, dpi=dpi)
-  ax.set_title('\n'.join(textwrap.wrap(text, width=40)), loc='left', fontsize=13)
+def plot_paragraph(word_list_offsets, text, figsize=(12, 4*2), dpi=200, **kwargs):
+    point_samp = word_offsets_to_points(word_list_offsets, **kwargs)
+    fig, ax = plot_strokes(point_samp, '', figsize=figsize, dpi=dpi)
+    ax.set_title('\n'.join(textwrap.wrap(text, width=83)), loc='left', fontsize=13)
 
 
 ########## ARGS, LOGGING, AND TRAIN LOOP ##########
