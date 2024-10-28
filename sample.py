@@ -158,16 +158,17 @@ def generate_helper_fn(model, dataset, text, num_steps=1250, do_sample=False,
     return offset_samp, point_samp
 
 
-def generate_paragraph(model, dataset, word_list, n_at_a_time=3, **kwargs):
-  word_list_offsets = []
-  print('Generating...')
-  for i in range(0, len(word_list), n_at_a_time):
-      words_to_generate = word_list[i:i+n_at_a_time]
-      text = ' '.join(words_to_generate)
-      offset_samp, _ = generate_helper_fn(model, dataset, text=text, **kwargs)
-      word_list_offsets += offset_samp[:len(words_to_generate)]
-      print('   ', text)
-  return word_list_offsets
+def generate_paragraph(model, dataset, text, n_at_a_time=3, **kwargs):
+    word_list = text.split(' ')
+    word_list_offsets = []
+    print('Generating...')
+    for i in range(0, len(word_list), n_at_a_time):
+        words_to_generate = word_list[i:i+n_at_a_time]
+        text_chunk = ' '.join(words_to_generate)
+        offset_samp, _ = generate_helper_fn(model, dataset, text=text_chunk, **kwargs)
+        word_list_offsets += offset_samp[:len(words_to_generate)]
+        print('   ', text_chunk)
+    return word_list_offsets
 
 
 def word_offsets_to_points(word_offsets, space_width=0.17, line_width=6.0, line_height=0.75,
@@ -197,10 +198,10 @@ def word_offsets_to_points(word_offsets, space_width=0.17, line_width=6.0, line_
     return np.vstack(word_points)
 
 
-def plot_paragraph(word_list_offsets, word_list, figsize=(12, 4*2), dpi=200):
+def plot_paragraph(word_list_offsets, text, figsize=(12, 4*2), dpi=200):
   point_samp = word_offsets_to_points(word_list_offsets)
   fig, ax = plot_strokes(point_samp, '', figsize=figsize, dpi=dpi)
-  ax.set_title('\n'.join(textwrap.wrap(' '.join(word_list), width=40)), loc='left', fontsize=13)
+  ax.set_title('\n'.join(textwrap.wrap(text, width=40)), loc='left', fontsize=13)
 
 
 ########## ARGS, LOGGING, AND TRAIN LOOP ##########
