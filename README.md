@@ -1,7 +1,5 @@
 # Cursive Transformer
 
-_Disclaimer: this repo is under active development and thus subject to rapid breaking changes._
-
 ![sample_v61](static/sample_v61.png)
 
 ## Quickstart
