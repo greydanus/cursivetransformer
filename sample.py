@@ -19,10 +19,10 @@ from model import Transformer, get_checkpoint, get_all_args
 from data import create_datasets, word_offsets_to_points
 
 
-def plot_strokes(stroke, title, fig=None, ax=None):
+def plot_strokes(stroke, title, fig=None, ax=None, figsize=(12, 2), dpi=150):
     """Plot a single stroke"""
     if fig is None or ax is None:
-        fig, ax = plt.subplots(figsize=(12, 2), dpi=150)
+        fig, ax = plt.subplots(figsize=figize, dpi=dpi)
 
     # Separate strokes based on pen lifts
     strokes = []
@@ -115,42 +115,35 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do
     print('-'*80)
 
 
-def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
-                         top_k=None, temperature=1.0, num_steps=1250, n_words=4):
-    '''Assumes we're using tokenization of git commit b8ffa51767ead8fae14eeaad8c2f2559202fc8dd'''
-    SEED_TOKENS = torch.tensor(
-        [289,   0, 255,   8, 266,  18, 262,  14, 262,  14, 262,  14, 261,   9,
-        260,  15, 258,  13, 248,   8, 378,  13, 352,   9, 337,  11, 337,  13,
-        337,  10, 337,  13, 337,  11, 345,   8, 342,  12, 378,   3, 258,  13,
-        258,  13, 261,   9, 265,  15, 276,  13, 297,   7, 337,  11, 345,   8,
-        367,  15, 374,  13, 373,   9, 289,  13, 311,  11, 330,   8, 301,  13,
-        267,  11, 262,  14, 268,  14, 278,  10, 332,  11, 337,  11, 289,   0,
-        262,  14, 270,   9, 276,  13, 295,   9, 337,   8, 337,  11, 311,  11,
-        289,   9, 270,  15, 265,  15, 267,  11, 280,  12, 316,   9, 333,  13,
-        351,  14, 352,   9, 317,   7, 322,  12, 330,   8, 337,  11, 345,   8,
-        357,  14, 367,  15, 232,   8, 258,  13, 270,  18, 267,  11, 267,  14,
-        267,  11, 265,  15, 265,  15, 261,   9, 276,  13, 337,  11, 337,   8,
-        337,   4, 262,   9, 262,  14, 273,  14, 274,  11, 319,  11, 337,  11,
-        346,   8, 321,   8, 285,  13, 289, 100, 289, 157], dtype=torch.int64)
-    SEED_CHARS = 'knzn'
+def generate_helper_fn(model, dataset, text, num_steps=1250, do_sample=False,
+                         top_k=None, temperature=1.0, n_words=4, seed_ix=0, verbose=False):
+    '''Assumes we're using tokenization of git commit afc2425f5bf92c14a9db62da44e8cf2995e7bf8d'''
+    SEED_TOKENS = [torch.tensor(
+        [341,   0, 232,  13, 445,  13, 232,  13, 432,  12, 390,  13, 391,
+        13, 350,   9, 335,  13, 347,  13, 372,  13, 396,  13, 424,  12,
+       439,  13, 232,  16, 341, 116, 454, 454], dtype=torch.int64),
+        torch.tensor(
+        [341,   0, 232,  11, 444,  12, 232,  11, 417,  14, 397,  13, 392,
+        13, 331,  16, 341,  11, 368,  13, 393,  18, 421,  12, 438,  12,
+       232,  15, 341, 116, 454, 454], dtype=torch.int64)][seed_ix]
+    SEED_CHARS = '5'
 
     model_device = next(model.parameters()).device
     warmup_steps = len(SEED_TOKENS)
-    ascii_context = f'{SEED_CHARS} {text}'
 
     def trunc_or_pad_words(text):
       n = len(text.split(' '))
       if n > n_words:
-        print(f"Expected {n_words+1} words, got {n}; truncating")
+        if verbose: print(f"Expected {n_words+1} words, got {n}; truncating")
         return ' '.join(text.split(' ')[:n_words])
       elif n < n_words:
-        print(f"Expected {n_words+1} words, got {n}; padding with 'hello'")
+        if verbose: print(f"Expected {n_words+1} words, got {n}; padding with 'hello'")
         return text + ' hello'*(n_words-n)
       return text
     text = trunc_or_pad_words(text)
+    ascii_context = f'{SEED_CHARS} {text}'
 
     context = dataset.encode_text(ascii_context).unsqueeze(0)
-    print(model_device)
     context = context.to(model_device)
     X_init = SEED_TOKENS.unsqueeze(0).to(model_device)
 
@@ -160,7 +153,7 @@ def generate_n_words(model, dataset, text, model_device='cpu', do_sample=False,
 
     stroke_seq = X_samp[0].detach().cpu().numpy()[len(SEED_TOKENS):]
     offset_samp = dataset.decode_stroke(stroke_seq)
-    point_samp = offsets_to_strokes(offset_samp)
+    point_samp = word_offsets_to_points(offset_samp)
 
     return offset_samp, point_samp
 
