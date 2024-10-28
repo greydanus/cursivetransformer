@@ -400,8 +400,7 @@ Generation results have improved further. Longer context window as well
 
 ### Progress October 24
 
-Over the past month, little core progress was made on this project. We did get some nice interpretability results showing the model's cross attention patterns with respect to the ascii characters during generation. Zach has those and I will add them when he sends them to me.
-
+Over the past month, little core progress was made on this project. We did get some nice interpretability results showing the model's cross attention patterns with respect to the ascii characters during generation. I'm not going to include the first results, but if you look at October 27 you will see the results of running his code on the model trained with WORD_TOKENs.
 
 
 ### Progress October 25
@@ -422,3 +421,26 @@ We conducted a full-scale training run using the WORD_TOKEN feature to separate 
 ![sample_v59](static/sample_v59.png)
 
 
+### Progress October 27
+
+We applied Zach's interpretability code to the model we trained using the WORD_TOKEN feature. Here are the results:
+
+
+![interp_1](static/interp_1.png)
+
+![interp_2](static/interp_2.png)
+
+![interp_3](static/interp_3.png)
+
+![interp_4](static/interp_4.png)
+
+![interp_5](static/interp_5.png)
+
+### Progress October 28
+
+Today we got the first sentence-level generation working. We start with a list of words, eg `['The', 'quick', 'brown', 'fox', 'jumped', 'over', 'the', 'lazy', 'dog.']` and then we concatenate sets of three, generate on them, split wherever WORD_TOKENs are found, and then construct a list of stroke offsets, one list element for each word. From there, it's not hard to plot the entire sequence:
+
+![sample_v60](static/sample_v60.png)
+
+
+Our next steps will be to add support for line wrapping and for swapping out specific words within the sequence that were mis-generated. For example, we should be able to pass a list of the indices of the words that were mis-spelled (just `[4]` in this case) and get back some re-generations. With just a bit of additional work, we should reach the point where we are generating entire paragraphs or handwritten "letters."

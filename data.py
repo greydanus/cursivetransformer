@@ -182,7 +182,6 @@ class StrokeDataset(Dataset):
         self.stoi = {ch:i+1 for i,ch in enumerate(self.alphabet)}
         self.itos = {i:s for s,i in self.stoi.items()}
 
-    ## Change: Added helper method to split token sequence by word tokens
     def split_by_word_tokens(self, tokens):
         if isinstance(tokens, torch.Tensor):
             tokens = tokens.cpu().numpy()
@@ -192,7 +191,6 @@ class StrokeDataset(Dataset):
         splits = np.split(tokens, word_boundaries + 1)
         return [s for s in splits if len(s) > 0]
 
-    ## Change: Added helper method to concatenate token sequences with word tokens
     def concat_with_word_tokens(self, token_lists):
         word_tokens = np.array([self.WORD_TOKEN, self.WORD_TOKEN])
         return np.concatenate([np.concatenate([tokens, word_tokens]) if i < len(token_lists)-1 else tokens 
