@@ -2,7 +2,7 @@
 
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
-import os, sys, time, getpass
+import os, sys, time, getpass, textwrap
 import numpy as np
 import matplotlib.pyplot as plt
 from dataclasses import dataclass
@@ -156,6 +156,51 @@ def generate_helper_fn(model, dataset, text, num_steps=1250, do_sample=False,
     point_samp = word_offsets_to_points(offset_samp)
 
     return offset_samp, point_samp
+
+
+def generate_paragraph(model, dataset, word_list, n_at_a_time=3, **kwargs):
+  word_list_offsets = []
+  print('Generating...')
+  for i in range(0, len(word_list), n_at_a_time):
+      words_to_generate = word_list[i:i+n_at_a_time]
+      text = ' '.join(words_to_generate)
+      offset_samp, _ = generate_helper_fn(model, dataset, text=text, **kwargs)
+      word_list_offsets += offset_samp[:len(words_to_generate)]
+      print('   ', text)
+  return word_list_offsets
+
+
+def word_offsets_to_points(word_offsets, space_width=0.17, line_width=6.0, line_height=0.75,
+                          min_x=0, max_y=5.0):  # Add bounds parameters
+    word_points = []
+    last_point = None
+    current_x = current_y = 0
+
+    for offsets in word_offsets:
+        points = offsets_to_strokes(offsets)
+        if last_point is not None:
+            points = points + last_point[np.newaxis, :]
+            # Check if word exceeds line width and wrap if needed
+            if len(points) > 0 and current_x + (points[-1][0] - points[0][0]) > line_width:
+                current_x = min_x  # Reset to minimum x bound
+                current_y = min(current_y + line_height, max_y)  # Bound maximum y
+                points = points + np.array([current_x - points[0][0], current_y - points[0][1], 0])
+
+        if len(points) > 0:
+            # Update last point and add space for next word
+            last_point = points[-1].copy()
+            last_point[0] = (current_x := max(min_x, min(last_point[0] + space_width, line_width)))
+            last_point[1] = min(current_y, max_y)
+
+        word_points.append(points)
+
+    return np.vstack(word_points)
+
+
+def plot_paragraph(word_list_offsets, word_list, figsize=(12, 4*2), dpi=200):
+  point_samp = word_offsets_to_points(word_list_offsets)
+  fig, ax = plot_strokes(point_samp, '', figsize=figsize, dpi=dpi)
+  ax.set_title('\n'.join(textwrap.wrap(' '.join(word_list), width=40)), loc='left', fontsize=13)
 
 
 ########## ARGS, LOGGING, AND TRAIN LOOP ##########
