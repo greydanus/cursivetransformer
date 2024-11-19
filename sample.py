@@ -196,7 +196,7 @@ def word_offsets_to_points(word_offsets, word_list=None, space_width=0.14, line_
         current_x = 0
         current_y += line_height
 
-      if points and points.shape[0] > 0:
+      if points is not None and points.shape[0] > 0:
         points[:,0] = points[:,0] + current_x
         points[:,1] = np.clip(points[:,1], -letter_height, letter_height) + current_y
         current_x = points[-1, 0] + space_width
