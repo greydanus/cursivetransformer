@@ -57,23 +57,23 @@ def generate_word_combos(raw_json, desired_num_combos=10000, num_words=3):
         combo_json.append(combine_handwriting_examples(examples_to_merge))
     return combo_json
 
-def word_offsets_to_points(word_offsets, space_width=0.17):
-    word_points = []
-    last_point = None
+# def word_offsets_to_points(word_offsets, space_width=0.17):
+#     word_points = []
+#     last_point = None
     
-    for i, offsets in enumerate(word_offsets):
-        points = offsets_to_strokes(offsets)
-        if last_point is not None:
-            lp = last_point[np.newaxis, :]
-            points = points + lp
+#     for i, offsets in enumerate(word_offsets):
+#         points = offsets_to_strokes(offsets)
+#         if last_point is not None:
+#             lp = last_point[np.newaxis, :]
+#             points = points + lp
 
-        if len(points) > 0:
-          last_point = points[-1]
-          last_point[0] = last_point[0] + space_width
-          last_point[-1] = 0
-        word_points.append(points)
+#         if len(points) > 0:
+#           last_point = points[-1]
+#           last_point[0] = last_point[0] + space_width
+#           last_point[-1] = 0
+#         word_points.append(points)
     
-    return np.vstack(word_points)
+#     return np.vstack(word_points)
 
 
 ########## TOKENIZATION, AUGMENTATION, AND DATA IO ##########

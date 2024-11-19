@@ -16,7 +16,7 @@ from torch.utils.data.dataloader import DataLoader
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from model import Transformer, get_checkpoint, get_all_args
-from data import create_datasets, offsets_to_strokes, word_offsets_to_points
+from data import create_datasets, offsets_to_strokes
 
 
 def plot_strokes(stroke, title, fig=None, ax=None, figsize=(12, 2), dpi=150):
@@ -115,7 +115,7 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do
     print('-'*80)
 
 
-def generate_helper_fn(model, dataset, text, num_steps=1250, do_sample=False,
+def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=False,
                          top_k=None, temperature=1.0, n_words=4, seed_ix=0, verbose=False):
     '''Assumes we're using tokenization of git commit afc2425f5bf92c14a9db62da44e8cf2995e7bf8d'''
     SEED_TOKENS = [torch.tensor(
@@ -131,16 +131,18 @@ def generate_helper_fn(model, dataset, text, num_steps=1250, do_sample=False,
     model_device = next(model.parameters()).device
     warmup_steps = len(SEED_TOKENS)
 
-    def trunc_or_pad_words(text):
-      n = len(text.split(' '))
+    def trunc_or_pad_words(word_list):
+      n = len(word_list)
       if n > n_words:
         if verbose: print(f"Expected {n_words+1} words, got {n}; truncating")
-        return ' '.join(text.split(' ')[:n_words])
+        return word_list[:n_words]
       elif n < n_words:
         if verbose: print(f"Expected {n_words+1} words, got {n}; padding with 'hello'")
-        return text + ' hello'*(n_words-n)
-      return text
-    text = trunc_or_pad_words(text)
+        return word_list + ['hello']*(n_words-n)
+      return word_list
+
+    word_list = trunc_or_pad_words(word_list)
+    text = ' '.join(word_list)
     ascii_context = f'{SEED_CHARS} {text}'
 
     context = dataset.encode_text(ascii_context).unsqueeze(0)
@@ -153,9 +155,8 @@ def generate_helper_fn(model, dataset, text, num_steps=1250, do_sample=False,
 
     stroke_seq = X_samp[0].detach().cpu().numpy()[len(SEED_TOKENS):]
     offset_samp = dataset.decode_stroke(stroke_seq)
-    point_samp = word_offsets_to_points(offset_samp)
 
-    return offset_samp, point_samp
+    return offset_samp
 
 
 def generate_paragraph(model, dataset, text, n_at_a_time=3, **kwargs):
@@ -163,39 +164,42 @@ def generate_paragraph(model, dataset, text, n_at_a_time=3, **kwargs):
     word_list_offsets = []
     print('Generating...')
     for i in range(0, len(word_list), n_at_a_time):
-        words_to_generate = word_list[i:i+n_at_a_time]
-        text_chunk = ' '.join(words_to_generate)
-        offset_samp, _ = generate_helper_fn(model, dataset, text=text_chunk, **kwargs)
-        word_list_offsets += offset_samp[:len(words_to_generate)]
-        print('   ', text_chunk)
+        word_list_subset = word_list[i:i+n_at_a_time]
+        offset_sample = generate_helper_fn(model, dataset, word_list_subset, **kwargs)
+        word_list_offsets += offset_sample[:len(word_list_subset)]
+        print('   ', ' '.join(word_list_subset))
     return word_list_offsets
 
 
-def word_offsets_to_points(word_offsets, space_width=0.17, line_width=12.0, line_height=0.75, 
-                          min_x=0, max_y=5.0):  # Add bounds parameters
+def word_offsets_to_points(word_offsets, word_list, space_width=0.14, line_width=6.0, line_height=0.40,
+                           letter_height=0.35):  # Add bounds parameters
     word_points = []
     last_point = None
     current_x = current_y = 0
+
+    starts_at_bottom = "enaitoshrdx.vpukbgfcymzwlqjS,GJ"
+    starts_at_top = "8049637OTA5N)EHR\"\'(BCQLMWYUF!DXVKP"  # starts_elsewhere = "1I2Z?"
     
-    for offsets in word_offsets:
-        points = offsets_to_strokes(offsets)
-        if last_point is not None:
-            points = points + last_point[np.newaxis, :]
-            # Check if word exceeds line width and wrap if needed
-            if len(points) > 0 and current_x + (points[-1][0] - points[0][0]) > line_width:
-                current_x = min_x  # Reset to minimum x bound
-                current_y = min(current_y + line_height, max_y)  # Bound maximum y
-                points = points + np.array([current_x - points[0][0], current_y - points[0][1], 0])
-        
-        if len(points) > 0:
-            # Update last point and add space for next word
-            last_point = points[-1].copy()
-            last_point[0] = (current_x := max(min_x, min(last_point[0] + space_width, line_width)))
-            last_point[1] = min(current_y, max_y)
-            
-        word_points.append(points)
+    sentence_points = []
+    for word, offsets in zip(word_list, word_offsets):
+
+      points = offsets_to_strokes(copy.deepcopy(offsets))
+
+      if word[0] in starts_at_bottom:
+        points[:,1] -= points[0,1]  # # print('Was at the bottom')
+      elif word[0] in starts_at_top:
+        pass # points[:,1] -= points[0,1] + 0.265
+
+      if current_x > line_width:
+        current_x = 0
+        current_y += line_height
+
+      points[:,0] = points[:,0] + current_x
+      points[:,1] = np.clip(points[:,1], -letter_height, letter_height) + current_y
+      current_x = points[-1, 0] + space_width
+      sentence_points.append(points)
     
-    return np.vstack(word_points)
+    return np.vstack(sentence_points)
 
 
 def plot_paragraph(word_list_offsets, text, figsize=(12, 4*2), dpi=200, **kwargs):
