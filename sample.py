@@ -2,7 +2,7 @@
 
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
-import os, sys, time, getpass, textwrap
+import os, sys, time, getpass, textwrap, copy
 import numpy as np
 import matplotlib.pyplot as plt
 from dataclasses import dataclass
@@ -171,7 +171,7 @@ def generate_paragraph(model, dataset, text, n_at_a_time=3, **kwargs):
     return word_list_offsets
 
 
-def word_offsets_to_points(word_offsets, word_list=None, space_width=0.14, line_width=6.0, line_height=0.40,
+def word_offsets_to_points(word_offsets, word_list=None, space_width=0.14, line_width=10.0, line_height=0.40,
                            letter_height=0.35):  # Add bounds parameters
     word_points = []
     last_point = None
