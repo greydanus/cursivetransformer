@@ -188,18 +188,19 @@ def word_offsets_to_points(word_offsets, word_list=None, space_width=0.14, line_
       if word_list:
         word = word_list[i]
         if word[0] in starts_at_bottom:
-            points[:,1] -= points[0,1]  # # print('Was at the bottom')
+          points[:,1] -= points[0,1]  # # print('Was at the bottom')
         elif word[0] in starts_at_top:
-            pass # points[:,1] -= points[0,1] + 0.265
+          pass # points[:,1] -= points[0,1] + 0.265
 
       if current_x > line_width:
         current_x = 0
         current_y += line_height
 
-      points[:,0] = points[:,0] + current_x
-      points[:,1] = np.clip(points[:,1], -letter_height, letter_height) + current_y
-      current_x = points[-1, 0] + space_width
-      sentence_points.append(points)
+      if points and points.shape[0] > 0:
+        points[:,0] = points[:,0] + current_x
+        points[:,1] = np.clip(points[:,1], -letter_height, letter_height) + current_y
+        current_x = points[-1, 0] + space_width
+        sentence_points.append(points)
     
     return np.vstack(sentence_points)
 
