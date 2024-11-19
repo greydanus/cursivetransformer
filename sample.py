@@ -80,7 +80,7 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
     return idx
 
 
-def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do_sample=False, log_wandb=True):
+def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=30, do_sample=False, log_wandb=True):
     """ samples from the model and plots the decoded strokes """
     model_device = next(model.parameters()).device
 
