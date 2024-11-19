@@ -171,7 +171,7 @@ def generate_paragraph(model, dataset, text, n_at_a_time=3, **kwargs):
     return word_list_offsets
 
 
-def word_offsets_to_points(word_offsets, word_list, space_width=0.14, line_width=6.0, line_height=0.40,
+def word_offsets_to_points(word_offsets, word_list=None, space_width=0.14, line_width=6.0, line_height=0.40,
                            letter_height=0.35):  # Add bounds parameters
     word_points = []
     last_point = None
@@ -181,14 +181,16 @@ def word_offsets_to_points(word_offsets, word_list, space_width=0.14, line_width
     starts_at_top = "8049637OTA5N)EHR\"\'(BCQLMWYUF!DXVKP"  # starts_elsewhere = "1I2Z?"
     
     sentence_points = []
-    for word, offsets in zip(word_list, word_offsets):
+    for i, offsets in enumerate(word_offsets):
 
       points = offsets_to_strokes(copy.deepcopy(offsets))
 
-      if word[0] in starts_at_bottom:
-        points[:,1] -= points[0,1]  # # print('Was at the bottom')
-      elif word[0] in starts_at_top:
-        pass # points[:,1] -= points[0,1] + 0.265
+      if word_list:
+        word = word_list[i]
+        if word[0] in starts_at_bottom:
+            points[:,1] -= points[0,1]  # # print('Was at the bottom')
+        elif word[0] in starts_at_top:
+            pass # points[:,1] -= points[0,1] + 0.265
 
       if current_x > line_width:
         current_x = 0
