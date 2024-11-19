@@ -448,3 +448,10 @@ We also support line wrapping, which lets us generate entire paragraphs of text:
 
 ![sample_v61](static/sample_v61.png)
 
+### Progress November 18
+
+We made some fixes to the generation code so that now each word begins at the proper elevation. This leads to cleaner paragraph-size plots. Next issue to tackle is the varying rates of italicization - this causes the paragraph to look a bit chaotic; we want the same slope across all words.
+
+![sample_v62](static/sample_v62.png)
+
+![sample_v63](static/sample_v63.png)
