@@ -116,17 +116,25 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_
 
 
 def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=False,
-                         top_k=None, temperature=1.0, n_words=4, seed_ix=0, verbose=False):
+                         top_k=None, temperature=1.0, n_words=4, seed_ix=1, verbose=False):
     '''Assumes we're using tokenization of git commit afc2425f5bf92c14a9db62da44e8cf2995e7bf8d'''
     SEED_TOKENS = [torch.tensor(
         [341,   0, 232,  13, 445,  13, 232,  13, 432,  12, 390,  13, 391,
-        13, 350,   9, 335,  13, 347,  13, 372,  13, 396,  13, 424,  12,
-       439,  13, 232,  16, 341, 116, 454, 454], dtype=torch.int64),
+          13, 350,   9, 335,  13, 347,  13, 372,  13, 396,  13, 424,  12,
+          439,  13, 232,  16, 341, 116, 454, 454], dtype=torch.int64),
         torch.tensor(
-        [341,   0, 232,  11, 444,  12, 232,  11, 417,  14, 397,  13, 392,
-        13, 331,  16, 341,  11, 368,  13, 393,  18, 421,  12, 438,  12,
-       232,  15, 341, 116, 454, 454], dtype=torch.int64)][seed_ix]
-    SEED_CHARS = '5'
+        [341,   0, 310,  15, 310,  20, 311,  23, 310,  15, 308,  17, 307,
+            19, 301,  13, 232,  12, 413,  18, 405,  14, 405,  20, 405,  12,
+          411,  13, 409,  17, 296,   4, 305,  14, 307,  19, 313,  16, 325,
+            18, 400,  12, 411,  13, 439,  19, 445,  13, 359,   4, 364,  13,
+          388,  12, 329,  17, 310,  15, 316,  15, 356,  10, 405,  12, 405,
+            4, 310,  20, 321,  14, 347,  12, 405,  12, 405,  12, 350,  16,
+          318,  16, 313,  16, 318,  19, 368,  11, 402,  18, 419,  15, 420,
+            10, 381,  15, 400,  12, 405,  12, 423,  19, 436,  15, 291,  16,
+          316,  18, 316,  18, 316,  21, 313,  16, 313,  16, 310,  20, 350,
+            8, 405,  16, 405,   4, 310,  15, 314,  20, 324,  16, 385,  10,
+          410,  17, 405,  12, 337,  17, 341, 116, 454], dtype=torch.int64)][seed_ix]
+    SEED_CHARS = ['5', 'knzn'][seed_ix]
 
     model_device = next(model.parameters()).device
     warmup_steps = len(SEED_TOKENS)
