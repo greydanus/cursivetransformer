@@ -1,6 +1,6 @@
 # Cursive Transformer
 
-![sample_v63](static/sample_v63.png)
+![sample_v63](static/sample_v64.png)
 
 ## Quickstart
 
@@ -457,3 +457,10 @@ We made some fixes to the generation code so that now each word begins at the pr
 ![sample_v63](static/sample_v63.png)
 
 Interesting note - the bug fix I used to get this improvement actually involved deleting Claude's approach and writing my own. The way Claude was writing the code was needlessly complicated and hard to parse. Also, it was missing a key simplification. I could probably get Claude to generate something similar now that I understand what the proper approach looks like, but it turns out that I needed to think through the problem and apply some judgement in order to get the best outcome. It's worth noting this because, so often, Claude nails it.
+
+
+### Progress November 20
+
+Retrained without a randomized italicization; this led to faster training and a more coherent style during generation (though there is of course less diversity in style now). There are still a lot of mis-spellings: the path to fixing these is probably a combination of further tuning the augmentations and adding more data.
+
+![sample_v64](static/sample_v64.png)
