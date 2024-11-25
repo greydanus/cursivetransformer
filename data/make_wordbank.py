@@ -112,7 +112,7 @@ def analyze_word_bank(word_bank, k=75):
     print("\nFull alphabet of all characters used:")
     print(''.join(sorted(all_chars, key=lambda x: -char_probs[x])))
 
-# python make_wordbank.py --num_examples 5000 --uppercase_prob 0 --capitalize_prob 0 --period_prob 0 --output 'synthbank.txt'
+# python make_wordbank.py --num_examples 3000 --output 'bigbank.txt'
 def main():
     parser = argparse.ArgumentParser(description='Generate a word bank')
     parser.add_argument('--num_examples', type=int, default=2000, help='Number of words to generate')
