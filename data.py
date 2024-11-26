@@ -179,7 +179,7 @@ class StrokeDataset(Dataset):
 
     def augment_stroke(self, stroke):
         # stroke = random_horizontal_shear(stroke, shear_range=(-0.30, 0.15)) # Horizontal shear
-        stroke = random_horizontal_shear(stroke, shear_range=(-0.13, -0.10))
+        stroke = random_horizontal_shear(stroke, shear_range=(-0.25, -0.20))
         stroke[:, 0:1] *= np.random.uniform(0.9, 1.1)
         stroke[:, 1:2] *= np.random.uniform(0.9, 1.1)
         stroke = random_rotate(stroke, angle_range=(-.08, .08))
