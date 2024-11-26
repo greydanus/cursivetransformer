@@ -468,3 +468,7 @@ Retrained without a randomized italicization; this led to faster training and a 
 ### Progress November 25
 
 Over the past few days we added 1000 (!) new samples, thereby increasing the dataset size by 50%. Early stages of training show significantly less overfitting and better sample quality.
+
+
+![training_3k](static/training_3k.png)
+
