@@ -140,7 +140,7 @@ def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=Fals
         return word_list[:n_words]
       elif n < n_words:
         if verbose: print(f"Expected {n_words+1} words, got {n}; padding with 'hello'")
-        return word_list + ['hello']*(n_words-n)
+        return word_list + ['TOLAPYPI', 'Hkggcvr!', '9074', '0.', 'efhgb.'][:n_words-n]
       return word_list
 
     word_list = trunc_or_pad_words(word_list)
