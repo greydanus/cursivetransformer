@@ -97,7 +97,7 @@ def get_checkpoint(args, sample_only):
                 step = checkpoint['step']
                 best_loss = checkpoint['best_loss']
         elif args.load_from_run_id:
-            artifact = get_checkpoint_artifact(args, mode=args.mode)
+            artifact = get_checkpoint_artifact(args, mode=args.model_to_load)
             artifact_dir = artifact.download()
             checkpoint = torch.load(os.path.join(artifact_dir, "best_checkpoint.pt"), weights_only=True)
             model.load_state_dict(checkpoint['model_state_dict'])
