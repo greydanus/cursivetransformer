@@ -464,3 +464,7 @@ Interesting note - the bug fix I used to get this improvement actually involved 
 Retrained without a randomized italicization; this led to faster training and a more coherent style during generation (though there is of course less diversity in style now). There are still a lot of mis-spellings: the path to fixing these is probably a combination of further tuning the augmentations and adding more data.
 
 ![sample_v64](static/sample_v64.png)
+
+### Progress November 25
+
+Over the past few days we added 1000 (!) new samples, thereby increasing the dataset size by 50%. Early stages of training show significantly less overfitting and better sample quality.
