@@ -135,7 +135,7 @@ def get_checkpoint_artifact(args, mode="best", verbose=True):
             if mode == "latest" and get_version(artifact) > get_version(selected_artifact):
                 selected_artifact = artifact
             if mode == "best":
-                val_loss = artifact.metadata.get('best_loss', float('inf'))
+                val_loss = artifact.metadata.get('test_loss', float('inf'))
                 if val_loss <= best_val_loss:
                     best_val_loss = val_loss
                     selected_artifact = artifact
