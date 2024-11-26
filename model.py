@@ -47,6 +47,7 @@ def get_all_args(use_argparse=True):
         'wandb_api_key': (None, str, 'Weights & Biases API Key'),
         'load_from_run_id': (None, str, 'Load from a specific W&B run ID'),
         'local_checkpoint_path': ('best_checkpoint.pt', str, 'Path to local model file'),
+        'model_to_load': ('best', str, 'Which model to load: ["best", "latest"]'),
     }
 
     if use_argparse:
@@ -96,7 +97,7 @@ def get_checkpoint(args, sample_only):
                 step = checkpoint['step']
                 best_loss = checkpoint['best_loss']
         elif args.load_from_run_id:
-            artifact = get_latest_checkpoint_artifact(args)
+            artifact = get_checkpoint_artifact(args, mode=args.mode)
             artifact_dir = artifact.download()
             checkpoint = torch.load(os.path.join(artifact_dir, "best_checkpoint.pt"), weights_only=True)
             model.load_state_dict(checkpoint['model_state_dict'])
@@ -116,21 +117,35 @@ def get_checkpoint(args, sample_only):
 
 
 
-def get_latest_checkpoint_artifact(args, verbose=True):
+def get_checkpoint_artifact(args, mode="best", verbose=True):
+    if mode not in ["latest", "best"]:
+        raise ValueError("Mode must be either 'latest' or 'best'")
     run = wandb.Api().run(f"{args.wandb_entity}/{args.wandb_project}/{args.load_from_run_id}")
 
     if verbose:
-        print(f"Finding latest checkpoint for W&B run id {args.load_from_run_id}")
-    latest_artifact = None
-    get_version = lambda artifact: -1 if artifact is None else int(artifact.name.split(':v')[-1])
+        print(f"Finding {mode} checkpoint for W&B run id {args.load_from_run_id}")
+    selected_artifact = None
+    best_val_loss = float('inf')
+    get_version = lambda a: -1 if a is None else int(a.name.split(':v')[-1])
+
     for artifact in run.logged_artifacts():
         if verbose:
             print(f"  {artifact.type}:{artifact.name}")
-        if artifact.type == 'model' and (get_version(artifact) > get_version(latest_artifact)):
-            latest_artifact = artifact
+        if artifact.type == 'model':
+            if mode == "latest" and get_version(artifact) > get_version(selected_artifact):
+                selected_artifact = artifact
+            elif mode == "best":
+                val_loss = artifact.metadata.get('validation_loss', float('inf'))
+                if val_loss < best_val_loss:
+                    best_val_loss = val_loss
+                    selected_artifact = artifact
+
+    if selected_artifact is None:
+        raise ValueError(f"No model artifacts found in run {args.load_from_run_id}")
     if verbose:
-        print(f"Selected:  {latest_artifact.type}:{latest_artifact.name}")
-    return latest_artifact
+        extra_info = f" (validation loss: {best_val_loss})" if mode == "best" else ""
+        print(f"Selected: {selected_artifact.type}:{selected_artifact.name}{extra_info}")
+    return selected_artifact
 
 
 def save_checkpoint(model, path, optimizer=None, scheduler=None, step=None, best_loss=None):
