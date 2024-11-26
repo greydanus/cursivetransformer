@@ -1,6 +1,6 @@
 # Cursive Transformer
 
-![sample_v63](static/sample_v64.png)
+![sample_v65](static/sample_v65.png)
 
 ## Quickstart
 
@@ -472,3 +472,6 @@ Over the past few days we added 1000 (!) new samples, thereby increasing the dat
 
 ![training_3k](static/training_3k.png)
 
+Slightly better spelling:
+
+![sample_v65](static/sample_v65.png)
