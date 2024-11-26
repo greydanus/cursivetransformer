@@ -168,7 +168,7 @@ def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=Fals
 
 
 def generate_paragraph(model, dataset, text, n_at_a_time=3, **kwargs):
-    word_list = text.split(' ')
+    word_list = text.strip(' ').split(' ')
     word_list_offsets = []
     print('Generating...')
     for i in range(0, len(word_list), n_at_a_time):
@@ -198,7 +198,7 @@ def word_offsets_to_points(word_offsets, word_list=None, space_width=0.14, line_
         if word[0] in starts_at_bottom:
           points[:,1] -= points[0,1]  # # print('Was at the bottom')
         elif word[0] in starts_at_top:
-          pass # points[:,1] -= points[0,1] + 0.265
+          points[:,1] -= points[0,1] + 0.18 #pass # 
 
       if current_x > line_width:
         current_x = 0
