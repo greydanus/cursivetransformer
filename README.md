@@ -1,6 +1,6 @@
 # Cursive Transformer
 
-![sample_v65](static/sample_v65.png)
+![sample_v66](static/sample_v66.png)
 
 ## Quickstart
 
@@ -475,3 +475,10 @@ Over the past few days we added 1000 (!) new samples, thereby increasing the dat
 Slightly better spelling:
 
 ![sample_v65](static/sample_v65.png)
+
+### Progress November 26
+
+Retrained with an additional layer and some other new parameters. Less overfitting. Slightly better spelling:
+
+![sample_v66](static/sample_v66.png)
+
