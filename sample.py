@@ -154,13 +154,12 @@ def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=Fals
         return word_list[:n_words-1]
       elif n < n_words:
         if verbose: print(f"Expected {n_words} words, got {n}; padding with other words")
-        return word_list + ['9074', 'efhgb.', 'TOLAPYPI', 'Hkggcvr!', '0.'][:max(0, n_words-n-1)]
+        return word_list + ['TOLAPYPI', 'Hkggcvr!', '0.', 'efhgb.', '9074'][:max(0, n_words-n-1)]
       return word_list
 
     word_list = trunc_or_pad_words(word_list)
     text = ' '.join(word_list)
     ascii_context = f'{SEED_CHARS} {text}'
-    print(ascii_context)
 
     context = dataset.encode_text(ascii_context).unsqueeze(0)
     context = context.to(model_device)
