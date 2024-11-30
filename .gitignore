@@ -21,6 +21,7 @@ __pycache__
 !data/easybank.json.zip
 !data/bigbank.json.zip
 !data/bigeasybank.json.zip
+!data/biglittlebank.json.zip
 paperspace.sh
 
 /examples*
