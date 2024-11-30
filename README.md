@@ -1,6 +1,6 @@
 # Cursive Transformer
 
-![sample_v66](static/sample_v66.png)
+![sample_v67](static/sample_v67.png)
 
 ## Quickstart
 
@@ -481,4 +481,10 @@ Slightly better spelling:
 Retrained with an additional layer and some other new parameters. Less overfitting. Slightly better spelling:
 
 ![sample_v66](static/sample_v66.png)
+
+### Progress November 30
+
+We added 100 two-letter words to a mini dataset called "littebank.json" - the goal being to add coverage for lowercase two-letter words, which currently don't have much representation in our main dataset. With a few modifications to hyperparameters, we retrained, and the resulting model actually had a significantly better test loss - more than would be expected. The Iliad sample (below) is now near-perfect.
+
+![sample_v67](static/sample_v67.png)
 
