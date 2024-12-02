@@ -40,7 +40,7 @@ def get_all_args(use_argparse=True):
         'add_digits': (True, 'store_true', 'Add digit words to the word bank'),
         'alphabet': (" enaitoshrdx.vpukbgfcymzw1lqj804I92637OTAS5N)EHR\"\'(BCQLMWYU,ZF!DXV?KPGJ", str, 
                         'All the characters that this model will be able to draw'),
-        'dataset_name': ('bigbank', str, 'Set this to your wandb username or team name'),
+        'dataset_name': ('bigeasybank', str, 'The name of the .zip file containing your dataset'),
         'wandb_project': ('bigbank_experiments', str, 'W&B project name'),
         'wandb_entity': ('sam-greydanus', str, 'Set this to your wandb username or team name'),
         'wandb_run_name': ('unnamed_run', str, 'W&B run name'),

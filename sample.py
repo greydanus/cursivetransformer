@@ -2,7 +2,7 @@
 
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
-import os, sys, time, getpass, textwrap
+import os, sys, time, getpass, textwrap, copy
 import numpy as np
 import matplotlib.pyplot as plt
 from dataclasses import dataclass
@@ -16,7 +16,7 @@ from torch.utils.data.dataloader import DataLoader
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from model import Transformer, get_checkpoint, get_all_args
-from data import create_datasets, offsets_to_strokes, word_offsets_to_points
+from data import create_datasets, offsets_to_strokes
 
 
 def plot_strokes(stroke, title, fig=None, ax=None, figsize=(12, 2), dpi=150):
@@ -80,7 +80,7 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
     return idx
 
 
-def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do_sample=False, log_wandb=True):
+def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_sample=False, log_wandb=True):
     """ samples from the model and plots the decoded strokes """
     model_device = next(model.parameters()).device
 
@@ -115,32 +115,50 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=100, do
     print('-'*80)
 
 
-def generate_helper_fn(model, dataset, text, num_steps=1250, do_sample=False,
+def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=False,
                          top_k=None, temperature=1.0, n_words=4, seed_ix=0, verbose=False):
     '''Assumes we're using tokenization of git commit afc2425f5bf92c14a9db62da44e8cf2995e7bf8d'''
+    seed_ix = 0
     SEED_TOKENS = [torch.tensor(
-        [341,   0, 232,  13, 445,  13, 232,  13, 432,  12, 390,  13, 391,
-        13, 350,   9, 335,  13, 347,  13, 372,  13, 396,  13, 424,  12,
-       439,  13, 232,  16, 341, 116, 454, 454], dtype=torch.int64),
-        torch.tensor(
-        [341,   0, 232,  11, 444,  12, 232,  11, 417,  14, 397,  13, 392,
-        13, 331,  16, 341,  11, 368,  13, 393,  18, 421,  12, 438,  12,
-       232,  15, 341, 116, 454, 454], dtype=torch.int64)][seed_ix]
-    SEED_CHARS = '5'
+        [411,   0, 398,  12, 386,  21, 389,  19, 383,  19, 375,  16, 509,
+        15, 489,  18, 482,  10, 461,  14, 416,  15, 400,  14, 386,  17,
+       383,  19, 388,  15, 416,  15, 323,   8, 509,  14, 489,  18, 480,
+        15, 445,  14, 422,  15, 397,  18, 389,  12, 380,  18, 375,  16,
+       474,   5, 474,  14, 474,  14, 430,  13, 411,  15, 411, 151, 353,
+        70, 520,   3, 390,   4, 411,   8, 515,  14, 397,  12, 484,   8,
+       331,   9, 435,  11, 520,   3, 411, 151, 465,  69, 404,  11, 385,
+        17, 373,  32, 474,  14, 474,  14, 474,  14, 474,  14, 474,  28,
+       474,  10, 474,  14, 501,  18, 327,  14, 364,  14, 364,  14, 385,
+        37, 392,  18, 392,  18, 411, 151, 355,  66, 380,   6, 474,   7,
+       351,   7, 480,  13, 380,  12, 494,  14, 389,  12, 513,  11, 434,
+        11, 356,  12, 489,  12, 389,  12, 520,  11, 411, 151, 461,  68,
+       372,  10, 386,  21, 380,  18, 375,  16, 474,  10, 467,  14, 468,
+        14, 474,  14, 507,  12, 520,  11, 346,   5, 422,  15, 411,  15,
+       389,  19, 385,  14, 383,  19, 385,  17, 430,  13, 325,  11, 507,
+        18, 485,  16, 468,  14, 430,  13, 419,  10, 401,  17, 384,  35,
+       383,  19, 422,   8, 474,  14, 474,  14, 479,  15, 480,  15, 482,
+        10, 479,  15, 480,  15, 479,  15, 375,   8, 372,  13, 370,  15,
+       364,  14, 370,  15, 364,  14, 373,  11, 375,  16, 386,  17, 406,
+        16, 447,  11, 465,   9, 493,  29, 520,  15, 520,   5, 411,  11,
+       416,  15, 411,  15, 406,  16, 383,  19, 411, 151, 524],
+        dtype=torch.int64)][seed_ix]
+    SEED_CHARS = ['ecijscp'][seed_ix]
 
     model_device = next(model.parameters()).device
     warmup_steps = len(SEED_TOKENS)
 
-    def trunc_or_pad_words(text):
-      n = len(text.split(' '))
+    def trunc_or_pad_words(word_list):
+      n = len(word_list)
       if n > n_words:
-        if verbose: print(f"Expected {n_words+1} words, got {n}; truncating")
-        return ' '.join(text.split(' ')[:n_words])
+        if verbose: print(f"Expected {n_words} words, got {n}; truncating")
+        return word_list[:n_words-1]
       elif n < n_words:
-        if verbose: print(f"Expected {n_words+1} words, got {n}; padding with 'hello'")
-        return text + ' hello'*(n_words-n)
-      return text
-    text = trunc_or_pad_words(text)
+        if verbose: print(f"Expected {n_words} words, got {n}; padding with other words")
+        return word_list + ['TOLAPYPI', 'Hkggcvr!', '0.', 'efhgb.', '9074'][:max(0, n_words-n-1)]
+      return word_list
+
+    word_list = trunc_or_pad_words(word_list)
+    text = ' '.join(word_list)
     ascii_context = f'{SEED_CHARS} {text}'
 
     context = dataset.encode_text(ascii_context).unsqueeze(0)
@@ -153,49 +171,54 @@ def generate_helper_fn(model, dataset, text, num_steps=1250, do_sample=False,
 
     stroke_seq = X_samp[0].detach().cpu().numpy()[len(SEED_TOKENS):]
     offset_samp = dataset.decode_stroke(stroke_seq)
-    point_samp = word_offsets_to_points(offset_samp)
 
-    return offset_samp, point_samp
+    return offset_samp
 
 
 def generate_paragraph(model, dataset, text, n_at_a_time=3, **kwargs):
-    word_list = text.split(' ')
+    word_list = text.strip(' ').split(' ')
     word_list_offsets = []
     print('Generating...')
     for i in range(0, len(word_list), n_at_a_time):
-        words_to_generate = word_list[i:i+n_at_a_time]
-        text_chunk = ' '.join(words_to_generate)
-        offset_samp, _ = generate_helper_fn(model, dataset, text=text_chunk, **kwargs)
-        word_list_offsets += offset_samp[:len(words_to_generate)]
-        print('   ', text_chunk)
+        word_list_subset = word_list[i:i+n_at_a_time]
+        offset_sample = generate_helper_fn(model, dataset, word_list_subset, **kwargs)
+        word_list_offsets += offset_sample[:len(word_list_subset)]
+        print('   ', ' '.join(word_list_subset))
     return word_list_offsets
 
 
-def word_offsets_to_points(word_offsets, space_width=0.17, line_width=12.0, line_height=0.75, 
-                          min_x=0, max_y=5.0):  # Add bounds parameters
+def word_offsets_to_points(word_offsets, word_list=None, space_width=0.14, line_width=10.0, line_height=0.40,
+                           letter_height=0.35):  # Add bounds parameters
     word_points = []
     last_point = None
     current_x = current_y = 0
+
+    starts_at_bottom = "enaitoshrdx.vpukbgfcymzwlqjS,GJ"
+    starts_at_top = "8049637OTA5N)EHR\"\'(BCQLMWYUF!DXVKP"  # starts_elsewhere = "1I2Z?"
     
-    for offsets in word_offsets:
-        points = offsets_to_strokes(offsets)
-        if last_point is not None:
-            points = points + last_point[np.newaxis, :]
-            # Check if word exceeds line width and wrap if needed
-            if len(points) > 0 and current_x + (points[-1][0] - points[0][0]) > line_width:
-                current_x = min_x  # Reset to minimum x bound
-                current_y = min(current_y + line_height, max_y)  # Bound maximum y
-                points = points + np.array([current_x - points[0][0], current_y - points[0][1], 0])
-        
-        if len(points) > 0:
-            # Update last point and add space for next word
-            last_point = points[-1].copy()
-            last_point[0] = (current_x := max(min_x, min(last_point[0] + space_width, line_width)))
-            last_point[1] = min(current_y, max_y)
-            
-        word_points.append(points)
+    sentence_points = []
+    for i, offsets in enumerate(word_offsets):
+
+      points = offsets_to_strokes(copy.deepcopy(offsets))
+
+      if word_list:
+        word = word_list[i]
+        if word[0] in starts_at_bottom:
+          points[:,1] -= points[0,1]  # # print('Was at the bottom')
+        elif word[0] in starts_at_top:
+          points[:,1] -= points[0,1] + 0.18 #pass # 
+
+      if current_x > line_width:
+        current_x = 0
+        current_y += line_height
+
+      if points is not None and points.shape[0] > 0:
+        points[:,0] = points[:,0] + current_x
+        points[:,1] = np.clip(points[:,1], -letter_height, letter_height) + current_y
+        current_x = points[-1, 0] + space_width
+        sentence_points.append(points)
     
-    return np.vstack(word_points)
+    return np.vstack(sentence_points)
 
 
 def plot_paragraph(word_list_offsets, text, figsize=(12, 4*2), dpi=200, **kwargs):

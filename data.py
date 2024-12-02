@@ -2,7 +2,7 @@
 
 ########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
 
-import os, sys, json, pickle, zipfile, functools, copy
+import os, sys, json, pickle, zipfile, functools, copy, random
 import numpy as np
 from math import comb
 
@@ -57,24 +57,6 @@ def generate_word_combos(raw_json, desired_num_combos=10000, num_words=3):
         combo_json.append(combine_handwriting_examples(examples_to_merge))
     return combo_json
 
-def word_offsets_to_points(word_offsets, space_width=0.17):
-    word_points = []
-    last_point = None
-    
-    for i, offsets in enumerate(word_offsets):
-        points = offsets_to_strokes(offsets)
-        if last_point is not None:
-            lp = last_point[np.newaxis, :]
-            points = points + lp
-
-        if len(points) > 0:
-          last_point = points[-1]
-          last_point[0] = last_point[0] + space_width
-          last_point[-1] = 0
-        word_points.append(points)
-    
-    return np.vstack(word_points)
-
 
 ########## TOKENIZATION, AUGMENTATION, AND DATA IO ##########
 
@@ -126,9 +108,29 @@ def random_rotate(stroke, angle_range=(-.08, .08)):
     stroke[:, :2] = np.dot(stroke[:, :2], rotation_matrix.T)
     return stroke
 
-def downsample(arr, fraction):
-    if not 0 <= fraction <= 1: raise ValueError("Fraction must be between 0 and 1")
-    if fraction == 1: return arr
+# def downsample(arr, fraction):
+#     if not 0 <= fraction <= 1: raise ValueError("Fraction must be between 0 and 1")
+#     if fraction == 1: return arr
+#     result, stroke = [], []
+#     for point in arr:
+#         if point[2] == 1:
+#             stroke.append(point)
+#         else:
+#             if stroke:
+#                 new_len = max(2, int(len(stroke) * (1 - fraction)))
+#                 indices = np.linspace(0, len(stroke) - 1, new_len, dtype=int)
+#                 result.extend(np.array(stroke)[indices])
+#             result.append(point)
+#             stroke = []
+#     if stroke:
+#         new_len = max(2, int(len(stroke) * (1 - fraction)))
+#         indices = np.linspace(0, len(stroke) - 1, new_len, dtype=int)
+#         result.extend(np.array(stroke)[indices])
+#     return np.array(result)
+
+def downsample(arr, fraction, drop_prob=0.05):
+    if fraction == 1:
+        return arr
     result, stroke = [], []
     for point in arr:
         if point[2] == 1:
@@ -137,13 +139,19 @@ def downsample(arr, fraction):
             if stroke:
                 new_len = max(2, int(len(stroke) * (1 - fraction)))
                 indices = np.linspace(0, len(stroke) - 1, new_len, dtype=int)
-                result.extend(np.array(stroke)[indices])
+                reduced_stroke = np.array(stroke)[indices]
+                if drop_prob > 0:
+                    reduced_stroke = [p for i, p in enumerate(reduced_stroke) if i == 0 or i == len(reduced_stroke) - 1 or random.random() > drop_prob]
+                result.extend(reduced_stroke)
             result.append(point)
             stroke = []
     if stroke:
         new_len = max(2, int(len(stroke) * (1 - fraction)))
         indices = np.linspace(0, len(stroke) - 1, new_len, dtype=int)
-        result.extend(np.array(stroke)[indices])
+        reduced_stroke = np.array(stroke)[indices]
+        if drop_prob > 0:
+            reduced_stroke = [p for i, p in enumerate(reduced_stroke) if i == 0 or i == len(reduced_stroke) - 1 or random.random() > drop_prob]
+        result.extend(reduced_stroke)
     return np.array(result)
 
 
@@ -163,8 +171,8 @@ class StrokeDataset(Dataset):
 
         r_bins_pen_down = np.concatenate([
                             np.asarray([0]),
-                            np.linspace(0.0001, 0.060, 25),
-                            np.geomspace(0.06001, 0.75, 90) ]) # 100 discrete radii
+                            np.linspace(0.0001, 0.060, 30),
+                            np.geomspace(0.06001, 0.90, 120) ]) # 100 discrete radii
         r_bins_pen_up = r_bins_pen_down + max(r_bins_pen_down) + 1  # Offset for pen-up states
         self.r_bins = np.concatenate([r_bins_pen_down, r_bins_pen_up])  # 200 bins for: {radii x pen up/down}
 
@@ -196,7 +204,8 @@ class StrokeDataset(Dataset):
                              for i, tokens in enumerate(token_lists)])
 
     def augment_stroke(self, stroke):
-        stroke = random_horizontal_shear(stroke, shear_range=(-0.30, 0.15)) # Horizontal shear
+        # stroke = random_horizontal_shear(stroke, shear_range=(-0.30, 0.15)) # Horizontal shear
+        stroke = random_horizontal_shear(stroke, shear_range=(-0.37, -0.33))
         stroke[:, 0:1] *= np.random.uniform(0.9, 1.1)
         stroke[:, 1:2] *= np.random.uniform(0.9, 1.1)
         stroke = random_rotate(stroke, angle_range=(-.08, .08))
