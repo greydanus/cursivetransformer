@@ -116,15 +116,37 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_
 
 
 def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=False,
-                      top_k=None, temperature=1.0, n_words=4, seed_ix=0, verbose=False):
-    '''Helper function for generating handwriting samples'''
+                         top_k=None, temperature=1.0, n_words=4, seed_ix=0, verbose=False):
+    '''Assumes we're using tokenization of git commit afc2425f5bf92c14a9db62da44e8cf2995e7bf8d'''
+    seed_ix = 0
+    SEED_TOKENS = [torch.tensor(
+        [411,   0, 398,  12, 386,  21, 389,  19, 383,  19, 375,  16, 509,
+        15, 489,  18, 482,  10, 461,  14, 416,  15, 400,  14, 386,  17,
+       383,  19, 388,  15, 416,  15, 323,   8, 509,  14, 489,  18, 480,
+        15, 445,  14, 422,  15, 397,  18, 389,  12, 380,  18, 375,  16,
+       474,   5, 474,  14, 474,  14, 430,  13, 411,  15, 411, 151, 353,
+        70, 520,   3, 390,   4, 411,   8, 515,  14, 397,  12, 484,   8,
+       331,   9, 435,  11, 520,   3, 411, 151, 465,  69, 404,  11, 385,
+        17, 373,  32, 474,  14, 474,  14, 474,  14, 474,  14, 474,  28,
+       474,  10, 474,  14, 501,  18, 327,  14, 364,  14, 364,  14, 385,
+        37, 392,  18, 392,  18, 411, 151, 355,  66, 380,   6, 474,   7,
+       351,   7, 480,  13, 380,  12, 494,  14, 389,  12, 513,  11, 434,
+        11, 356,  12, 489,  12, 389,  12, 520,  11, 411, 151, 461,  68,
+       372,  10, 386,  21, 380,  18, 375,  16, 474,  10, 467,  14, 468,
+        14, 474,  14, 507,  12, 520,  11, 346,   5, 422,  15, 411,  15,
+       389,  19, 385,  14, 383,  19, 385,  17, 430,  13, 325,  11, 507,
+        18, 485,  16, 468,  14, 430,  13, 419,  10, 401,  17, 384,  35,
+       383,  19, 422,   8, 474,  14, 474,  14, 479,  15, 480,  15, 482,
+        10, 479,  15, 480,  15, 479,  15, 375,   8, 372,  13, 370,  15,
+       364,  14, 370,  15, 364,  14, 373,  11, 375,  16, 386,  17, 406,
+        16, 447,  11, 465,   9, 493,  29, 520,  15, 520,   5, 411,  11,
+       416,  15, 411,  15, 406,  16, 383,  19, 411, 151, 524],
+        dtype=torch.int64)][seed_ix]
+    SEED_CHARS = ['ecijscp'][seed_ix]
+
     model_device = next(model.parameters()).device
-    
-    # Get a valid seed sequence from the dataset
-    x, _, _ = dataset[0]  # Get first example from dataset
-    warmup_steps = 100  # Increased from 50 to 100 for better style consistency
-    X_init = x[:warmup_steps].unsqueeze(0).to(model_device)
-    
+    warmup_steps = len(SEED_TOKENS)
+
     def trunc_or_pad_words(word_list):
       n = len(word_list)
       if n > n_words:
@@ -137,19 +159,20 @@ def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=Fals
 
     word_list = trunc_or_pad_words(word_list)
     text = ' '.join(word_list)
-    context = dataset.encode_text(text).unsqueeze(0).to(model_device)
-    
-    steps = num_steps - warmup_steps
+    ascii_context = f'{SEED_CHARS} {text}'
+
+    context = dataset.encode_text(ascii_context).unsqueeze(0)
+    context = context.to(model_device)
+    X_init = SEED_TOKENS.unsqueeze(0).to(model_device)
+
+    steps = num_steps - X_init.size(1)
     X_samp = generate(model, X_init, context, steps, temperature=temperature,
-                     top_k=top_k, do_sample=do_sample).to('cpu')
-    
-    stroke_seq = X_samp[0].detach().cpu().numpy()[warmup_steps:]
+                      top_k=top_k, do_sample=do_sample).to('cpu')
+
+    stroke_seq = X_samp[0].detach().cpu().numpy()[len(SEED_TOKENS):]
     offset_samp = dataset.decode_stroke(stroke_seq)
-    
-    # Convert to points with word_list for proper vertical positioning
-    point_samp = word_offsets_to_points([offset_samp], word_list=word_list)
-    
-    return point_samp
+
+    return offset_samp
 
 
 def generate_paragraph(model, dataset, text, n_at_a_time=3, **kwargs):
