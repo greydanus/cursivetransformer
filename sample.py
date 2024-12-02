@@ -122,7 +122,7 @@ def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=Fals
     
     # Get a valid seed sequence from the dataset
     x, _, _ = dataset[0]  # Get first example from dataset
-    warmup_steps = 50  # Use first 50 tokens as seed
+    warmup_steps = 100  # Increased from 50 to 100 for better style consistency
     X_init = x[:warmup_steps].unsqueeze(0).to(model_device)
     
     def trunc_or_pad_words(word_list):
@@ -145,6 +145,9 @@ def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=Fals
     
     stroke_seq = X_samp[0].detach().cpu().numpy()[warmup_steps:]
     offset_samp = dataset.decode_stroke(stroke_seq)
+    
+    # Convert to points with word_list for proper vertical positioning
+    point_samp = word_offsets_to_points([offset_samp], word_list=word_list)
     
     return offset_samp
 
