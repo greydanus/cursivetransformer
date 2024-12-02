@@ -149,7 +149,7 @@ def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=Fals
     # Convert to points with word_list for proper vertical positioning
     point_samp = word_offsets_to_points([offset_samp], word_list=word_list)
     
-    return offset_samp
+    return point_samp
 
 
 def generate_paragraph(model, dataset, text, n_at_a_time=3, **kwargs):
