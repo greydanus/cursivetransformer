@@ -120,29 +120,25 @@ def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=Fals
     '''Assumes we're using tokenization of git commit afc2425f5bf92c14a9db62da44e8cf2995e7bf8d'''
     seed_ix = 0
     SEED_TOKENS = [torch.tensor(
-        [411,   0, 398,  12, 386,  21, 389,  19, 383,  19, 375,  16, 509,
-        15, 489,  18, 482,  10, 461,  14, 416,  15, 400,  14, 386,  17,
-       383,  19, 388,  15, 416,  15, 323,   8, 509,  14, 489,  18, 480,
-        15, 445,  14, 422,  15, 397,  18, 389,  12, 380,  18, 375,  16,
-       474,   5, 474,  14, 474,  14, 430,  13, 411,  15, 411, 151, 353,
-        70, 520,   3, 390,   4, 411,   8, 515,  14, 397,  12, 484,   8,
-       331,   9, 435,  11, 520,   3, 411, 151, 465,  69, 404,  11, 385,
-        17, 373,  32, 474,  14, 474,  14, 474,  14, 474,  14, 474,  28,
-       474,  10, 474,  14, 501,  18, 327,  14, 364,  14, 364,  14, 385,
-        37, 392,  18, 392,  18, 411, 151, 355,  66, 380,   6, 474,   7,
-       351,   7, 480,  13, 380,  12, 494,  14, 389,  12, 513,  11, 434,
-        11, 356,  12, 489,  12, 389,  12, 520,  11, 411, 151, 461,  68,
-       372,  10, 386,  21, 380,  18, 375,  16, 474,  10, 467,  14, 468,
-        14, 474,  14, 507,  12, 520,  11, 346,   5, 422,  15, 411,  15,
-       389,  19, 385,  14, 383,  19, 385,  17, 430,  13, 325,  11, 507,
-        18, 485,  16, 468,  14, 430,  13, 419,  10, 401,  17, 384,  35,
-       383,  19, 422,   8, 474,  14, 474,  14, 479,  15, 480,  15, 482,
-        10, 479,  15, 480,  15, 479,  15, 375,   8, 372,  13, 370,  15,
-       364,  14, 370,  15, 364,  14, 373,  11, 375,  16, 386,  17, 406,
-        16, 447,  11, 465,   9, 493,  29, 520,  15, 520,   5, 411,  11,
-       416,  15, 411,  15, 406,  16, 383,  19, 411, 151, 524],
+        [411,   0, 396,  12, 393,  20, 384,  42, 384,  14, 378,  21, 376,
+        17, 376,  18, 367,  11, 354,  12, 494,  14, 481,  16, 483,  11,
+       486,  18, 486,  18, 481,  16, 477,  11, 477,  16, 458,  13, 417,
+        13, 396,  12, 385,  18, 372,  16, 367,   5, 411,   9, 396,  18,
+       421,   9, 477,  16, 484,  12, 471,  15, 400,  16, 383,  20, 388,
+        12, 379,   7, 477,  16, 471,  15, 421,   9, 396,  18, 380,  19,
+       372,  16, 403,  11, 411,  14, 453,  11, 482,  16, 477,  11, 411,
+        14, 391,  18, 380,  19, 374,  11, 481,  16, 477,  16, 441,  13,
+       411,   9, 391,  18, 380,  19, 381,  23, 378,  15, 376,  17, 376,
+        18, 372,  16, 367,  11, 333,  16, 481,  16, 477,  11, 477,  16,
+       477,  21, 477,  18, 482,  31, 481,  16, 383,  10, 374,  11, 383,
+        20, 391,  18, 419,  11, 469,  10, 477,  16, 461,  20, 388,  20,
+       411, 151, 524], dtype=torch.int64),
+        torch.tensor(
+        [411,   0, 499,  12, 494,  39, 485,  11, 490,  21, 478,  15, 478,
+        10, 473,  14, 449,  13, 423,  14, 404,  11, 385,  20, 374,  16,
+       350,   9, 313,  14, 515,  16, 499,  16, 411, 151, 524],
         dtype=torch.int64)][seed_ix]
-    SEED_CHARS = ['ecijscp'][seed_ix]
+    SEED_CHARS = ["bwuh", "6"][seed_ix]
 
     model_device = next(model.parameters()).device
     warmup_steps = len(SEED_TOKENS)
@@ -153,13 +149,13 @@ def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=Fals
         if verbose: print(f"Expected {n_words} words, got {n}; truncating")
         return word_list[:n_words-1]
       elif n < n_words:
-        if verbose: print(f"Expected {n_words} words, got {n}; padding with other words")
-        return word_list + ['TOLAPYPI', 'Hkggcvr!', '0.', 'efhgb.', '9074'][:max(0, n_words-n-1)]
+        if verbose: print(f"Expected {n_words} words, got {n}; padding with 'hello'")
+        return word_list + ['Hkggcvr!', 'TOLAPYPI', '9074', '0.', 'efhgb.'][:max(0, n_words-n-1)]
       return word_list
 
     word_list = trunc_or_pad_words(word_list)
     text = ' '.join(word_list)
-    ascii_context = f'{SEED_CHARS} {text}'
+    ascii_context = f'{SEED_CHARS} {text}' #print(ascii_context)
 
     context = dataset.encode_text(ascii_context).unsqueeze(0)
     context = context.to(model_device)
@@ -195,7 +191,7 @@ def word_offsets_to_points(word_offsets, word_list=None, space_width=0.14, line_
 
     starts_at_bottom = "enaitoshrdx.vpukbgfcymzwlqjS,GJ"
     starts_at_top = "8049637OTA5N)EHR\"\'(BCQLMWYUF!DXVKP"  # starts_elsewhere = "1I2Z?"
-    
+
     sentence_points = []
     for i, offsets in enumerate(word_offsets):
 
@@ -206,7 +202,7 @@ def word_offsets_to_points(word_offsets, word_list=None, space_width=0.14, line_
         if word[0] in starts_at_bottom:
           points[:,1] -= points[0,1]  # # print('Was at the bottom')
         elif word[0] in starts_at_top:
-          points[:,1] -= points[0,1] + 0.18 #pass # 
+          points[:,1] -= points[0,1] + 0.18 #pass #
 
       if current_x > line_width:
         current_x = 0
@@ -217,7 +213,7 @@ def word_offsets_to_points(word_offsets, word_list=None, space_width=0.14, line_
         points[:,1] = np.clip(points[:,1], -letter_height, letter_height) + current_y
         current_x = points[-1, 0] + space_width
         sentence_points.append(points)
-    
+
     return np.vstack(sentence_points)
 
 
