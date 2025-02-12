@@ -144,9 +144,14 @@ def plot_strokes(stroke, title='', figsize=(12, 2), dpi=150):
     ax.set_title(title)
     return fig, ax
 
-def plot_paragraph(word_list_offsets: List[np.ndarray], text: str, params: GenerationParams):
+def generate_paragraph(model, dataset, text: str, params: GenerationParams, seed_ix: Optional[int] = None):
+    """Generate handwriting for a full paragraph of text"""
+    word_offsets = generate_sequence(model, dataset, text, params, seed_ix)  # Generate the handwriting sequence
+    points = word_offsets_to_points(word_offsets, params)  # Convert to absolute coordinates
+    return points, word_offsets
+
+def plot_paragraph(points: np.ndarray, text: str, params: GenerationParams):
     """Plot a paragraph of text"""
-    points = word_offsets_to_points(word_list_offsets, params)
     fig, ax = plot_strokes(points, '')
     ax.set_title('\n'.join(textwrap.wrap(text, width=83)), loc='left', fontsize=13)
     return fig, ax
