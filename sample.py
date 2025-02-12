@@ -134,10 +134,11 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_
     print('-'*80)
 
 
-def generate_helper_fn(model, dataset, word_list, params, num_steps=1250, do_sample=False,
-                         top_k=None, temperature=1.0, n_words=4, verbose=False):
+def generate_helper_fn(model, dataset, word_list, params, do_sample=False,
+                         top_k=None, n_words=4, verbose=False):
     model_device = next(model.parameters()).device
     seed_ix = params.seed_ix if params.seed_ix else torch.randint(len(dataset), (1,)).item()
+    print('\t', seed_ix)
     
     seed_x, seed_c, _ = dataset[seed_ix]  # Get seed tokens and text from dataset
     
@@ -168,8 +169,8 @@ def generate_helper_fn(model, dataset, word_list, params, num_steps=1250, do_sam
     context = context.to(model_device)
     X_init = first_word_tokens.unsqueeze(0).to(model_device)
 
-    steps = num_steps - X_init.size(1)
-    X_samp = generate(model, X_init, context, steps, temperature=temperature,
+    steps = params.num_steps - X_init.size(1)
+    X_samp = generate(model, X_init, context, steps, temperature=params.temperature,
                       top_k=top_k, do_sample=do_sample).to('cpu')
 
     stroke_seq = X_samp[0].detach().cpu().numpy()[warmup_steps:]
