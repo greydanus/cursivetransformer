@@ -1,133 +1,28 @@
 # Sam Greydanus | 2024
 
+########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
+
 import os, sys, time, getpass, textwrap, copy
-from typing import List, Optional, Tuple, NamedTuple
-from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
+from dataclasses import dataclass
+
+import wandb
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+from torch.utils.data import Dataset
+from torch.utils.data.dataloader import DataLoader
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from model import Transformer, get_checkpoint, get_all_args
 from data import create_datasets, offsets_to_strokes
 
-@dataclass
-class GenerationParams:
-    temperature: float = 1.0
-    top_k: Optional[int] = None
-    do_sample: bool = False
-    max_tokens: int = 1250
-    words_per_batch: int = 3
-    space_width: float = 0.14
-    line_width: float = 10.0
-    line_height: float = 0.40
-    letter_height: float = 0.35
 
-@torch.no_grad()
-def generate_tokens(model, initial_tokens, context, max_new_tokens, params: GenerationParams) -> torch.Tensor:
-    """Core token generation logic"""
-    block_size = model.get_block_size()
-    steps = max(0, max_new_tokens - initial_tokens.size(1))
-    idx = initial_tokens
-    
-    for _ in range(steps):
-        # Crop sequence if too long
-        idx_cond = idx if idx.size(1) <= block_size else idx[:, -block_size:]
-        
-        # Get next token prediction
-        logits, _ = model(idx_cond, context)
-        logits = logits[:, -1, :] / params.temperature
-        
-        if params.top_k:
-            v, _ = torch.topk(logits, params.top_k)
-            logits[logits < v[:, [-1]]] = -float('Inf')
-        
-        probs = F.softmax(logits, dim=-1)
-        idx_next = torch.multinomial(probs, num_samples=1) if params.do_sample else \
-                  torch.topk(probs, k=1, dim=-1)[1]
-        
-        idx = torch.cat((idx, idx_next), dim=1)
-    
-    return idx
-
-def prepare_seed_tokens(dataset, seed_stroke_tokens):
-    """Get initial tokens for generation"""
-    word_tokens = dataset.split_by_word_tokens(seed_stroke_tokens)
-    first_word = torch.tensor(word_tokens[0])
-    return torch.cat([first_word, torch.tensor([dataset.WORD_TOKEN])])
-
-def prepare_context(dataset, words, seed_char_tokens):
-    """Prepare context for generation"""
-    first_word = dataset.decode_text(seed_char_tokens)
-    text = f"{first_word} {' '.join(words)}"
-    return dataset.encode_text(text).unsqueeze(0)
-
-
-def generate_sequence(model, dataset, text: str, params: GenerationParams, seed_ix: Optional[int] = None):
-    """Generate handwriting for a sequence of words"""
-    device = next(model.parameters()).device
-    words = text.strip().split()
-    word_offsets = []
-    
-    for i in range(0, len(words), params.words_per_batch):
-        batch_words = words[i:i + params.words_per_batch]
-        print('Generating ', ' '.join(batch_words))
-        
-        # Get seed tokens
-        if seed_ix is None:
-            seed_ix = torch.randint(len(dataset), (1,)).item()
-        seed_x, seed_c, _ = dataset[seed_ix]
-        first_word_tokens = prepare_seed_tokens(dataset, seed_x)
-        
-        # Prepare context
-        context = prepare_context(dataset, batch_words, seed_c)
-        
-        # Generate
-        generated = generate_tokens(
-            model,
-            initial_tokens=first_word_tokens.unsqueeze(0).to(device),
-            context=context.to(device),
-            max_new_tokens=params.max_tokens,
-            params=params
-        )
-        
-        # Decode and store results
-        # Find where the actual generated sequence starts (after the seed and WORD_TOKEN)
-        stroke_seq = generated[0].cpu().numpy()
-        word_tokens = dataset.split_by_word_tokens(stroke_seq)
-        if len(word_tokens) > 1:  # Skip the seed word and start from the actual generation
-            stroke_seq = np.concatenate(word_tokens[1:])
-            offset_sample = dataset.decode_stroke(stroke_seq)
-            word_offsets.extend(offset_sample[:len(batch_words)])
-        
-    return word_offsets
-
-
-def word_offsets_to_points(word_offsets: List[np.ndarray], params: GenerationParams) -> np.ndarray:
-    """Convert word offsets to absolute coordinates"""
-    sentence_points = []
-    current_x = current_y = 0
-
-    for offsets in word_offsets:
-        points = offsets_to_strokes(copy.deepcopy(offsets))
-        
-        if current_x > params.line_width:
-            current_x = 0
-            current_y += params.line_height
-
-        if points is not None and points.shape[0] > 0:
-            points[:,0] = points[:,0] + current_x
-            points[:,1] = np.clip(points[:,1], -params.letter_height, params.letter_height) + current_y
-            current_x = points[-1, 0] + params.space_width
-            sentence_points.append(points)
-
-    return np.vstack(sentence_points)
-
-def plot_strokes(stroke, title='', figsize=(12, 2), dpi=150):
-    """Plot a single stroke sequence"""
-    fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+def plot_strokes(stroke, title, fig=None, ax=None, figsize=(12, 2), dpi=150):
+    """Plot a single stroke"""
+    if fig is None or ax is None:
+        fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
 
     # Separate strokes based on pen lifts
     strokes = []
@@ -147,75 +42,196 @@ def plot_strokes(stroke, title='', figsize=(12, 2), dpi=150):
         x, y = zip(*[(p[0], 1 - p[1]) for p in stroke])  # Invert y-axis
         ax.plot(x, y, 'b-', linewidth=1.3)
 
-    ax.set_aspect('equal')
-    ax.set_title(title)
+    ax.set_aspect('equal') ; ax.set_title(title)
+    if fig is None: plt.show()
     return fig, ax
 
-def generate_paragraph(model, dataset, text: str, params: GenerationParams, seed_ix: Optional[int] = None):
-    """Generate handwriting for a full paragraph of text"""
-    word_offsets = generate_sequence(model, dataset, text, params, seed_ix)  # Generate the handwriting sequence
-    points = word_offsets_to_points(word_offsets, params)  # Convert to absolute coordinates
-    return points, word_offsets
 
-def plot_paragraph(points: np.ndarray, text: str, params: GenerationParams):
-    """Plot a paragraph of text"""
-    fig, ax = plot_strokes(points, '')
-    ax.set_title('\n'.join(textwrap.wrap(text, width=83)), loc='left', fontsize=13)
-    return fig, ax
+@torch.no_grad()
+def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=False, top_k=None):
+    """
+    Take a conditioning sequence of indices idx (LongTensor of shape (b,t)) and complete
+    the sequence max_new_tokens times, feeding the predictions back into the model each time.
+    Most likely you'll want to make sure to be in model.eval() mode of operation for this.
+    """
+    block_size = model.get_block_size()
+    steps = max(0, max_new_tokens-idx.size(1))
+    for i in range(steps):
+        # if the sequence context is growing too long we must crop it at block_size
+        idx_cond = idx if idx.size(1) <= block_size else idx[:, -block_size:]
+        # forward the model to get the logits for the index in the sequence
+        logits, _ = model(idx_cond, context)
+        # pluck the logits at the final step and scale by desired temperature
+        logits = logits[:, -1, :] / temperature
+        # optionally crop the logits to only the top k options
+        if top_k is not None:
+            v, _ = torch.topk(logits, top_k)
+            logits[logits < v[:, [-1]]] = -float('Inf')
+        # apply softmax to convert logits to (normalized) probabilities
+        probs = F.softmax(logits, dim=-1)
+        # either sample from the distribution or take the most likely element
+        if do_sample:
+            idx_next = torch.multinomial(probs, num_samples=1)
+        else:
+            _, idx_next = torch.topk(probs, k=1, dim=-1)
+        # append sampled index to the running sequence and continue
+        idx = torch.cat((idx, idx_next), dim=1)
 
-def save_samples(model, dataset, params: GenerationParams, num_samples: int = 2, 
-                warmup_steps: int = 50, log_wandb: bool = True):
-    """Generate and save samples"""
-    device = next(model.parameters()).device
+    return idx
+
+
+def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_sample=False, log_wandb=True):
+    """ samples from the model and plots the decoded strokes """
+    model_device = next(model.parameters()).device
+
     stroke_seq, context = [], []
-    
-    for i in range(num_samples):
-        x, c, _ = dataset[i]
-        stroke_seq.append(x)
-        context.append(c)
+    for i in range(num):
+      x, c, y = dataset[i]
+      stroke_seq.append(x) ; context.append(c)
 
-    X_init = torch.stack(stroke_seq).to(device)[:,:warmup_steps]
-    context = torch.stack(context).long().to(device)
-    steps = dataset.get_stroke_seq_length() - 1
+    X_init = torch.stack(stroke_seq).to(model_device)[:,:warmup_steps]
+    context = torch.stack(context).long().to(model_device)
+    top_k = None
+    steps = dataset.get_stroke_seq_length() - 1  # -1 because we already start with the first token
 
-    X_samp = generate_tokens(model, X_init, context, steps, params).to('cpu')
+    X_samp = generate(model, X_init, context, steps, top_k=top_k, do_sample=do_sample).to('cpu')
 
     for i in range(X_samp.size(0)):
+        # get the i'th row of sampled integers, as python list
         row = X_samp[i].detach().cpu().numpy()
         offset_samp = dataset.decode_stroke(row)
-        point_samp = word_offsets_to_points([offset_samp], params)
+        point_samp = word_offsets_to_points(offset_samp)
         decoded_ascii = dataset.decode_text(context[i])
 
-        fig, _ = plot_strokes(point_samp, f'Sample {i+1}: "{decoded_ascii}"')
-        tag = 'sample' if params.do_sample else 'topk'
-        filename = f"{dataset.name}_{tag}_{i+1}.png"
-        fig.savefig(filename)
-        
+        # Plot the stroke
+        fig, ax = plot_strokes(point_samp, f'Sample {i+1}: "{decoded_ascii}"') #plt.axis('off')
+        tag = 'sample' if do_sample else 'topk'
+        fig.savefig(f"{dataset.name}_{tag}_{i+1}.png")
         if log_wandb:
-            import wandb
-            wandb.log({f"{dataset.name}_{tag}_{i+1}": wandb.Image(filename)})
+            wandb.log({f"{dataset.name}_{tag}_{i+1}": wandb.Image(f"{dataset.name}_{tag}_{i+1}.png")})
         plt.close(fig)
+        print(f"Saved {dataset.name}_{tag}_{i+1}.png")
 
-def main():
+    print('-'*80)
+
+
+def def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=False,
+                         top_k=None, temperature=1.0, n_words=4, seed_ix=None, verbose=False):
+    model_device = next(model.parameters()).device
+
+    '''Uses the first word from a dataset example as the seed for generation'''
+    if seed_ix is None:
+        seed_ix = torch.randint(len(dataset), (1,)).item() 
+        print(seed_ix)
+    
+    seed_x, seed_c, _ = dataset[seed_ix]  # Get seed tokens and text from dataset
+    
+    word_tokens = dataset.split_by_word_tokens(seed_x)  # Get just first word tokens
+    first_word_tokens = torch.tensor(word_tokens[0])
+    first_word_tokens = torch.cat([first_word_tokens, torch.tensor([dataset.WORD_TOKEN])])  # Add word token
+    warmup_steps = len(first_word_tokens)
+    
+    # Get just the first word from the context
+    seed_text = dataset.decode_text(seed_c)
+    first_word = seed_text.split()[0]
+    
+    def trunc_or_pad_words(word_list):
+        n = len(word_list)
+        if n > n_words:
+            if verbose: print(f"Expected {n_words} words, got {n}; truncating")
+            return word_list[:n_words-1]
+        elif n < n_words:
+            if verbose: print(f"Expected {n_words} words, got {n}; padding with placeholder words")
+            return word_list + ['Hkggcvr!', 'TOLAPYPI', '9074', '0.', 'efhgb.'][:max(0, n_words-n-1)]
+        return word_list
+
+    word_list = trunc_or_pad_words(word_list)
+    text = ' '.join(word_list)
+    ascii_context = f'{first_word} {text}'
+
+    context = dataset.encode_text(ascii_context).unsqueeze(0)
+    context = context.to(model_device)
+    X_init = first_word_tokens.unsqueeze(0).to(model_device)
+
+    steps = num_steps - X_init.size(1)
+    X_samp = generate(model, X_init, context, steps, temperature=temperature,
+                      top_k=top_k, do_sample=do_sample).to('cpu')
+
+    stroke_seq = X_samp[0].detach().cpu().numpy()[warmup_steps:]
+    offset_samp = dataset.decode_stroke(stroke_seq)
+    return offset_samp
+
+
+def generate_paragraph(model, dataset, text, n_at_a_time=3, **kwargs):
+    word_list = text.strip(' ').split(' ')
+    word_list_offsets = []
+    print('Generating...')
+    for i in range(0, len(word_list), n_at_a_time):
+        word_list_subset = word_list[i:i+n_at_a_time]
+        offset_sample = generate_helper_fn(model, dataset, word_list_subset, **kwargs)
+        word_list_offsets += offset_sample[:len(word_list_subset)]
+        print('   ', ' '.join(word_list_subset))
+    return word_list_offsets
+
+
+def word_offsets_to_points(word_offsets, word_list=None, space_width=0.14, line_width=10.0, line_height=0.40,
+                           letter_height=0.35):  # Add bounds parameters
+    word_points = []
+    last_point = None
+    current_x = current_y = 0
+
+    starts_at_bottom = "enaitoshrdx.vpukbgfcymzwlqjS,GJ"
+    starts_at_top = "8049637OTA5N)EHR\"\'(BCQLMWYUF!DXVKP"  # starts_elsewhere = "1I2Z?"
+
+    sentence_points = []
+    for i, offsets in enumerate(word_offsets):
+
+      points = offsets_to_strokes(copy.deepcopy(offsets))
+
+      if word_list:
+        word = word_list[i]
+        if word[0] in starts_at_bottom:
+          points[:,1] -= points[0,1]  # # print('Was at the bottom')
+        elif word[0] in starts_at_top:
+          points[:,1] -= points[0,1] + 0.18 #pass #
+
+      if current_x > line_width:
+        current_x = 0
+        current_y += line_height
+
+      if points is not None and points.shape[0] > 0:
+        points[:,0] = points[:,0] + current_x
+        points[:,1] = np.clip(points[:,1], -letter_height, letter_height) + current_y
+        current_x = points[-1, 0] + space_width
+        sentence_points.append(points)
+
+    return np.vstack(sentence_points)
+
+
+def plot_paragraph(word_list_offsets, text, figsize=(12, 4*2), dpi=200, **kwargs):
+    point_samp = word_offsets_to_points(word_list_offsets, **kwargs)
+    fig, ax = plot_strokes(point_samp, '', figsize=figsize, dpi=dpi)
+    ax.set_title('\n'.join(textwrap.wrap(text, width=83)), loc='left', fontsize=13)
+
+
+########## ARGS, LOGGING, AND TRAIN LOOP ##########
+
+
+if __name__ == '__main__':
+
     args = get_all_args()
-    torch.manual_seed(args.seed)
+    torch.manual_seed(args.seed)  # system inits
     torch.cuda.manual_seed_all(args.seed)
 
-    # Initialize datasets and model
-    train_dataset, test_dataset = create_datasets(args)
+    train_dataset, test_dataset = create_datasets(args)  # init datasets
     args.block_size = train_dataset.get_stroke_seq_length()
     args.context_block_size = train_dataset.get_text_seq_length()
     args.vocab_size = train_dataset.get_vocab_size()
     args.context_vocab_size = train_dataset.get_char_vocab_size()
-    
+    print(f"Dataset determined that: {args.vocab_size=}, {args.block_size=}")
+
     model, optimizer, scheduler, step, best_loss = get_checkpoint(args, sample_only=True)
 
-    # Generate samples with different parameters
-    params = GenerationParams(do_sample=True)
-    save_samples(model, test_dataset, params, num_samples=6, log_wandb=False)
-    
-    params.do_sample = False
-    save_samples(model, test_dataset, params, num_samples=6, log_wandb=False)
-
-if __name__ == '__main__':
-    main()
+    save_samples(model, test_dataset, num=6, do_sample=True, log_wandb=False)
+    save_samples(model, test_dataset, num=6, do_sample=False, log_wandb=False)
+    sys.exit()
