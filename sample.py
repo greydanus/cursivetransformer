@@ -36,9 +36,10 @@ class GenerationParams:
     warmup_sample_ix: int = None
     verbose: bool = True
     seed: int = 42
+    linewidth=1.3
 
 
-def plot_strokes(stroke, title, fig=None, ax=None, figsize=(12, 2), dpi=150):
+def plot_strokes(stroke, title, fig=None, ax=None, figsize=(12, 2), dpi=150, linewidth=1.3):
     """Plot a single stroke"""
     if fig is None or ax is None:
         fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
@@ -59,7 +60,7 @@ def plot_strokes(stroke, title, fig=None, ax=None, figsize=(12, 2), dpi=150):
     # Plot each stroke
     for stroke in strokes:
         x, y = zip(*[(p[0], 1 - p[1]) for p in stroke])  # Invert y-axis
-        ax.plot(x, y, 'b-', linewidth=1.3)
+        ax.plot(x, y, 'b-', linewidth=linewidth)
 
     ax.set_aspect('equal') ; ax.set_title(title)
     if fig is None: plt.show()
@@ -248,7 +249,7 @@ def plot_paragraph(word_list_offsets, text, figsize=(12, 4*2), dpi=200,
     params = params if params else GenerationParams()
     sentence_points = word_offsets_to_points(word_list_offsets, params, word_list=text.split())
     point_samp = np.vstack(sentence_points)
-    fig, ax = plot_strokes(point_samp, '', figsize=figsize, dpi=dpi)
+    fig, ax = plot_strokes(point_samp, '', figsize=figsize, dpi=dpi, linewidth=params.linewidth)
 
     if show_indices:
         add_word_indices(ax, sentence_points)
