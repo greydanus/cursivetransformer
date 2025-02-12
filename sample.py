@@ -22,39 +22,18 @@ from data import create_datasets, offsets_to_strokes
 class GenerationParams:
     """Arguments for handwriting generation/sampling"""
     temperature: float = 1.0
-    top_k: int = None
+    top_k: bool = None
     do_sample: bool = True
-    num_steps: int = 1250
+    num_steps: int = 1050
     warmup_steps: int = 50
+    n_at_a_time: int = 2
     n_words: int = 4
     space_width: float = 0.14
     line_width: float = 10.0
     line_height: float = 0.40
     letter_height: float = 0.35
     seed_ix: int = None
-    model_device: str = 'cpu'
     verbose: bool = False
-
-
-# Sam Greydanus | 2024
-
-########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
-
-import os, sys, time, getpass, textwrap, copy
-import numpy as np
-import matplotlib.pyplot as plt
-from dataclasses import dataclass
-
-import wandb
-import torch
-import torch.nn as nn
-from torch.nn import functional as F
-from torch.utils.data import Dataset
-from torch.utils.data.dataloader import DataLoader
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from model import Transformer, get_checkpoint, get_all_args
-from data import create_datasets, offsets_to_strokes
 
 
 def plot_strokes(stroke, title, fig=None, ax=None, figsize=(12, 2), dpi=150):
@@ -118,7 +97,7 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
     return idx
 
 
-def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_sample=False, log_wandb=True):
+def save_samples(model, dataset, num=2, warmup_steps=50, do_sample=False, log_wandb=True):
     """ samples from the model and plots the decoded strokes """
     model_device = next(model.parameters()).device
 
@@ -153,14 +132,11 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_
     print('-'*80)
 
 
-def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=False,
-                         top_k=None, temperature=1.0, n_words=4, seed_ix=None, verbose=False):
+def generate_helper_fn(model, dataset, word_list, params):
     model_device = next(model.parameters()).device
 
     '''Uses the first word from a dataset example as the seed for generation'''
-    if seed_ix is None:
-        seed_ix = torch.randint(len(dataset), (1,)).item() 
-        print(seed_ix)
+    seed_ix = torch.randint(len(dataset), (1,)).item() if params.seed_ix is None else params.seed_ix
     
     seed_x, seed_c, _ = dataset[seed_ix]  # Get seed tokens and text from dataset
     
@@ -175,12 +151,12 @@ def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=Fals
     
     def trunc_or_pad_words(word_list):
         n = len(word_list)
-        if n > n_words:
-            if verbose: print(f"Expected {n_words} words, got {n}; truncating")
-            return word_list[:n_words-1]
-        elif n < n_words:
-            if verbose: print(f"Expected {n_words} words, got {n}; padding with placeholder words")
-            return word_list + ['Hkggcvr!', 'TOLAPYPI', '9074', '0.', 'efhgb.'][:max(0, n_words-n-1)]
+        if n > params.n_words:
+            if params.verbose: print(f"Expected {params.n_words} words, got {n}; truncating")
+            return word_list[:params.n_words-1]
+        elif n < params.n_words:
+            if params.verbose: print(f"Expected {params.n_words} words, got {n}; padding with placeholder words")
+            return word_list + ['Hkggcvr!', 'TOLAPYPI', '9074', '0.', 'efhgb.'][:max(0, params.n_words-n-1)]
         return word_list
 
     word_list = trunc_or_pad_words(word_list)
@@ -191,29 +167,46 @@ def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=Fals
     context = context.to(model_device)
     X_init = first_word_tokens.unsqueeze(0).to(model_device)
 
-    steps = num_steps - X_init.size(1)
-    X_samp = generate(model, X_init, context, steps, temperature=temperature,
-                      top_k=top_k, do_sample=do_sample).to('cpu')
+    steps = params.num_steps - X_init.size(1)
+    X_samp = generate(model, X_init, context, steps, temperature=params.temperature,
+                      top_k=params.top_k, do_sample=params.do_sample).to('cpu')
 
     stroke_seq = X_samp[0].detach().cpu().numpy()[warmup_steps:]
     offset_samp = dataset.decode_stroke(stroke_seq)
     return offset_samp
 
 
-def generate_paragraph(model, dataset, text, n_at_a_time=3, **kwargs):
+def generate_paragraph(model, dataset, text, params):
     word_list = text.strip(' ').split(' ')
     word_list_offsets = []
     print('Generating...')
-    for i in range(0, len(word_list), n_at_a_time):
-        word_list_subset = word_list[i:i+n_at_a_time]
-        offset_sample = generate_helper_fn(model, dataset, word_list_subset, **kwargs)
+    for i in range(0, len(word_list), params.n_at_a_time):
+        word_list_subset = word_list[i:i+params.n_at_a_time]
+        offset_sample = generate_helper_fn(model, dataset, word_list_subset, params)
         word_list_offsets += offset_sample[:len(word_list_subset)]
         print('   ', ' '.join(word_list_subset))
     return word_list_offsets
 
 
-def word_offsets_to_points(word_offsets, word_list=None, space_width=0.14, line_width=10.0, line_height=0.40,
-                           letter_height=0.35):  # Add bounds parameters
+@dataclass
+class GenerationParams:
+    """Arguments for handwriting generation/sampling"""
+    temperature: float = 1.0
+    top_k: bool = None
+    do_sample: bool = True
+    num_steps: int = 1050
+    warmup_steps: int = 50
+    n_at_a_time: int = 2
+    n_words: int = 4
+    space_width: float = 0.14
+    line_width: float = 10.0
+    line_height: float = 0.40
+    letter_height: float = 0.35
+    seed_ix: int = None
+    verbose: bool = False
+
+
+def word_offsets_to_points(word_offsets, params, word_list=None):  # Add bounds parameters
     word_points = []
     last_point = None
     current_x = current_y = 0
@@ -233,21 +226,22 @@ def word_offsets_to_points(word_offsets, word_list=None, space_width=0.14, line_
         elif word[0] in starts_at_top:
           points[:,1] -= points[0,1] + 0.18 #pass #
 
-      if current_x > line_width:
+      if current_x > params.line_width:
         current_x = 0
-        current_y += line_height
+        current_y += params.line_height
 
       if points is not None and points.shape[0] > 0:
         points[:,0] = points[:,0] + current_x
-        points[:,1] = np.clip(points[:,1], -letter_height, letter_height) + current_y
-        current_x = points[-1, 0] + space_width
+        points[:,1] = np.clip(points[:,1], - params.letter_height, params.letter_height) + current_y
+        current_x = points[-1, 0] + params.space_width
         sentence_points.append(points)
 
     return np.vstack(sentence_points)
 
 
-def plot_paragraph(word_list_offsets, text, figsize=(12, 4*2), dpi=200, **kwargs):
-    point_samp = word_offsets_to_points(word_list_offsets, **kwargs)
+def plot_paragraph(word_list_offsets, text, figsize=(12, 4*2), dpi=200, params=None, **kwargs):
+    params = params if params else GenerationParams()
+    point_samp = word_offsets_to_points(word_list_offsets, params)
     fig, ax = plot_strokes(point_samp, '', figsize=figsize, dpi=dpi)
     ax.set_title('\n'.join(textwrap.wrap(text, width=83)), loc='left', fontsize=13)
 
