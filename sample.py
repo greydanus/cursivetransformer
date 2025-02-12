@@ -64,6 +64,7 @@ def prepare_context(dataset, words, seed_char_tokens):
     text = f"{first_word} {' '.join(words)}"
     return dataset.encode_text(text).unsqueeze(0)
 
+
 def generate_sequence(model, dataset, text: str, params: GenerationParams, seed_ix: Optional[int] = None):
     """Generate handwriting for a sequence of words"""
     device = next(model.parameters()).device
@@ -72,6 +73,7 @@ def generate_sequence(model, dataset, text: str, params: GenerationParams, seed_
     
     for i in range(0, len(words), params.words_per_batch):
         batch_words = words[i:i + params.words_per_batch]
+        print('Generating ', ' '.join(batch_words))
         
         # Get seed tokens
         if seed_ix is None:
@@ -92,11 +94,16 @@ def generate_sequence(model, dataset, text: str, params: GenerationParams, seed_
         )
         
         # Decode and store results
-        stroke_seq = generated[0].cpu().numpy()[len(first_word_tokens):]
-        offset_sample = dataset.decode_stroke(stroke_seq)
-        word_offsets.extend(offset_sample[:len(batch_words)])
+        # Find where the actual generated sequence starts (after the seed and WORD_TOKEN)
+        stroke_seq = generated[0].cpu().numpy()
+        word_tokens = dataset.split_by_word_tokens(stroke_seq)
+        if len(word_tokens) > 1:  # Skip the seed word and start from the actual generation
+            stroke_seq = np.concatenate(word_tokens[1:])
+            offset_sample = dataset.decode_stroke(stroke_seq)
+            word_offsets.extend(offset_sample[:len(batch_words)])
         
     return word_offsets
+
 
 def word_offsets_to_points(word_offsets: List[np.ndarray], params: GenerationParams) -> np.ndarray:
     """Convert word offsets to absolute coordinates"""
