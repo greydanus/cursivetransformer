@@ -136,10 +136,9 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_
 def generate_helper_fn(model, dataset, word_list, params):
     model_device = next(model.parameters()).device
     seed_ix = params.seed_ix if params.seed_ix else torch.randint(len(dataset), (1,)).item()
-    print('\t', seed_ix)
-    
+    if params.verbose: print(f' (seed_ix={seed_ix})', end='\r')
+
     seed_x, seed_c, _ = dataset[seed_ix]  # Get seed tokens and text from dataset
-    
     word_tokens = dataset.split_by_word_tokens(seed_x)  # Get just first word tokens
     first_word_tokens = torch.tensor(word_tokens[0])
     first_word_tokens = torch.cat([first_word_tokens, torch.tensor([dataset.WORD_TOKEN])])  # Add word token
@@ -173,18 +172,19 @@ def generate_helper_fn(model, dataset, word_list, params):
 
     stroke_seq = X_samp[0].detach().cpu().numpy()[warmup_steps:]
     offset_samp = dataset.decode_stroke(stroke_seq)
+
     return offset_samp
 
 
 def generate_paragraph(model, dataset, text, params):
     word_list = text.strip(' ').split(' ')
     word_list_offsets = []
-    print('Generating...')
+    if params.verbose: print('Generating...')
     for i in range(0, len(word_list), params.n_at_a_time):
         word_list_subset = word_list[i:i+params.n_at_a_time]
+        if params.verbose: print('   ', ' '.join(word_list_subset))
         offset_sample = generate_helper_fn(model, dataset, word_list_subset, params)
         word_list_offsets += offset_sample[:len(word_list_subset)]
-        print('   ', ' '.join(word_list_subset))
     return word_list_offsets
 
 
