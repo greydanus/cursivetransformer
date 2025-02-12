@@ -115,59 +115,50 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_
     print('-'*80)
 
 
-def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=False,
-                         top_k=None, temperature=1.0, n_words=4, seed_ix=0, verbose=False):
-    '''Assumes we're using tokenization of git commit afc2425f5bf92c14a9db62da44e8cf2995e7bf8d'''
-    seed_ix = 0
-    SEED_TOKENS = [torch.tensor(
-        [411,   0, 396,  12, 393,  20, 384,  42, 384,  14, 378,  21, 376,
-        17, 376,  18, 367,  11, 354,  12, 494,  14, 481,  16, 483,  11,
-       486,  18, 486,  18, 481,  16, 477,  11, 477,  16, 458,  13, 417,
-        13, 396,  12, 385,  18, 372,  16, 367,   5, 411,   9, 396,  18,
-       421,   9, 477,  16, 484,  12, 471,  15, 400,  16, 383,  20, 388,
-        12, 379,   7, 477,  16, 471,  15, 421,   9, 396,  18, 380,  19,
-       372,  16, 403,  11, 411,  14, 453,  11, 482,  16, 477,  11, 411,
-        14, 391,  18, 380,  19, 374,  11, 481,  16, 477,  16, 441,  13,
-       411,   9, 391,  18, 380,  19, 381,  23, 378,  15, 376,  17, 376,
-        18, 372,  16, 367,  11, 333,  16, 481,  16, 477,  11, 477,  16,
-       477,  21, 477,  18, 482,  31, 481,  16, 383,  10, 374,  11, 383,
-        20, 391,  18, 419,  11, 469,  10, 477,  16, 461,  20, 388,  20,
-       411, 151, 524], dtype=torch.int64),
-        torch.tensor(
-        [411,   0, 499,  12, 494,  39, 485,  11, 490,  21, 478,  15, 478,
-        10, 473,  14, 449,  13, 423,  14, 404,  11, 385,  20, 374,  16,
-       350,   9, 313,  14, 515,  16, 499,  16, 411, 151, 524],
-        dtype=torch.int64)][seed_ix]
-    SEED_CHARS = ["bwuh", "6"][seed_ix]
-
+def def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=False,
+                         top_k=None, temperature=1.0, n_words=4, seed_ix=None, verbose=False):
     model_device = next(model.parameters()).device
-    warmup_steps = len(SEED_TOKENS)
 
+    '''Uses the first word from a dataset example as the seed for generation'''
+    if seed_ix is None:
+        seed_ix = torch.randint(len(dataset), (1,)).item() 
+        print(seed_ix)
+    
+    seed_x, seed_c, _ = dataset[seed_ix]  # Get seed tokens and text from dataset
+    
+    word_tokens = dataset.split_by_word_tokens(seed_x)  # Get just first word tokens
+    first_word_tokens = torch.tensor(word_tokens[0])
+    first_word_tokens = torch.cat([first_word_tokens, torch.tensor([dataset.WORD_TOKEN])])  # Add word token
+    warmup_steps = len(first_word_tokens)
+    
+    # Get just the first word from the context
+    seed_text = dataset.decode_text(seed_c)
+    first_word = seed_text.split()[0]
+    
     def trunc_or_pad_words(word_list):
-      n = len(word_list)
-      if n > n_words:
-        if verbose: print(f"Expected {n_words} words, got {n}; truncating")
-        return word_list[:n_words-1]
-      elif n < n_words:
-        if verbose: print(f"Expected {n_words} words, got {n}; padding with 'hello'")
-        return word_list + ['Hkggcvr!', 'TOLAPYPI', '9074', '0.', 'efhgb.'][:max(0, n_words-n-1)]
-      return word_list
+        n = len(word_list)
+        if n > n_words:
+            if verbose: print(f"Expected {n_words} words, got {n}; truncating")
+            return word_list[:n_words-1]
+        elif n < n_words:
+            if verbose: print(f"Expected {n_words} words, got {n}; padding with placeholder words")
+            return word_list + ['Hkggcvr!', 'TOLAPYPI', '9074', '0.', 'efhgb.'][:max(0, n_words-n-1)]
+        return word_list
 
     word_list = trunc_or_pad_words(word_list)
     text = ' '.join(word_list)
-    ascii_context = f'{SEED_CHARS} {text}' #print(ascii_context)
+    ascii_context = f'{first_word} {text}'
 
     context = dataset.encode_text(ascii_context).unsqueeze(0)
     context = context.to(model_device)
-    X_init = SEED_TOKENS.unsqueeze(0).to(model_device)
+    X_init = first_word_tokens.unsqueeze(0).to(model_device)
 
     steps = num_steps - X_init.size(1)
     X_samp = generate(model, X_init, context, steps, temperature=temperature,
                       top_k=top_k, do_sample=do_sample).to('cpu')
 
-    stroke_seq = X_samp[0].detach().cpu().numpy()[len(SEED_TOKENS):]
+    stroke_seq = X_samp[0].detach().cpu().numpy()[warmup_steps:]
     offset_samp = dataset.decode_stroke(stroke_seq)
-
     return offset_samp
 
 
