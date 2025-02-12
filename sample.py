@@ -237,10 +237,19 @@ def word_offsets_to_points(word_offsets, params, word_list=None):  # Add bounds 
     return np.vstack(sentence_points)
 
 
-def plot_paragraph(word_list_offsets, text, figsize=(12, 4*2), dpi=200, params=None, **kwargs):
+def add_word_indices(ax, sentence_points):  # index numbers above each word start position
+    for i, points in enumerate(sentence_points):
+        start_x, start_y = points[0, 0], points[0, 1]
+        ax.text(start_x-0.12, .95-start_y, str(i), fontsize=8, ha='left', va='bottom')
+
+
+def plot_paragraph(word_list_offsets, text, figsize=(12, 4*2), dpi=200, params=None, show_indices=False):
     params = params if params else GenerationParams()
-    point_samp = word_offsets_to_points(word_list_offsets, params, **kwargs)
+    sentence_points = word_offsets_to_points(word_list_offsets, params)
+    point_samp = np.vstack(sentence_points)
     fig, ax = plot_strokes(point_samp, '', figsize=figsize, dpi=dpi)
+    if show_indices:
+        add_word_indices(ax, sentence_points)
     ax.set_title('\n'.join(textwrap.wrap(text, width=83)), loc='left', fontsize=13)
 
 
