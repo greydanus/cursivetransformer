@@ -24,7 +24,7 @@ class GenerationParams:
     """Arguments for handwriting generation/sampling"""
     temperature: float = 1.0
     top_k: bool = None
-    do_sample: bool = True
+    do_sample: bool = False
     num_steps: int = 1050
     warmup_steps: int = 50
     n_at_a_time: int = 2
@@ -134,7 +134,7 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_
     print('-'*80)
 
 
-def generate_helper_fn(model, dataset, word_list, params, do_sample=False,
+def generate_helper_fn(model, dataset, word_list, params,
                          top_k=None, n_words=4, verbose=False):
     model_device = next(model.parameters()).device
     seed_ix = params.seed_ix if params.seed_ix else torch.randint(len(dataset), (1,)).item()
@@ -171,7 +171,7 @@ def generate_helper_fn(model, dataset, word_list, params, do_sample=False,
 
     steps = params.num_steps - X_init.size(1)
     X_samp = generate(model, X_init, context, steps, temperature=params.temperature,
-                      top_k=top_k, do_sample=do_sample).to('cpu')
+                      top_k=top_k, do_sample=params.do_sample).to('cpu')
 
     stroke_seq = X_samp[0].detach().cpu().numpy()[warmup_steps:]
     offset_samp = dataset.decode_stroke(stroke_seq)
