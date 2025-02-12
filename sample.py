@@ -34,7 +34,7 @@ class GenerationParams:
     line_height: float = 0.40
     letter_height: float = 0.35
     seed_ix: int = None
-    verbose: bool = False
+    verbose: bool = True
 
 
 def plot_strokes(stroke, title, fig=None, ax=None, figsize=(12, 2), dpi=150):
