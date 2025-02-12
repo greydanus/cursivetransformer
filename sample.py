@@ -178,12 +178,12 @@ def generate_helper_fn(model, dataset, word_list, params, do_sample=False,
     return offset_samp
 
 
-def generate_paragraph(model, dataset, text, params, n_at_a_time=3, **kwargs):
+def generate_paragraph(model, dataset, text, params, **kwargs):
     word_list = text.strip(' ').split(' ')
     word_list_offsets = []
     print('Generating...')
-    for i in range(0, len(word_list), n_at_a_time):
-        word_list_subset = word_list[i:i+n_at_a_time]
+    for i in range(0, len(word_list), params.n_at_a_time):
+        word_list_subset = word_list[i:i+params.n_at_a_time]
         offset_sample = generate_helper_fn(model, dataset, word_list_subset, params, **kwargs)
         word_list_offsets += offset_sample[:len(word_list_subset)]
         print('   ', ' '.join(word_list_subset))
