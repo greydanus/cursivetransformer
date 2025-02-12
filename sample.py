@@ -255,6 +255,7 @@ def plot_paragraph(word_list_offsets, text, figsize=(12, 4*2), dpi=200,
         add_word_indices(ax, sentence_points)
     if include_title:
         ax.set_title('\n'.join(textwrap.wrap(text, width=83)), loc='left', fontsize=13)
+    return fig, ax
 
 
 ########## ARGS, LOGGING, AND TRAIN LOOP ##########
