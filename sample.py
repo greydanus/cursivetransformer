@@ -138,11 +138,11 @@ def generate_helper_fn(model, dataset, word_list, params):
     model_device = next(model.parameters()).device
 
     '''Uses the first word from a dataset example as the seed for generation'''
-    if seed_ix is None:
-        seed_ix = torch.randint(len(dataset), (1,)).item() 
-        print(seed_ix)
+    if params.seed_ix is None:
+        params.seed_ix = torch.randint(len(dataset), (1,)).item() 
+        print(params.seed_ix)
     
-    seed_x, seed_c, _ = dataset[seed_ix]  # Get seed tokens and text from dataset
+    seed_x, seed_c, _ = dataset[params.seed_ix]  # Get seed tokens and text from dataset
     
     word_tokens = dataset.split_by_word_tokens(seed_x)  # Get just first word tokens
     first_word_tokens = torch.tensor(word_tokens[0])
