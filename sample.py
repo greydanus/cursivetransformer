@@ -35,7 +35,6 @@ class GenerationParams:
     letter_height: float = 0.35
     seed_ix: int = None
     verbose: bool = False
-    fontsize: int = 13
 
 
 def plot_strokes(stroke, title, fig=None, ax=None, figsize=(12, 2), dpi=150):
@@ -134,8 +133,7 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_
     print('-'*80)
 
 
-def generate_helper_fn(model, dataset, word_list, params,
-                         top_k=None, n_words=4, verbose=False):
+def generate_helper_fn(model, dataset, word_list, params):
     model_device = next(model.parameters()).device
     seed_ix = params.seed_ix if params.seed_ix else torch.randint(len(dataset), (1,)).item()
     print('\t', seed_ix)
@@ -152,12 +150,12 @@ def generate_helper_fn(model, dataset, word_list, params,
     first_word = seed_text.split()[0]
     
     def trunc_or_pad_words(word_list):
-        n = len(word_list)
+        n = len(word_list) ; n_words = params.n_words
         if n > n_words:
-            if verbose: print(f"Expected {n_words} words, got {n}; truncating")
+            if params.verbose: print(f"Expected {n_words} words, got {n}; truncating")
             return word_list[:n_words-1]
         elif n < n_words:
-            if verbose: print(f"Expected {n_words} words, got {n}; padding with placeholder words")
+            if params.verbose: print(f"Expected {n_words} words, got {n}; padding with placeholder words")
             return word_list + ['Hkggcvr!', 'TOLAPYPI', '9074', '0.', 'efhgb.'][:max(0, n_words-n-1)]
         return word_list
 
@@ -171,20 +169,20 @@ def generate_helper_fn(model, dataset, word_list, params,
 
     steps = params.num_steps - X_init.size(1)
     X_samp = generate(model, X_init, context, steps, temperature=params.temperature,
-                      top_k=top_k, do_sample=params.do_sample).to('cpu')
+                      top_k=params.top_k, do_sample=params.do_sample).to('cpu')
 
     stroke_seq = X_samp[0].detach().cpu().numpy()[warmup_steps:]
     offset_samp = dataset.decode_stroke(stroke_seq)
     return offset_samp
 
 
-def generate_paragraph(model, dataset, text, params, **kwargs):
+def generate_paragraph(model, dataset, text, params):
     word_list = text.strip(' ').split(' ')
     word_list_offsets = []
     print('Generating...')
     for i in range(0, len(word_list), params.n_at_a_time):
         word_list_subset = word_list[i:i+params.n_at_a_time]
-        offset_sample = generate_helper_fn(model, dataset, word_list_subset, params, **kwargs)
+        offset_sample = generate_helper_fn(model, dataset, word_list_subset, params)
         word_list_offsets += offset_sample[:len(word_list_subset)]
         print('   ', ' '.join(word_list_subset))
     return word_list_offsets
