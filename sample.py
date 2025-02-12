@@ -234,7 +234,7 @@ def word_offsets_to_points(word_offsets, params, word_list=None):  # Add bounds 
         current_x = points[-1, 0] + params.space_width
         sentence_points.append(points)
 
-    return np.vstack(sentence_points)
+    return sentence_points
 
 
 def add_word_indices(ax, sentence_points):  # index numbers above each word start position
@@ -243,14 +243,17 @@ def add_word_indices(ax, sentence_points):  # index numbers above each word star
         ax.text(start_x-0.12, .95-start_y, str(i), fontsize=8, ha='left', va='bottom')
 
 
-def plot_paragraph(word_list_offsets, text, figsize=(12, 4*2), dpi=200, params=None, show_indices=False):
+def plot_paragraph(word_list_offsets, text, figsize=(12, 4*2), dpi=200,
+                   params=None, show_indices=False, include_title=False):
     params = params if params else GenerationParams()
-    sentence_points = word_offsets_to_points(word_list_offsets, params)
+    sentence_points = word_offsets_to_points(word_list_offsets, params, word_list=text.split())
     point_samp = np.vstack(sentence_points)
     fig, ax = plot_strokes(point_samp, '', figsize=figsize, dpi=dpi)
+
     if show_indices:
         add_word_indices(ax, sentence_points)
-    ax.set_title('\n'.join(textwrap.wrap(text, width=83)), loc='left', fontsize=13)
+    if include_title:
+        ax.set_title('\n'.join(textwrap.wrap(text, width=83)), loc='left', fontsize=13)
 
 
 ########## ARGS, LOGGING, AND TRAIN LOOP ##########
