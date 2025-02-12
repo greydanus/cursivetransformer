@@ -33,8 +33,9 @@ class GenerationParams:
     line_width: float = 6.0
     line_height: float = 0.40
     letter_height: float = 0.35
-    seed_ix: int = None
+    warmup_sample_ix: int = None
     verbose: bool = True
+    seed: int = 42
 
 
 def plot_strokes(stroke, title, fig=None, ax=None, figsize=(12, 2), dpi=150):
@@ -135,10 +136,10 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_
 
 def generate_helper_fn(model, dataset, word_list, params):
     model_device = next(model.parameters()).device
-    seed_ix = params.seed_ix if params.seed_ix else torch.randint(len(dataset), (1,)).item()
-    if params.verbose: print(f' (seed_ix={seed_ix})')
+    warmup_sample_ix = params.warmup_sample_ix if params.warmup_sample_ix else torch.randint(len(dataset), (1,)).item()
+    if params.verbose: print(f' (warmup_sample_ix={warmup_sample_ix})')
 
-    seed_x, seed_c, _ = dataset[seed_ix]  # Get seed tokens and text from dataset
+    seed_x, seed_c, _ = dataset[warmup_sample_ix]  # Get seed tokens and text from dataset
     word_tokens = dataset.split_by_word_tokens(seed_x)  # Get just first word tokens
     first_word_tokens = torch.tensor(word_tokens[0])
     first_word_tokens = torch.cat([first_word_tokens, torch.tensor([dataset.WORD_TOKEN])])  # Add word token
@@ -177,6 +178,9 @@ def generate_helper_fn(model, dataset, word_list, params):
 
 
 def generate_paragraph(model, dataset, text, params):
+    torch.manual_seed(params.seed)  # system inits
+    torch.cuda.manual_seed_all(params.seed)
+
     word_list = text.strip(' ').split(' ')
     word_list_offsets = []
     if params.verbose: print('Generating...')
