@@ -134,7 +134,8 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_
     print('-'*80)
 
 
-def generate_helper_fn(model, dataset, word_list, params):
+def generate_helper_fn(model, dataset, word_list, params, num_steps=1250, do_sample=False,
+                         top_k=None, temperature=1.0, n_words=4, verbose=False):
     model_device = next(model.parameters()).device
 
     '''Uses the first word from a dataset example as the seed for generation'''
@@ -142,7 +143,7 @@ def generate_helper_fn(model, dataset, word_list, params):
         params.seed_ix = torch.randint(len(dataset), (1,)).item() 
         print(params.seed_ix)
     
-    seed_x, seed_c, _ = dataset[params.seed_ix]  # Get seed tokens and text from dataset
+    seed_x, seed_c, _ = dataset[seed_ix]  # Get seed tokens and text from dataset
     
     word_tokens = dataset.split_by_word_tokens(seed_x)  # Get just first word tokens
     first_word_tokens = torch.tensor(word_tokens[0])
@@ -155,12 +156,12 @@ def generate_helper_fn(model, dataset, word_list, params):
     
     def trunc_or_pad_words(word_list):
         n = len(word_list)
-        if n > params.n_words:
-            if params.verbose: print(f"Expected {params.n_words} words, got {n}; truncating")
-            return word_list[:params.n_words-1]
-        elif n < params.n_words:
-            if params.verbose: print(f"Expected {params.n_words} words, got {n}; padding with placeholder words")
-            return word_list + ['Hkggcvr!', 'TOLAPYPI', '9074', '0.', 'efhgb.'][:max(0, params.n_words-n-1)]
+        if n > n_words:
+            if verbose: print(f"Expected {n_words} words, got {n}; truncating")
+            return word_list[:n_words-1]
+        elif n < n_words:
+            if verbose: print(f"Expected {n_words} words, got {n}; padding with placeholder words")
+            return word_list + ['Hkggcvr!', 'TOLAPYPI', '9074', '0.', 'efhgb.'][:max(0, n_words-n-1)]
         return word_list
 
     word_list = trunc_or_pad_words(word_list)
@@ -171,22 +172,22 @@ def generate_helper_fn(model, dataset, word_list, params):
     context = context.to(model_device)
     X_init = first_word_tokens.unsqueeze(0).to(model_device)
 
-    steps = params.num_steps - X_init.size(1)
-    X_samp = generate(model, X_init, context, steps, temperature=params.temperature,
-                      top_k=params.top_k, do_sample=params.do_sample).to('cpu')
+    steps = num_steps - X_init.size(1)
+    X_samp = generate(model, X_init, context, steps, temperature=temperature,
+                      top_k=top_k, do_sample=do_sample).to('cpu')
 
     stroke_seq = X_samp[0].detach().cpu().numpy()[warmup_steps:]
     offset_samp = dataset.decode_stroke(stroke_seq)
     return offset_samp
 
 
-def generate_paragraph(model, dataset, text, params):
+def generate_paragraph(model, dataset, text, params, n_at_a_time=3, **kwargs):
     word_list = text.strip(' ').split(' ')
     word_list_offsets = []
     print('Generating...')
-    for i in range(0, len(word_list), params.n_at_a_time):
-        word_list_subset = word_list[i:i+params.n_at_a_time]
-        offset_sample = generate_helper_fn(model, dataset, word_list_subset, params)
+    for i in range(0, len(word_list), n_at_a_time):
+        word_list_subset = word_list[i:i+n_at_a_time]
+        offset_sample = generate_helper_fn(model, dataset, word_list_subset, params, **kwargs)
         word_list_offsets += offset_sample[:len(word_list_subset)]
         print('   ', ' '.join(word_list_subset))
     return word_list_offsets
@@ -218,18 +219,18 @@ def word_offsets_to_points(word_offsets, params, word_list=None):  # Add bounds 
 
       if points is not None and points.shape[0] > 0:
         points[:,0] = points[:,0] + current_x
-        points[:,1] = np.clip(points[:,1], - params.letter_height, params.letter_height) + current_y
+        points[:,1] = np.clip(points[:,1], -params.letter_height, params.letter_height) + current_y
         current_x = points[-1, 0] + params.space_width
         sentence_points.append(points)
 
     return np.vstack(sentence_points)
 
 
-def plot_paragraph(word_list_offsets, text, figsize=(12, 4*2), dpi=200, params=None):
+def plot_paragraph(word_list_offsets, text, figsize=(12, 4*2), dpi=200, params=None, **kwargs):
     params = params if params else GenerationParams()
-    point_samp = word_offsets_to_points(word_list_offsets, params)
+    point_samp = word_offsets_to_points(word_list_offsets, params, **kwargs)
     fig, ax = plot_strokes(point_samp, '', figsize=figsize, dpi=dpi)
-    ax.set_title('\n'.join(textwrap.wrap(text, width=83)), loc='left', fontsize=params.fontsize)
+    ax.set_title('\n'.join(textwrap.wrap(text, width=83)), loc='left', fontsize=13)
 
 
 ########## ARGS, LOGGING, AND TRAIN LOOP ##########
