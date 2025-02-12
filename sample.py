@@ -36,6 +36,27 @@ class GenerationParams:
     verbose: bool = False
 
 
+# Sam Greydanus | 2024
+
+########## IMPORTS AND A FEW GLOBAL VARIABLES ##########
+
+import os, sys, time, getpass, textwrap, copy
+import numpy as np
+import matplotlib.pyplot as plt
+from dataclasses import dataclass
+
+import wandb
+import torch
+import torch.nn as nn
+from torch.nn import functional as F
+from torch.utils.data import Dataset
+from torch.utils.data.dataloader import DataLoader
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from model import Transformer, get_checkpoint, get_all_args
+from data import create_datasets, offsets_to_strokes
+
+
 def plot_strokes(stroke, title, fig=None, ax=None, figsize=(12, 2), dpi=150):
     """Plot a single stroke"""
     if fig is None or ax is None:
@@ -97,7 +118,7 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
     return idx
 
 
-def save_samples(model, dataset, num=2, params=GenerationParams(), log_wandb=True):
+def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_sample=False, log_wandb=True):
     """ samples from the model and plots the decoded strokes """
     model_device = next(model.parameters()).device
 
@@ -106,25 +127,23 @@ def save_samples(model, dataset, num=2, params=GenerationParams(), log_wandb=Tru
       x, c, y = dataset[i]
       stroke_seq.append(x) ; context.append(c)
 
-    X_init = torch.stack(stroke_seq).to(model_device)[:,:params.warmup_steps]
+    X_init = torch.stack(stroke_seq).to(model_device)[:,:warmup_steps]
     context = torch.stack(context).long().to(model_device)
+    top_k = None
     steps = dataset.get_stroke_seq_length() - 1  # -1 because we already start with the first token
 
-    X_samp = generate(model, X_init, context, steps, temperature=params.temperature,
-                     top_k=params.top_k, do_sample=params.do_sample).to('cpu')
+    X_samp = generate(model, X_init, context, steps, top_k=top_k, do_sample=do_sample).to('cpu')
 
     for i in range(X_samp.size(0)):
         # get the i'th row of sampled integers, as python list
         row = X_samp[i].detach().cpu().numpy()
         offset_samp = dataset.decode_stroke(row)
-        point_samp = word_offsets_to_points(offset_samp, space_width=params.space_width,
-                                          line_width=params.line_width, line_height=params.line_height,
-                                          letter_height=params.letter_height)
+        point_samp = word_offsets_to_points(offset_samp)
         decoded_ascii = dataset.decode_text(context[i])
 
         # Plot the stroke
-        fig, ax = plot_strokes(point_samp, f'Sample {i+1}: "{decoded_ascii}"')
-        tag = 'sample' if params.do_sample else 'topk'
+        fig, ax = plot_strokes(point_samp, f'Sample {i+1}: "{decoded_ascii}"') #plt.axis('off')
+        tag = 'sample' if do_sample else 'topk'
         fig.savefig(f"{dataset.name}_{tag}_{i+1}.png")
         if log_wandb:
             wandb.log({f"{dataset.name}_{tag}_{i+1}": wandb.Image(f"{dataset.name}_{tag}_{i+1}.png")})
@@ -134,15 +153,14 @@ def save_samples(model, dataset, num=2, params=GenerationParams(), log_wandb=Tru
     print('-'*80)
 
 
-def generate_helper_fn(model, dataset, word_list, params=GenerationParams()):
+def def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=False,
+                         top_k=None, temperature=1.0, n_words=4, seed_ix=None, verbose=False):
     model_device = next(model.parameters()).device
 
     '''Uses the first word from a dataset example as the seed for generation'''
-    if params.seed_ix is None:
+    if seed_ix is None:
         seed_ix = torch.randint(len(dataset), (1,)).item() 
-        if params.verbose: print(seed_ix)
-    else:
-        seed_ix = params.seed_ix
+        print(seed_ix)
     
     seed_x, seed_c, _ = dataset[seed_ix]  # Get seed tokens and text from dataset
     
@@ -157,12 +175,12 @@ def generate_helper_fn(model, dataset, word_list, params=GenerationParams()):
     
     def trunc_or_pad_words(word_list):
         n = len(word_list)
-        if n > params.n_words:
-            if params.verbose: print(f"Expected {params.n_words} words, got {n}; truncating")
-            return word_list[:params.n_words-1]
-        elif n < params.n_words:
-            if params.verbose: print(f"Expected {params.n_words} words, got {n}; padding with placeholder words")
-            return word_list + ['Hkggcvr!', 'TOLAPYPI', '9074', '0.', 'efhgb.'][:max(0, params.n_words-n-1)]
+        if n > n_words:
+            if verbose: print(f"Expected {n_words} words, got {n}; truncating")
+            return word_list[:n_words-1]
+        elif n < n_words:
+            if verbose: print(f"Expected {n_words} words, got {n}; padding with placeholder words")
+            return word_list + ['Hkggcvr!', 'TOLAPYPI', '9074', '0.', 'efhgb.'][:max(0, n_words-n-1)]
         return word_list
 
     word_list = trunc_or_pad_words(word_list)
@@ -173,29 +191,29 @@ def generate_helper_fn(model, dataset, word_list, params=GenerationParams()):
     context = context.to(model_device)
     X_init = first_word_tokens.unsqueeze(0).to(model_device)
 
-    steps = params.num_steps - X_init.size(1)
-    X_samp = generate(model, X_init, context, steps, temperature=params.temperature,
-                     top_k=params.top_k, do_sample=params.do_sample).to('cpu')
+    steps = num_steps - X_init.size(1)
+    X_samp = generate(model, X_init, context, steps, temperature=temperature,
+                      top_k=top_k, do_sample=do_sample).to('cpu')
 
     stroke_seq = X_samp[0].detach().cpu().numpy()[warmup_steps:]
     offset_samp = dataset.decode_stroke(stroke_seq)
     return offset_samp
 
 
-def generate_paragraph(model, dataset, text, n_at_a_time=3, params=GenerationParams()):
+def generate_paragraph(model, dataset, text, n_at_a_time=3, **kwargs):
     word_list = text.strip(' ').split(' ')
     word_list_offsets = []
     print('Generating...')
     for i in range(0, len(word_list), n_at_a_time):
         word_list_subset = word_list[i:i+n_at_a_time]
-        offset_sample = generate_helper_fn(model, dataset, word_list_subset, params=params)
+        offset_sample = generate_helper_fn(model, dataset, word_list_subset, **kwargs)
         word_list_offsets += offset_sample[:len(word_list_subset)]
         print('   ', ' '.join(word_list_subset))
     return word_list_offsets
 
 
 def word_offsets_to_points(word_offsets, word_list=None, space_width=0.14, line_width=10.0, line_height=0.40,
-                          letter_height=0.35):  # Add bounds parameters
+                           letter_height=0.35):  # Add bounds parameters
     word_points = []
     last_point = None
     current_x = current_y = 0
@@ -228,10 +246,8 @@ def word_offsets_to_points(word_offsets, word_list=None, space_width=0.14, line_
     return np.vstack(sentence_points)
 
 
-def plot_paragraph(word_list_offsets, text, figsize=(12, 4*2), dpi=200, params=GenerationParams()):
-    point_samp = word_offsets_to_points(word_list_offsets, space_width=params.space_width,
-                                      line_width=params.line_width, line_height=params.line_height,
-                                      letter_height=params.letter_height)
+def plot_paragraph(word_list_offsets, text, figsize=(12, 4*2), dpi=200, **kwargs):
+    point_samp = word_offsets_to_points(word_list_offsets, **kwargs)
     fig, ax = plot_strokes(point_samp, '', figsize=figsize, dpi=dpi)
     ax.set_title('\n'.join(textwrap.wrap(text, width=83)), loc='left', fontsize=13)
 
@@ -254,8 +270,6 @@ if __name__ == '__main__':
 
     model, optimizer, scheduler, step, best_loss = get_checkpoint(args, sample_only=True)
 
-    params = GenerationParams()
-    save_samples(model, test_dataset, num=6, params=params)
-    params.do_sample = False
-    save_samples(model, test_dataset, num=6, params=params)
+    save_samples(model, test_dataset, num=6, do_sample=True, log_wandb=False)
+    save_samples(model, test_dataset, num=6, do_sample=False, log_wandb=False)
     sys.exit()
