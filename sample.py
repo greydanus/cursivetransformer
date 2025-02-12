@@ -29,9 +29,9 @@ class GenerationParams:
     warmup_steps: int = 50
     n_at_a_time: int = 2
     n_words: int = 4
-    space_width: float = 0.14
-    line_width: float = 6.0
-    line_height: float = 0.40
+    space_width: float = 0.16
+    line_width: float = 8.0
+    line_height: float = 0.55
     letter_height: float = 0.35
     warmup_sample_ix: int = None
     verbose: bool = True
