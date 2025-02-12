@@ -177,18 +177,30 @@ def generate_helper_fn(model, dataset, word_list, params):
     return offset_samp
 
 
-def generate_paragraph(model, dataset, text, params):
+def generate_paragraph(model, dataset, text, params, word_list_offsets=None, regenerate_ixs=None):
     torch.manual_seed(params.seed)  # system inits
     torch.cuda.manual_seed_all(params.seed)
 
     word_list = text.strip(' ').split(' ')
-    word_list_offsets = []
-    if params.verbose: print('Generating...')
-    for i in range(0, len(word_list), params.n_at_a_time):
-        word_list_subset = word_list[i:i+params.n_at_a_time]
-        if params.verbose: print('   ', ' '.join(word_list_subset), end='')
-        offset_sample = generate_helper_fn(model, dataset, word_list_subset, params)
-        word_list_offsets += offset_sample[:len(word_list_subset)]
+    if word_list_offsets is None:
+        word_list_offsets = []
+        if params.verbose: print('Generating...')
+        for i in range(0, len(word_list), params.n_at_a_time):
+            word_list_subset = word_list[i:i+params.n_at_a_time]
+            if params.verbose: print('   ', ' '.join(word_list_subset), end='')
+            offset_sample = generate_helper_fn(model, dataset, word_list_subset, params)
+            word_list_offsets += offset_sample[:len(word_list_subset)]
+    else:
+        # Regenerate specific words if requested
+        if regenerate_ixs:
+            if params.verbose: print('Regenerating words at indices:', regenerate_ixs)
+            for i in regenerate_ixs:
+                if i >= len(word_list):
+                    continue
+                if params.verbose: print('   ', word_list[i], end='')
+                offset_sample = generate_helper_fn(model, dataset, [word_list[i]], params)
+                word_list_offsets[i] = offset_sample[0]
+
     return word_list_offsets
 
 
