@@ -1,6 +1,6 @@
 # Cursive Transformer
 
-![sample_v67](static/sample_v67.png)
+![sample_v67](static/sample_v69.png)
 
 ## Quickstart
 
@@ -487,4 +487,10 @@ Retrained with an additional layer and some other new parameters. Less overfitti
 We added 100 two-letter words to a mini dataset called "littebank.json" - the goal being to add coverage for lowercase two-letter words, which currently don't have much representation in our main dataset. With a few modifications to hyperparameters, we retrained, and the resulting model actually had a significantly better test loss - more than would be expected. The Iliad sample (below) is now near-perfect.
 
 ![sample_v67](static/sample_v67.png)
+
+### Progress February 12, 2025
+
+After a long hiatus, we are back at work! In this update, we make substantial improvements to the sampling code. Among other things, we are now warming up on randomly selected dataset examples rather than hard-coded token sequences. This permits a bit more variety in the generated text. We also support regeneration of specific words. For example, if you have a whole paragraph of text that you want to generate, and you generate it, and there are typos in the words at indexes 5 and 23, you can re-run the `generate_paragraph` function with these indices selected (you also have to include the previous output of `generate_paragraph` as a keyword argument [eg, `word_list_offsets=word_list_offsets`]). In many cases, this will fix those mis-spellings. This allowed me to use the same pretrained model to write out the opening paragraph of the Iliad without any mis-spellings:
+
+![sample_v67](static/sample_v69.png)
 
