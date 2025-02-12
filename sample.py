@@ -153,7 +153,7 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_
     print('-'*80)
 
 
-def def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=False,
+def generate_helper_fn(model, dataset, word_list, num_steps=1250, do_sample=False,
                          top_k=None, temperature=1.0, n_words=4, seed_ix=None, verbose=False):
     model_device = next(model.parameters()).device
 
