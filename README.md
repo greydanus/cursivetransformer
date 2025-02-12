@@ -1,6 +1,6 @@
 # Cursive Transformer
 
-![hero](static/hero.png)
+![sample_v70](static/sample_v70.png)
 
 ## Quickstart
 
