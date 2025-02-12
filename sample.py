@@ -137,11 +137,7 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_
 def generate_helper_fn(model, dataset, word_list, params, num_steps=1250, do_sample=False,
                          top_k=None, temperature=1.0, n_words=4, verbose=False):
     model_device = next(model.parameters()).device
-
-    '''Uses the first word from a dataset example as the seed for generation'''
-    if params.seed_ix is None:
-        params.seed_ix = torch.randint(len(dataset), (1,)).item() 
-        print(params.seed_ix)
+    seed_ix = params.seed_ix if params.seed_ix else torch.randint(len(dataset), (1,)).item()
     
     seed_x, seed_c, _ = dataset[seed_ix]  # Get seed tokens and text from dataset
     
