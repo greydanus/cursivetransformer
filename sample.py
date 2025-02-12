@@ -30,8 +30,8 @@ class GenerationParams:
     n_at_a_time: int = 2
     n_words: int = 4
     space_width: float = 0.16
-    line_width: float = 8.0
-    line_height: float = 0.55
+    sentence_line_width: float = 8.0
+    sentence_line_height: float = 0.55
     letter_height: float = 0.35
     warmup_sample_ix: int = None
     verbose: bool = True
@@ -225,9 +225,9 @@ def word_offsets_to_points(word_offsets, params, word_list=None):  # Add bounds 
         elif word[0] in starts_at_top:
           points[:,1] -= points[0,1] + 0.18 #pass #
 
-      if current_x > params.line_width:
+      if current_x > params.sentence_line_width:
         current_x = 0
-        current_y += params.line_height
+        current_y += params.sentence_line_height
 
       if points is not None and points.shape[0] > 0:
         points[:,0] = points[:,0] + current_x
