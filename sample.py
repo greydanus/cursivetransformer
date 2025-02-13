@@ -100,9 +100,10 @@ def generate(model, idx, context, max_new_tokens, temperature=1.0, do_sample=Fal
     return idx
 
 
-def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_sample=False, log_wandb=True):
+def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_sample=False, log_wandb=True, params=None):
     """ samples from the model and plots the decoded strokes """
     model_device = next(model.parameters()).device
+    params = params if params else GenerationParams()
 
     stroke_seq, context = [], []
     for i in range(num):
@@ -120,7 +121,8 @@ def save_samples(model, dataset, num=2, model_device='cpu', warmup_steps=50, do_
         # get the i'th row of sampled integers, as python list
         row = X_samp[i].detach().cpu().numpy()
         offset_samp = dataset.decode_stroke(row)
-        point_samp = word_offsets_to_points(offset_samp)
+        sentence_points = word_offsets_to_points(offset_samp, params)
+        point_samp = np.vstack(sentence_points)
         decoded_ascii = dataset.decode_text(context[i])
 
         # Plot the stroke
