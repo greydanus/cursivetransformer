@@ -157,10 +157,11 @@ def generate_helper_fn(model, dataset, word_list, params):
         if n > n_words:
             # if params.verbose: print(f"Expected {n_words} words, got {n}; truncating")
             return word_list[:n_words-1]
-        elif n < n_words:
-            # if params.verbose: print(f"Expected {n_words} words, got {n}; padding with placeholder words")
-            return word_list + ['Hkggcvr!', 'TOLAPYPI', '9074', '0.', 'efhgb.'][:max(0, n_words-n-1)]
-        return word_list
+        elif n < n_words:  # Sample random words from the dataset's vocabulary
+            padding_length = max(0, n_words-n-1)
+            padding_words = [dataset.decode_text(torch.randint(dataset.get_char_vocab_size(), (1,))).split()[0] for _ in range(padding_length)]
+            return word_list + padding_words
+    return word_list
 
     word_list = trunc_or_pad_words(word_list)
     text = ' '.join(word_list)
