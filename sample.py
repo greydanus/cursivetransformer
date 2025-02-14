@@ -177,12 +177,12 @@ def generate_helper_fn(model, dataset, word_list, params):
     stroke_seq = X_samp[0].detach().cpu().numpy()[warmup_steps:]
     offset_samp = dataset.decode_stroke(stroke_seq)
     
-    # Ensure we have exactly the number of words requested
+ # Ensure we have exactly the number of words requested
     n_expected = len(word_list)
     if len(offset_samp) > n_expected:
         offset_samp = offset_samp[:n_expected]
-    elif len(offset_samp) < n_expected:
-        offset_samp.extend([[] for _ in range(n_expected - len(offset_samp))])
+    elif len(offset_samp) < n_expected:  # Use empty numpy arrays instead of empty lists
+        offset_samp.extend([np.zeros((0, 2)) for _ in range(n_expected - len(offset_samp))])
     
     return offset_samp
 
