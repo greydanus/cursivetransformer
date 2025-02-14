@@ -161,7 +161,7 @@ def generate_helper_fn(model, dataset, word_list, params):
             padding_length = max(0, n_words-n-1)
             padding_words = [dataset.decode_text(torch.randint(dataset.get_char_vocab_size(), (1,))).split()[0] for _ in range(padding_length)]
             return word_list + padding_words
-    return word_list
+        return word_list
 
     word_list = trunc_or_pad_words(word_list)
     text = ' '.join(word_list)
