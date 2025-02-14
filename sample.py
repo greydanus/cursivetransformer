@@ -182,7 +182,7 @@ def generate_helper_fn(model, dataset, word_list, params):
     if len(offset_samp) > n_expected:
         offset_samp = offset_samp[:n_expected]
     elif len(offset_samp) < n_expected:  # Use empty numpy arrays instead of empty lists
-        offset_samp.extend([np.zeros((0, 2)) for _ in range(n_expected - len(offset_samp))])
+        offset_samp.extend([np.zeros((0, 3)) for _ in range(n_expected - len(offset_samp))])
     
     return offset_samp
 
