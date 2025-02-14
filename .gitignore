@@ -23,6 +23,7 @@ __pycache__
 !data/bigeasybank.json.zip
 !data/biglittlebank.json.zip
 !data/bigbank_3500.json.zip
+!data/cursive.json.zip
 paperspace.sh
 
 /examples*
