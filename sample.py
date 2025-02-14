@@ -176,7 +176,14 @@ def generate_helper_fn(model, dataset, word_list, params):
 
     stroke_seq = X_samp[0].detach().cpu().numpy()[warmup_steps:]
     offset_samp = dataset.decode_stroke(stroke_seq)
-
+    
+    # Ensure we have exactly the number of words requested
+    n_expected = len(word_list)
+    if len(offset_samp) > n_expected:
+        offset_samp = offset_samp[:n_expected]
+    elif len(offset_samp) < n_expected:
+        offset_samp.extend([[] for _ in range(n_expected - len(offset_samp))])
+    
     return offset_samp
 
 
@@ -217,25 +224,30 @@ def word_offsets_to_points(word_offsets, params, word_list=None):  # Add bounds 
 
     sentence_points = []
     for i, offsets in enumerate(word_offsets):
+        points = offsets_to_strokes(copy.deepcopy(offsets))
 
-      points = offsets_to_strokes(copy.deepcopy(offsets))
+        if word_list:
+            word = word_list[i]
+            if points is not None and points.shape[0] > 0:
+                if word[0] in starts_at_bottom:
+                    points[:,1] -= points[0,1]
+                elif word[0] in starts_at_top:
+                    points[:,1] -= points[0,1] + 0.18
 
-      if word_list:
-        word = word_list[i]
-        if word[0] in starts_at_bottom:
-          points[:,1] -= points[0,1]  # # print('Was at the bottom')
-        elif word[0] in starts_at_top:
-          points[:,1] -= points[0,1] + 0.18 #pass #
+        if current_x > params.sentence_line_width:
+            current_x = 0
+            current_y += params.sentence_line_height
 
-      if current_x > params.sentence_line_width:
-        current_x = 0
-        current_y += params.sentence_line_height
-
-      if points is not None and points.shape[0] > 0:
-        points[:,0] = points[:,0] + current_x
-        points[:,1] = np.clip(points[:,1], -params.letter_height, params.letter_height) + current_y
+        # Create empty point and always append to maintain indexing
+        if points is None or points.shape[0] == 0:
+            points = np.zeros((1, 3))
+            points[0] = [current_x, current_y, 0]
+            sentence_points.append(points)
+        else:
+            points[:,0] = points[:,0] + current_x
+            points[:,1] = np.clip(points[:,1], -params.letter_height, params.letter_height) + current_y
+            sentence_points.append(points)
         current_x = points[-1, 0] + params.space_width
-        sentence_points.append(points)
 
     return sentence_points
 
