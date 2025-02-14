@@ -166,7 +166,7 @@ def generate_helper_fn(model, dataset, word_list, params):
             return word_list + padding_words
         return word_list
 
-    word_list = trunc_or_pad_words(word_list, test_dataset, params)
+    word_list = trunc_or_pad_words(word_list, dataset, params)
     text = ' '.join(word_list)
     ascii_context = f'{first_word} {text}'
 
