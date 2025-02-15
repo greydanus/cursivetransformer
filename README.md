@@ -2,6 +2,8 @@
 
 ![sample_v70](static/sample_v70.png)
 
+## How it works
+
 ![cursivetransformer_schema](static/cursivetransformer_schema.png)
 
 ## Quickstart
