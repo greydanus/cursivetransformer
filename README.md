@@ -1,6 +1,6 @@
 # Cursive Transformer
 
-Training a transformer to generate cursive  |  By Sam Greydanus and Zachary Wimpee  |  2025
+Training a transformer to generate cursive. By Sam Greydanus and Zachary Wimpee. 2024-2025.
 
 ## Conditional cursive text generation
 
