@@ -26,6 +26,7 @@ __pycache__
 !data/cursive.json.zip
 !data/sample.json.zip
 paperspace.sh
+cursivetransformer.key
 
 /examples*
 /deprecated*

@@ -2,6 +2,8 @@
 
 ![sample_v70](static/sample_v70.png)
 
+![cursivetransformer_schema](static/cursivetransformer_schema.png)
+
 ## Quickstart
 
 One-liner I use in practice
