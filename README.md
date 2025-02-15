@@ -1,5 +1,7 @@
 # Cursive Transformer
 
+## Conditional cursive text generation
+
 ![sample_v70](static/sample_v70.png)
 
 ## How it works
