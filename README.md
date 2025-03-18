@@ -511,3 +511,7 @@ One or two iterations of this is enough to fix most misspellings. This allowed m
 It's been nearly a month since our last progress update. In this time we've mostly been working on the paper draft. Progress has been steady and the draft is now five pages in length (ten with bibliography and appendices). Most of the content is in place; what remains to be done is to write a good Discussion section and then add 1-2 figures showing cross-attention analysis plots (Zach is making progress on these in his branch).
 
 ![paperdraft_1](static/paperdraft_1.png)
+
+### Progress March 18, 2025
+
+Wrote three paragraphs for the Discussion section. Main paper is now six pages in length, not counting references and appendices.
