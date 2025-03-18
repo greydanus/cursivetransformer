@@ -189,7 +189,7 @@ class StrokeDataset(Dataset):
         stroke = random_horizontal_shear(stroke, shear_range=(-0.22, -0.18))
         stroke[:, 0:1] *= np.random.uniform(0.9, 1.1)
         stroke[:, 1:2] *= np.random.uniform(0.9, 1.1)
-        stroke = random_rotate(stroke, angle_range=(-.08, .08))
+        # stroke = random_rotate(stroke, angle_range=(-.08, .08))
 
         downsample_percent = self.args.downsample_mean + self.args.downsample_width * (np.random.rand()-.5)
         stroke = downsample(stroke, downsample_percent)
@@ -300,7 +300,7 @@ def create_datasets(args):
   data = load_and_parse_data(args.dataset_name)
 
   # partition the input data into a training and the test set
-  test_set_size = min(1000, max(10, int(len(data) * 0.05))) # between 10 and 1000 examples: ideally 10% of dataset
+  test_set_size = min(1000, max(10, int(len(data) * 0.05))) # between 10 and 1000 examples: ideally 5% of dataset
   rp = torch.randperm(len(data)).tolist()
 
   train_examples = generate_word_combos([data[i] for i in rp[:-test_set_size]], desired_num_combos=args.train_size, num_words=args.num_words)
