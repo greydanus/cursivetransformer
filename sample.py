@@ -154,7 +154,7 @@ def generate_helper_fn(model, dataset, word_list, params):
     
     def trunc_or_pad_words(word_list, dataset, params):
         n = len(word_list) ; n_words = params.n_words
-        if n > n_words:
+        if n >= n_words:
             # if params.verbose: print(f"Expected {n_words} words, got {n}; truncating")
             return word_list[:n_words-1]
         elif n < n_words:  # Sample random words from the dataset's vocabulary
