@@ -515,3 +515,9 @@ It's been nearly a month since our last progress update. In this time we've most
 ### Progress March 18, 2025
 
 Wrote three paragraphs for the Discussion section. Main paper is now six pages in length, not counting references and appendices.
+
+### Progress March 21, 2025
+
+On this day I took visualization code from Zach's branch, refactored it a bit, and then used it to plot self attention and cross attention patterns. I spent a lot of time trying to get the plots just right. Results are not perfect, but are workable for a first draft of the paper. Here is an example of the preliminary draft of the attention visualization plot that we're planning to include in the main body of the paper.
+
+![best_attn_summary](static/best_attn_summary.png)
