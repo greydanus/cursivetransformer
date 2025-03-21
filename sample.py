@@ -180,15 +180,15 @@ def generate_helper_fn(model, dataset, word_list, params):
 
     stroke_seq = X_samp[0].detach().cpu().numpy()[warmup_steps:]
     offset_samp = dataset.decode_stroke(stroke_seq)
-    
- # Ensure we have exactly the number of words requested
+
+    # Ensure we have exactly the number of words requested
     n_expected = len(word_list)
     if len(offset_samp) > n_expected:
         offset_samp = offset_samp[:n_expected]
     elif len(offset_samp) < n_expected:  # Use empty numpy arrays instead of empty lists
         offset_samp.extend([np.zeros((0, 3)) for _ in range(n_expected - len(offset_samp))])
     
-    return offset_samp
+    return ascii_context, offset_samp
 
 
 def generate_paragraph(model, dataset, text, params, word_list_offsets=None, regenerate_ixs=None):
@@ -202,7 +202,7 @@ def generate_paragraph(model, dataset, text, params, word_list_offsets=None, reg
         for i in range(0, len(word_list), params.n_at_a_time):
             word_list_subset = word_list[i:i+params.n_at_a_time]
             if params.verbose: print('   ', ' '.join(word_list_subset), end='')
-            offset_sample = generate_helper_fn(model, dataset, word_list_subset, params)
+            ascii_context, offset_sample = generate_helper_fn(model, dataset, word_list_subset, params)
             word_list_offsets += offset_sample[:len(word_list_subset)]
     else:
         # Regenerate specific words if requested
@@ -212,7 +212,7 @@ def generate_paragraph(model, dataset, text, params, word_list_offsets=None, reg
                 if i >= len(word_list):
                     continue
                 if params.verbose: print('   ', word_list[i], end='')
-                offset_sample = generate_helper_fn(model, dataset, [word_list[i]], params)
+                ascii_context, offset_sample = generate_helper_fn(model, dataset, [word_list[i]], params)
                 word_list_offsets[i] = offset_sample[0]
 
     return word_list_offsets
