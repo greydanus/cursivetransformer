@@ -1,5 +1,7 @@
 # Cursive Transformer
 
+Paper  |  Blog post  |  [Colab](https://colab.research.google.com/github/greydanus/cursivetransformer/blob/main/train_sample_visualize.ipynb)
+
 Training a transformer to generate cursive. By Sam Greydanus and Zachary Wimpee. 2024-2025.
 
 ## Conditional cursive generation
@@ -521,3 +523,8 @@ Wrote three paragraphs for the Discussion section. Main paper is now six pages i
 On this day I took visualization code from Zach's branch, refactored it a bit, and then used it to plot self attention and cross attention patterns. I spent a lot of time trying to get the plots just right. Results are not perfect, but are workable for a first draft of the paper. Here is an example of the preliminary draft of the attention visualization plot that we're planning to include in the main body of the paper.
 
 ![best_attn_summary](static/best_attn_summary.png)
+
+### Progress March 31, 2025
+
+Nearly ready to submit paper and upload the blog post. Just [added a colab](https://colab.research.google.com/github/greydanus/cursivetransformer/blob/main/train_sample_visualize.ipynb) for training/sampling/visualizations.
+
