@@ -12,29 +12,21 @@ Training a transformer to generate cursive. By Sam Greydanus and Zachary Wimpee.
 
 ![cursivetransformer_schema](static/cursivetransformer_schema.png)
 
-## Quickstart
+## Quickstart (Google Colab terminal with an A100 GPU)
 
-One-liner I use in practice
-* `git clone https://github.com/greydanus/cursivetransformer.git && cd cursivetransformer && pip install wandb && python train.py --wandb_entity sam-greydanus --wandb_project bigbank_experiments --wandb_api_key WANDB_KEY --dataset_name bigbank`
+Uses [this](https://wandb.ai/sam-greydanus/bigbank_2k?nw=nwusersamgreydanus) W&B project.
 
-Full install one-liner
-* `git clone https://github.com/greydanus/cursivetransformer.git && cd cursivetransformer && pip install -r requirements.txt && python train.py --wandb_entity {your-wandb-username} --wandb_project {wandb-project-name} --wandb_api_key {your-wandb-api-key}`
+Clone `cursivetransformer` repo
+* `git clone https://github.com/greydanus/cursivetransformer.git && cd cursivetransformer && pip install wandb`
 
-Step by step
-* `git clone https://github.com/greydanus/cursivetransformer.git`
-* `cd cursivetransformer`
-* `pip install -r requirements.txt`
-* `python train.py --wandb_entity {your-wandb-username} --wandb_project {wandb-project-name} --wandb_api_key {your-wandb-api-key}`
+Train
+* `python train.py --wandb_entity sam-greydanus --wandb_project {your-wandb-project} --wandb_api_key {your-wandb-api-key} --dataset_name bigbank_3500 --batch_size 32 --max_seq_length 1050 --num_words 4 --step_lr_every 20000 --lr_decay 0.5 --learning_rate 1e-2 --n_layer 5 --max_steps 125000 --train_size 497000 --test_size 3000 --log_every 2500 --downsample_mean 0.65 --seed 1337`
+* Optionally add ` --load_from_run_id 7coqq2c4` to load saved model and optimizer parameters and resume training from best checkpoint.
+* For the paper, we just opened the terminal view in the [Google Colab](https://colab.research.google.com/github/greydanus/cursivetransformer/blob/main/train_sample_visualize.ipynb) and ran the training script for a few hours. The cost is just a few dollars worth of Colab credits.
 
-Paperspace dependencies (or use `paperspace.sh`)
-* `sudo apt update && sudo apt upgrade -y`
-* `sudo apt install linux-headers-$(uname -r) build-essential -y`
-* `sudo add-apt-repository ppa:graphics-drivers/ppa -y && sudo apt update`
-* `sudo apt install nvidia-driver-560 -y`
-* `sudo reboot`
-* `nvidia-smi`
-* In a `screen` tab:
-	* `git clone https://github.com/greydanus/cursivetransformer.git && cd cursivetransformer && pip install -r requirements.txt && export WANDB_API_KEY={your-wandb-api-key} && python3 train.py --wandb_entity {your-wandb-username} --wandb_project {wandb-project-name}`
+Sample
+* `python sample.py --wandb_entity sam-greydanus --wandb_project {your-wandb-project} --wandb_api_key {your-wandb-api-key} --dataset_name bigbank --batch_size 32 --max_seq_length 1050 --step_lr_every 25000 --lr_decay 0.5 --train_size 7000 --test_size 3000 --log_every 2500 --downsample_mean 0.65 --load_from_run_id 7fkxkoir`
+* Or use the sampling code in the [Colab notebook](https://colab.research.google.com/github/greydanus/cursivetransformer/blob/main/train_sample_visualize.ipynb) to make more sophisticated samples
 
 
 ## Making a dataset
