@@ -1,6 +1,6 @@
 # The Cursive Transformer
 
-Paper     |     [Blog post](https://greydanus.github.io/2025/03/30/cursive-transformer/)     |     [Colab](https://colab.research.google.com/github/greydanus/cursivetransformer/blob/main/train_sample_visualize.ipynb)     |     [W&B Project](https://wandb.ai/sam-greydanus/bigbank_2k?nw=nwusersamgreydanus)     |     [Dataset](https://github.com/greydanus/cursivetransformer/blob/main/data/bigbank_3500.json.zip)
+[Paper](http://arxiv.org/abs/2504.00051)     |     [Blog post](https://greydanus.github.io/2025/03/30/cursive-transformer/)     |     [Colab](https://colab.research.google.com/github/greydanus/cursivetransformer/blob/main/train_sample_visualize.ipynb)     |     [W&B Project](https://wandb.ai/sam-greydanus/bigbank_2k?nw=nwusersamgreydanus)     |     [Dataset](https://github.com/greydanus/cursivetransformer/blob/main/data/bigbank_3500.json.zip)
 
 Training a transformer to generate cursive. By Sam Greydanus and Zachary Wimpee. 2025.
 
